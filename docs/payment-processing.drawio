@@ -1,0 +1,138 @@
+<mxfile host="drawio-plugin" modified="2025-08-01T19:31:53.020Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36" etag="k0pSomWFIUTioZNxFTDP" version="22.1.22" type="embed">
+  <diagram name="Page-1" id="58cdce13-f638-feb5-8d6f-7d28b1aa9fa0">
+    <mxGraphModel dx="1368" dy="775" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-14" value="SUBMIT TRANSACTION" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="hhf359HqFBR3hBCcGEcJ-1" target="hhf359HqFBR3hBCcGEcJ-3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-1" value="" style="ellipse;fillColor=#000000;strokeColor=none;" parent="1" vertex="1">
+          <mxGeometry x="490" y="20" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-2" value="" style="ellipse;html=1;shape=endState;fillColor=#000000;strokeColor=#000000;" parent="1" vertex="1">
+          <mxGeometry x="480" y="830" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-13" value="INITIATE PROCESSING" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="hhf359HqFBR3hBCcGEcJ-3" target="hhf359HqFBR3hBCcGEcJ-12" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-3" value="New" style="html=1;align=center;verticalAlign=top;rounded=1;absoluteArcSize=1;arcSize=10;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="435" y="100" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-22" value="LIMIT EARMARK FAILED" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="hhf359HqFBR3hBCcGEcJ-11" target="hhf359HqFBR3hBCcGEcJ-16" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-23" value="LIMIT EARMARK SUCCESS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="hhf359HqFBR3hBCcGEcJ-11" target="hhf359HqFBR3hBCcGEcJ-21" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-11" value="" style="rhombus;" parent="1" vertex="1">
+          <mxGeometry x="490" y="280" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-28" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="hhf359HqFBR3hBCcGEcJ-12" target="hhf359HqFBR3hBCcGEcJ-11" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-12" value="Limit Earmark&amp;nbsp;&lt;br&gt;In Progress" style="html=1;align=center;verticalAlign=top;rounded=1;absoluteArcSize=1;arcSize=10;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="435" y="210" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-27" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="hhf359HqFBR3hBCcGEcJ-16" target="hhf359HqFBR3hBCcGEcJ-2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-16" value="Transaction Failed" style="html=1;align=center;verticalAlign=top;rounded=1;absoluteArcSize=1;arcSize=10;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="110" y="710" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-40" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="hhf359HqFBR3hBCcGEcJ-18" target="hhf359HqFBR3hBCcGEcJ-39" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-18" value="Credit Leg&lt;br&gt;In Progress" style="html=1;align=center;verticalAlign=top;rounded=1;absoluteArcSize=1;arcSize=10;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="860" y="480" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-19" value="Limit Earmark&lt;br&gt;Revert In Progress" style="html=1;align=center;verticalAlign=top;rounded=1;absoluteArcSize=1;arcSize=10;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="340" y="480" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="hhf359HqFBR3hBCcGEcJ-20" target="hhf359HqFBR3hBCcGEcJ-2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-20" value="Manual Intervention&lt;br&gt;Required (DLQ)" style="html=1;align=center;verticalAlign=top;rounded=1;absoluteArcSize=1;arcSize=10;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="425" y="740" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-32" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="hhf359HqFBR3hBCcGEcJ-21" target="hhf359HqFBR3hBCcGEcJ-31" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-21" value="Debit Leg&lt;br&gt;In Progress" style="html=1;align=center;verticalAlign=top;rounded=1;absoluteArcSize=1;arcSize=10;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="720" y="320" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-33" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="hhf359HqFBR3hBCcGEcJ-31" target="hhf359HqFBR3hBCcGEcJ-19" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-34" value="DEBIT LEG FAILED" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="hhf359HqFBR3hBCcGEcJ-33" vertex="1" connectable="0">
+          <mxGeometry x="-0.1565" y="-2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-35" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="hhf359HqFBR3hBCcGEcJ-31" target="hhf359HqFBR3hBCcGEcJ-18" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-37" value="DEBIT LEG SUCCESS" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="hhf359HqFBR3hBCcGEcJ-35" vertex="1" connectable="0">
+          <mxGeometry x="-0.1684" y="1" relative="1" as="geometry">
+            <mxPoint x="46" y="1" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-31" value="" style="rhombus;" parent="1" vertex="1">
+          <mxGeometry x="765" y="410" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-44" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="hhf359HqFBR3hBCcGEcJ-39" target="hhf359HqFBR3hBCcGEcJ-42" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-64" value="CREDIT LEG FAILED" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="hhf359HqFBR3hBCcGEcJ-44" vertex="1" connectable="0">
+          <mxGeometry x="-0.151" y="-3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-45" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="hhf359HqFBR3hBCcGEcJ-39" target="hhf359HqFBR3hBCcGEcJ-43" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-47" value="CREDIT LEG SUCCESS" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="hhf359HqFBR3hBCcGEcJ-45" vertex="1" connectable="0">
+          <mxGeometry x="-0.5111" y="3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-39" value="" style="rhombus;" parent="1" vertex="1">
+          <mxGeometry x="915" y="550" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-50" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="hhf359HqFBR3hBCcGEcJ-19" target="hhf359HqFBR3hBCcGEcJ-48" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-57" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=-0.2;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="hhf359HqFBR3hBCcGEcJ-42" target="hhf359HqFBR3hBCcGEcJ-56" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-42" value="Debit Leg Reversal&lt;br&gt;In Progress" style="html=1;align=center;verticalAlign=top;rounded=1;absoluteArcSize=1;arcSize=10;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="625" y="590" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-46" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="hhf359HqFBR3hBCcGEcJ-43" target="hhf359HqFBR3hBCcGEcJ-2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-43" value="Transaction Successful" style="html=1;align=center;verticalAlign=top;rounded=1;absoluteArcSize=1;arcSize=10;dashed=0;" parent="1" vertex="1">
+          <mxGeometry x="820" y="740" width="140" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-53" value="LIMIT EARMARK REVERT SUCCESS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" parent="1" source="hhf359HqFBR3hBCcGEcJ-48" target="hhf359HqFBR3hBCcGEcJ-16" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-55" value="LIMIT EARMARK REVERT FAILED" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="hhf359HqFBR3hBCcGEcJ-48" target="hhf359HqFBR3hBCcGEcJ-20" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-48" value="" style="rhombus;" parent="1" vertex="1">
+          <mxGeometry x="480" y="630" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-58" value="DEBIT REVERSAL SUCCESS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.75;entryY=0;entryDx=0;entryDy=0;" parent="1" source="hhf359HqFBR3hBCcGEcJ-56" target="hhf359HqFBR3hBCcGEcJ-19" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-61" value="DEBIT REVERSAL FAILED" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="1" source="hhf359HqFBR3hBCcGEcJ-56" target="hhf359HqFBR3hBCcGEcJ-20" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="hhf359HqFBR3hBCcGEcJ-56" value="" style="rhombus;" parent="1" vertex="1">
+          <mxGeometry x="680" y="670" width="30" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

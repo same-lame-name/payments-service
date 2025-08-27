@@ -1,0 +1,32 @@
+logging.level.tech: debug
+logging.level.dexter.banking.booktransfers.infrastructure.middleware: debug
+logging.level.dexter.banking.booktransfers.core.usecase: info
+
+spring:
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+      write-date-timestamps-as-nanoseconds: true
+
+# --- Service Configuration is now version-aware ---
+service-config:
+  commands:
+    # Config for the V1 procedural use case
+    PAYMENT_SUBMIT_V1:
+      idempotencyApplicable: true
+
+    # Config for the V2 orchestrated use case
+    PAYMENT_SUBMIT_V2:
+      idempotencyApplicable: false
+      orchestrator: "statemachine" # This property is now only used by the V2 handler
+
+    PROCESS_LIMIT_EARMARK:
+      idempotencyApplicable: false
+    PROCESS_DEBIT_LEG:
+      idempotencyApplicable: false
+    PROCESS_CREDIT_LEG:
+      idempotencyApplicable: false
+    PROCESS_DEBIT_LEG_REVERSAL:
+      idempotencyApplicable: false
+    PROCESS_LIMIT_EARMARK_REVERSAL:
+       idempotencyApplicable: false

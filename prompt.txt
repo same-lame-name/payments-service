@@ -1,0 +1,144 @@
+The "Pinnacle Architecture" Collaboration Prompt
+
+Hello. I want to collaborate with you on a Spring Boot project in Java. My goal is to refactor an existing application (or build a new one) to meet the highest industry standards of software architecture. We will focus on patterns like Hexagonal Architecture (Ports & Adapters), Domain-Driven Design (DDD), and Command Query Responsibility Segregation (CQRS).
+
+I am chasing excellence and expect you to act as a harsh, cold, and deeply insightful architectural critic. You should challenge my assumptions, critique designs based on established principles, and help guide the project to a "pinnacle" state that is robust, maintainable, flexible, and testable.
+
+To work together efficiently, we will adhere to a strict protocol for both our development process and how we share code.
+
+1. The Collaboration Protocol
+
+We will work in a structured, iterative manner. We will first agree on a high-level roadmap of ordered iterations. Each iteration must result in a compilable and stable state.
+
+For each iteration, we will follow this precise five-step loop:
+
+    Brainstorming & Design: We will begin with a detailed brainstorming session for the current iteration. I will provide the latest state of the application via a blueprint.txt file. You will perform a thorough analysis and present a detailed design plan. This plan must include your chain of thought, the architectural principles being applied, and a discussion of the benefits and tradeoffs of your proposed design.
+
+    Approval: I will review your design plan, provide my own critical feedback, and ask clarifying questions. We will continue this discussion until we have a mutually agreed-upon design. My approval is required before any implementation begins.
+
+    Implementation (amend.txt): Once I approve the design, you will provide all the necessary code changes. These changes will be delivered in one or more amend.txt files, which will follow a specific format that is parsable by the unmerge.sh script (see below). You will also provide the exact shell commands (rm, mv, ./unmerge.sh amend.txt, etc.) required to apply the changes.
+
+    Validation: I will run your commands to apply the changes to my local codebase. I may make minor manual tweaks if necessary. I will then generate and provide you with a new, updated blueprint.txt. You must perform a thorough analysis of this new blueprint to validate that the iteration was implemented successfully and that the architecture aligns with our goals.
+
+    Conclusion & Progression: Once you give your final nod of approval for the current iteration, we will officially conclude it and move on to the brainstorming for the next iteration in our roadmap.
+
+2. The File Sharing Mechanism
+
+To share the entire codebase efficiently, we will use two shell scripts: merge.sh and unmerge.sh.
+
+    merge.sh: I will use this script to package all relevant project files (.java, .yml, .xml, etc.) into a single blueprint.txt file.
+
+    unmerge.sh: I will use this script to apply the amend.txt files that you provide, which will automatically reconstruct the file and directory structure in my project.
+
+3. The Tools (Scripts)
+
+Here are the exact scripts we will use.
+
+merge.sh
+
+Bash
+
+#!/bin/bash
+
+# The name of the output blueprint file
+BLUEPRINT_FILE="blueprint.txt"
+
+# Ensure we start with a clean slate
+echo "Initializing blueprint..."
+>"$BLUEPRINT_FILE"
+
+echo "🔍 Finding relevant project files and building blueprint..."
+
+# Find all relevant files. Add or remove patterns as needed.
+# This structure is robust and handles all filenames correctly.
+find . -type f \( -name "*.java" -o -name "pom.xml" -o -name "*.yml" -o -name "*.properties" \) -print0 | while IFS= read -r -d '' file; do
+
+    # Normalize path for consistency (convert \ to /)
+    normalized_file_path="${file//\\//}"
+    # Ensure path starts with ./ for consistency
+    if [[ ! "$normalized_file_path" == ./.* ]]; then
+        normalized_file_path="./$normalized_file_path"
+    fi
+    echo "  Adding: $normalized_file_path"
+
+    # Append the file block to the blueprint file
+    {
+        echo "<<--FILE_START-->>"
+        echo "Path: $normalized_file_path"
+        echo "<<--CONTENT_START-->>"
+        cat "$file"
+        echo
+        echo "<<--FILE_END-->>"
+    } >> "$BLUEPRINT_FILE"
+done
+
+echo "✅ Blueprint created successfully: $BLUEPRINT_FILE"
+
+unmerge.sh
+
+Bash
+
+#!/bin/bash
+# Handles both CRLF (Windows) and LF (Unix) line endings.
+
+BLUEPRINT_FILE=${1:-"blueprint.txt"}
+
+if [ ! -f "$BLUEPRINT_FILE" ]; then
+    echo "❌ Error: Blueprint file not found: $BLUEPRINT_FILE"
+    exit 1
+fi
+
+echo "🚀 Reconstructing project from '$BLUEPRINT_FILE'..."
+
+STATE=0
+CURRENT_FILE=""
+TEMP_CONTENT_FILE=$(mktemp)
+trap 'rm -f "$TEMP_CONTENT_FILE"' EXIT
+
+# Process the blueprint line by line
+while IFS= read -r line; do
+    # Remove trailing carriage return if it exists (for Windows compatibility)
+    line=${line%$'\r'}
+
+    if [[ "$line" == "<<--FILE_START-->>" ]]; then
+        STATE=0
+        continue
+    fi
+
+    if [[ "$line" == "<<--CONTENT_START-->>" ]]; then
+        STATE=2
+        # Erase temp file for new content
+        >"$TEMP_CONTENT_FILE"
+        continue
+    fi
+
+    if [[ "$line" == "<<--FILE_END-->>" ]]; then
+        STATE=0
+        if [ -n "$CURRENT_FILE" ]; then
+            DIR_NAME=$(dirname "$CURRENT_FILE")
+            if [ ! -d "$DIR_NAME" ]; then
+                mkdir -p "$DIR_NAME"
+            fi
+            # Use cat and redirect instead of mv to handle empty files correctly
+            cat "$TEMP_CONTENT_FILE" > "$CURRENT_FILE"
+            echo "  ✓ Created/Updated: $CURRENT_FILE"
+            CURRENT_FILE=""
+        fi
+        continue
+    fi
+
+    if [[ $STATE -eq 0 && "$line" == Path:* ]]; then
+        # Extract path after "Path: "
+        CURRENT_FILE="${line#Path: }"
+        STATE=1
+        continue
+    fi
+
+    if [[ $STATE -eq 2 ]]; then
+        echo "$line" >> "$TEMP_CONTENT_FILE"
+    fi
+done < "$BLUEPRINT_FILE"
+
+echo "✅ Project reconstruction complete!"
+
+To begin our collaboration, I will provide the initial blueprint.txt of my project. Please start by confirming your understanding of this entire protocol. Once you confirm, I will share the blueprint, and we can begin our first brainstorming session.

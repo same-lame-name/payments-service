@@ -1,0 +1,17 @@
+package dexter.banking.booktransfers.core.domain.model;
+
+import dexter.banking.commandbus.Command;
+import dexter.banking.model.LimitManagementResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.Value;
+
+@Value
+@RequiredArgsConstructor
+public class ProcessLimitEarmarkReversalResultCommand implements Command<Void> {
+    LimitManagementResponse response;
+
+    @Override
+    public String getIdentifier() {
+        return "PROCESS_LIMIT_EARMARK_REVERSAL";
+    }
+}
