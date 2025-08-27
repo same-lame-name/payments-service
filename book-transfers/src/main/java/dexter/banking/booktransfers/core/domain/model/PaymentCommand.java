@@ -39,6 +39,10 @@ public class PaymentCommand implements IdempotentCommand<PaymentResponse> {
      */
     @Override
     public String getIdentifier() {
+        if (this.version == ApiVersion.V2) {
+            // The identifier is now granular for V2, enabling distinct configurations.
+            return "PAYMENT_SUBMIT_V2_" + this.modeOfTransfer.name();
+        }
         return "PAYMENT_SUBMIT_" + this.version.name();
     }
 }

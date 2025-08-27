@@ -11,15 +11,12 @@ spring:
 # --- Service Configuration is now version-aware ---
 service-config:
   commands:
-    # Config for the V1 procedural use case
     PAYMENT_SUBMIT_V1:
       idempotencyApplicable: true
-
-    # Config for the V2 orchestrated use case
-    PAYMENT_SUBMIT_V2:
-      idempotencyApplicable: false
-      orchestrator: "statemachine" # This property is now only used by the V2 handler
-
+    PAYMENT_SUBMIT_V2_SYNC:
+      idempotencyApplicable: true # As per your requirement
+    PAYMENT_SUBMIT_V2_ASYNC:
+      idempotencyApplicable: false # Correct for fire-and-forget
     PROCESS_LIMIT_EARMARK:
       idempotencyApplicable: false
     PROCESS_DEBIT_LEG:
