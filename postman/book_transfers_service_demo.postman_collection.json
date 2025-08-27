@@ -1,0 +1,812 @@
+{
+	"info": {
+		"_postman_id": "76e635f4-3690-4a65-89b5-187ec917f6f6",
+		"name": "Book Transfers Service (DEMO)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "18279283"
+	},
+	"item": [
+		{
+			"name": "0. SETUP: Choose Scenario (Run one of these first)",
+			"item": [
+				{
+					"name": "Set SUCCESS Scenario",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"console.log(\"Setting environment variables for the SUCCESS scenario...\");",
+									"pm.environment.set(\"scenario_limitType\", \"Monthly\");",
+									"pm.environment.set(\"scenario_accountNumber\", \"1312134\");",
+									"pm.environment.set(\"scenario_cardNumber\", \"123222\");",
+									"console.log(\"Environment set. You can now run a 'Submit Transaction' request.\");"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Environment variables for SUCCESS scenario were set\", () => {",
+									"    pm.expect(pm.environment.get(\"scenario_limitType\")).to.eql(\"Monthly\");",
+									"    pm.expect(pm.environment.get(\"scenario_accountNumber\")).to.eql(\"1312134\");",
+									"    pm.expect(pm.environment.get(\"scenario_cardNumber\")).to.eql(\"123222\");",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Set FAIL ON LIMIT LEG Scenario",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"console.log(\"Setting environment variables for the FAIL ON LIMIT LEG scenario...\");",
+									"pm.environment.set(\"scenario_limitType\", \"Yearly\");",
+									"pm.environment.set(\"scenario_accountNumber\", \"1312134\");",
+									"pm.environment.set(\"scenario_cardNumber\", \"123222\");",
+									"console.log(\"Environment set. You can now run a 'Submit Transaction' request.\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}",
+							"host": [
+								"{{baseUrl}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Set FAIL ON DEBIT LEG Scenario",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"console.log(\"Setting environment variables for the FAIL ON DEBIT LEG scenario...\");",
+									"pm.environment.set(\"scenario_limitType\", \"Monthly\");",
+									"pm.environment.set(\"scenario_accountNumber\", \"1312133\");",
+									"pm.environment.set(\"scenario_cardNumber\", \"123222\");",
+									"console.log(\"Environment set. You can now run a 'Submit Transaction' request.\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}",
+							"host": [
+								"{{baseUrl}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Set FAIL ON CREDIT LEG Scenario",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"console.log(\"Setting environment variables for the FAIL ON CREDIT LEG scenario...\");",
+									"pm.environment.set(\"scenario_limitType\", \"Daily\");",
+									"pm.environment.set(\"scenario_accountNumber\", \"1312134\");",
+									"pm.environment.set(\"scenario_cardNumber\", \"123111\");",
+									"console.log(\"Environment set. You can now run a 'Submit Transaction' request.\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}",
+							"host": [
+								"{{baseUrl}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "V1 - Procedural API",
+			"item": [
+				{
+					"name": "2. Then, Run Feature Checks",
+					"item": [
+						{
+							"name": "🔁 Check Idempotency (Same Key)",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"idempotencyKey\": \"{{current_v1_idempotencyKey}}\",\n    \"transactionReference\": \"{{current_v1_transactionReference}}\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v1/book-transfers/payment",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"book-transfers",
+										"payment"
+									]
+								},
+								"description": "IMPORTANT: This request visibly re-sends the exact payload and idempotency key from the last '1. Submit Transaction' you ran."
+							},
+							"response": []
+						},
+						{
+							"name": "▶️ Check Retry (New Key)",
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"idempotencyKey\": \"{{$guid}}\",\n    \"transactionReference\": \"{{current_v1_transactionReference}}\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v1/book-transfers/payment",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"book-transfers",
+										"payment"
+									]
+								},
+								"description": "IMPORTANT: This request re-sends the payload from the last '1. Submit Transaction' but visibly uses `{{$guid}}` to generate a NEW idempotency key."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "1. Submit Transaction",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Set variables for this specific run",
+									"pm.collectionVariables.set(\"current_v1_idempotencyKey\", pm.variables.replaceIn('{{$guid}}'));",
+									"pm.collectionVariables.set(\"current_v1_transactionReference\", \"REF-V1-\" + pm.variables.replaceIn('{{$timestamp}}'));"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"pm.test(\"Status code is 200 OK\", () => { pm.response.to.have.status(200); });",
+									"",
+									"// Set generic variables for queries",
+									"pm.collectionVariables.set(\"transactionId\", response.transactionId);",
+									"// Overwrite the global transactionReference with the one from this run for the query helper",
+									"pm.collectionVariables.set(\"transactionReference\", pm.collectionVariables.get(\"current_v1_transactionReference\"));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"idempotencyKey\": \"{{current_v1_idempotencyKey}}\",\n    \"transactionReference\": \"{{current_v1_transactionReference}}\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/v1/book-transfers/payment",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v1",
+								"book-transfers",
+								"payment"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "V2 - Orchestrated API",
+			"item": [
+				{
+					"name": "SYNC Mode",
+					"item": [
+						{
+							"name": "2. Then, Run Feature Checks",
+							"item": [
+								{
+									"name": "🔁 Check Idempotency (Same Key)",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"idempotencyKey\": \"{{current_v2_sync_idempotencyKey}}\",\n    \"transactionReference\": \"{{current_v2_sync_transactionReference}}\",\n    \"modeOfTransfer\": \"SYNC\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/v2/book-transfers/payment",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v2",
+												"book-transfers",
+												"payment"
+											]
+										},
+										"description": "IMPORTANT: This request visibly re-sends the exact payload and idempotency key from the last '1. Submit Transaction (SYNC)' you ran."
+									},
+									"response": []
+								},
+								{
+									"name": "▶️ Check Retry (New Key)",
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"idempotencyKey\": \"{{$guid}}\",\n    \"transactionReference\": \"{{current_v2_sync_transactionReference}}\",\n    \"modeOfTransfer\": \"SYNC\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/v2/book-transfers/payment",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v2",
+												"book-transfers",
+												"payment"
+											]
+										},
+										"description": "IMPORTANT: This request re-sends the payload from the last '1. Submit Transaction (SYNC)' but visibly uses `{{$guid}}` to generate a NEW idempotency key."
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "1. Submit Transaction (SYNC)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"pm.collectionVariables.set(\"current_v2_sync_idempotencyKey\", pm.variables.replaceIn('{{$guid}}'));",
+											"pm.collectionVariables.set(\"current_v2_sync_transactionReference\", \"REF-V2-SYNC-\" + pm.variables.replaceIn('{{$timestamp}}'));"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"const response = pm.response.json();",
+											"pm.test(\"Status code is 200 OK\", () => { pm.response.to.have.status(200); });",
+											"",
+											"// Set generic variables for queries",
+											"pm.collectionVariables.set(\"transactionId\", response.transactionId);",
+											"pm.collectionVariables.set(\"transactionReference\", pm.collectionVariables.get(\"current_v2_sync_transactionReference\"));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"idempotencyKey\": \"{{current_v2_sync_idempotencyKey}}\",\n    \"transactionReference\": \"{{current_v2_sync_transactionReference}}\",\n    \"modeOfTransfer\": \"SYNC\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v2/book-transfers/payment",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v2",
+										"book-transfers",
+										"payment"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "ASYNC Mode",
+					"item": [
+						{
+							"name": "Standard Flow (Verify via Polling)",
+							"item": [
+								{
+									"name": "Submit Transaction (ASYNC)",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"pm.collectionVariables.set(\"idempotencyKey\", pm.variables.replaceIn('{{$guid}}'));",
+													"pm.collectionVariables.set(\"transactionReference\", \"REF-V2-ASYNC-\" + pm.variables.replaceIn('{{$timestamp}}'));"
+												],
+												"type": "text/javascript"
+											}
+										},
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"const response = pm.response.json();",
+													"pm.test(\"Status code is 200 OK (Acknowledged)\", () => { pm.response.to.have.status(200); });",
+													"pm.test(\"Response has a transactionId\", () => {",
+													"    pm.expect(response.transactionId).to.not.be.empty;",
+													"});",
+													"pm.collectionVariables.set(\"transactionId\", response.transactionId);"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"idempotencyKey\": \"{{idempotencyKey}}\",\n    \"transactionReference\": \"{{transactionReference}}\",\n    \"modeOfTransfer\": \"ASYNC\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/v2/book-transfers/payment",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v2",
+												"book-transfers",
+												"payment"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "Webhook Flow (Verify via Push Notification)",
+							"item": [
+								{
+									"name": "Submit Transaction with Webhook",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"pm.collectionVariables.set(\"idempotencyKey\", pm.variables.replaceIn('{{$guid}}'));",
+													"pm.collectionVariables.set(\"transactionReference\", \"REF-V2-ASYNC-WEBHOOK-\" + pm.variables.replaceIn('{{$timestamp}}'));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"idempotencyKey\": \"{{idempotencyKey}}\",\n    \"transactionReference\": \"{{transactionReference}}\",\n    \"modeOfTransfer\": \"ASYNC\",\n    \"webhookUrl\": \"{{webhookUrl}}\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/v2/book-transfers/payment",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v2",
+												"book-transfers",
+												"payment"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Submit Transaction with Realtime Webhook",
+									"event": [
+										{
+											"listen": "prerequest",
+											"script": {
+												"exec": [
+													"pm.collectionVariables.set(\"idempotencyKey\", pm.variables.replaceIn('{{$guid}}'));",
+													"pm.collectionVariables.set(\"transactionReference\", \"REF-V2-ASYNC-REALTIME-\" + pm.variables.replaceIn('{{$timestamp}}'));"
+												],
+												"type": "text/javascript"
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"idempotencyKey\": \"{{idempotencyKey}}\",\n    \"transactionReference\": \"{{transactionReference}}\",\n    \"modeOfTransfer\": \"ASYNC\",\n    \"realtime\": \"true\",\n    \"webhookUrl\": \"{{webhookUrl}}\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/v2/book-transfers/payment",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"v2",
+												"book-transfers",
+												"payment"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Demo Helper: Concurrent Request (409 Conflict)",
+			"item": [
+				{
+					"name": "V1 - Concurrent Demo",
+					"item": [
+						{
+							"name": "1. Start Slow Request",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"pm.collectionVariables.set(\"v1_concurrent_idempotencyKey\", pm.variables.replaceIn('{{$guid}}'));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"idempotencyKey\": \"{{v1_concurrent_idempotencyKey}}\",\n    \"transactionReference\": \"REF-V1-CONCURRENT-{{$timestamp}}\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v1/book-transfers/payment",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"book-transfers",
+										"payment"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2. Send Concurrent Request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 409 Conflict\", () => {",
+											"    pm.response.to.have.status(409);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"idempotencyKey\": \"{{v1_concurrent_idempotencyKey}}\",\n    \"transactionReference\": \"REF-V1-CONCURRENT-{{$timestamp}}\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v1/book-transfers/payment",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v1",
+										"book-transfers",
+										"payment"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "To test: \n1. Go to the SETUP folder and run 'Set FAIL ON CREDIT LEG Scenario'.\n2. Click Send on '1. Start Slow Request' below.\n3. While it is loading, immediately click Send on '2. Send Concurrent Request'.\n4. Request 2 should return a 409 Conflict instantly."
+				},
+				{
+					"name": "V2 SYNC - Concurrent Demo",
+					"item": [
+						{
+							"name": "1. Start Slow Request",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"pm.collectionVariables.set(\"v2_sync_concurrent_idempotencyKey\", pm.variables.replaceIn('{{$guid}}'));"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"idempotencyKey\": \"{{v2_sync_concurrent_idempotencyKey}}\",\n    \"transactionReference\": \"REF-V2-SYNC-CONCURRENT-{{$timestamp}}\",\n    \"modeOfTransfer\": \"SYNC\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v2/book-transfers/payment",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v2",
+										"book-transfers",
+										"payment"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2. Send Concurrent Request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 409 Conflict\", () => {",
+											"    pm.response.to.have.status(409);",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"idempotencyKey\": \"{{v2_sync_concurrent_idempotencyKey}}\",\n    \"transactionReference\": \"{{current_v2_sync_transactionReference}}\",\n    \"modeOfTransfer\": \"SYNC\",\n    \"limitType\": \"{{scenario_limitType}}\",\n    \"accountNumber\": \"{{scenario_accountNumber}}\",\n    \"cardNumber\": \"{{scenario_cardNumber}}\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/v2/book-transfers/payment",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"v2",
+										"book-transfers",
+										"payment"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "To test: \n1. Go to the SETUP folder and run 'Set FAIL ON CREDIT LEG Scenario'.\n2. Click Send on '1. Start Slow Request' below.\n3. While it is loading, immediately click Send on '2. Send Concurrent Request'.\n4. Request 2 should return a 409 Conflict instantly."
+				}
+			]
+		},
+		{
+			"name": "Queries (Run anytime)",
+			"item": [
+				{
+					"name": "🔎 Get by Transaction ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/v2/book-transfers/payment/{{transactionId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v2",
+								"book-transfers",
+								"payment",
+								"{{transactionId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "🔎 Get by Transaction Reference",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/v2/book-transfers/payments?reference={{transactionReference}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"v2",
+								"book-transfers",
+								"payments"
+							],
+							"query": [
+								{
+									"key": "reference",
+									"value": "{{transactionReference}}"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "transactionId",
+			"value": ""
+		},
+		{
+			"key": "transactionReference",
+			"value": ""
+		},
+		{
+			"key": "current_v1_idempotencyKey",
+			"value": ""
+		},
+		{
+			"key": "current_v1_transactionReference",
+			"value": ""
+		},
+		{
+			"key": "current_v2_sync_idempotencyKey",
+			"value": ""
+		},
+		{
+			"key": "current_v2_sync_transactionReference",
+			"value": ""
+		},
+		{
+			"key": "v1_concurrent_idempotencyKey",
+			"value": ""
+		},
+		{
+			"key": "v2_sync_concurrent_idempotencyKey",
+			"value": ""
+		},
+		{
+			"key": "idempotencyKey",
+			"value": ""
+		}
+	]
+}
