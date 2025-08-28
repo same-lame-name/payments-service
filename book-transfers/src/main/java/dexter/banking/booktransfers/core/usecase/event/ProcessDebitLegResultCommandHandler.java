@@ -1,6 +1,5 @@
 package dexter.banking.booktransfers.core.usecase.event;
 
-import dexter.banking.booktransfers.core.domain.model.ProcessDebitLegResultCommand;
 import dexter.banking.booktransfers.core.port.AsyncOrchestrationEventPort;
 import dexter.banking.commandbus.CommandHandler;
 import lombok.RequiredArgsConstructor;

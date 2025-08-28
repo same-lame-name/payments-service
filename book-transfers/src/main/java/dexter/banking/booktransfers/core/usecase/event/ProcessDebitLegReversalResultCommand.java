@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.core.domain.model;
+package dexter.banking.booktransfers.core.usecase.event;
 
 import dexter.banking.commandbus.Command;
 import dexter.banking.model.DepositBankingResponse;
@@ -7,11 +7,11 @@ import lombok.Value;
 
 @Value
 @RequiredArgsConstructor
-public class ProcessDebitLegResultCommand implements Command<Void> {
+public class ProcessDebitLegReversalResultCommand implements Command<Void> {
     DepositBankingResponse response;
 
     @Override
     public String getIdentifier() {
-        return "PROCESS_DEBIT_LEG";
+        return "PROCESS_DEBIT_LEG_REVERSAL";
     }
 }

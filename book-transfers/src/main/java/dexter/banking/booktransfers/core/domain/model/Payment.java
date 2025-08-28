@@ -1,5 +1,6 @@
 package dexter.banking.booktransfers.core.domain.model;
 
+import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.model.CreditCardBankingResponse;
 import dexter.banking.model.DepositBankingResponse;
 import dexter.banking.model.LimitManagementResponse;

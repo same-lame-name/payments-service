@@ -1,6 +1,7 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.cli;
 
 import dexter.banking.booktransfers.core.domain.model.*;
+import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.booktransfers.core.usecase.payment.query.PaymentQueryUseCase;
 import dexter.banking.booktransfers.core.usecase.payment.query.PaymentView;
 import dexter.banking.commandbus.CommandBus;

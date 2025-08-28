@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.core.port;
 
-import dexter.banking.booktransfers.core.domain.model.PaymentCommand;
+import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.model.PaymentResult;
 
 /**

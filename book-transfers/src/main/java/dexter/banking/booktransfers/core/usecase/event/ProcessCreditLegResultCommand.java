@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.core.domain.model;
+package dexter.banking.booktransfers.core.usecase.event;
 
 import dexter.banking.commandbus.Command;
 import dexter.banking.model.CreditCardBankingResponse;

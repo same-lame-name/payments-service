@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.domain.model.ProcessCreditLegResultCommand;
+import dexter.banking.booktransfers.core.usecase.event.ProcessCreditLegResultCommand;
 import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.CreditCardBankingResponse;
 import dexter.banking.model.JmsConstants;

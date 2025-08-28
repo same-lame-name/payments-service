@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.domain.model.ProcessDebitLegReversalResultCommand;
+import dexter.banking.booktransfers.core.usecase.event.ProcessDebitLegReversalResultCommand;
 import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.DepositBankingResponse;
 import dexter.banking.model.JmsConstants;

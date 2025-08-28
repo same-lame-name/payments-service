@@ -2,7 +2,6 @@ package dexter.banking.booktransfers.core.usecase.payment;
 
 import dexter.banking.booktransfers.core.domain.model.ApiVersion;
 import dexter.banking.booktransfers.core.domain.model.Payment;
-import dexter.banking.booktransfers.core.domain.model.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.model.PaymentResult;
 import dexter.banking.booktransfers.core.domain.model.TransactionState;
 import dexter.banking.booktransfers.core.port.*;

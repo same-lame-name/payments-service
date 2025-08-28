@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.domain.model.ProcessLimitEarmarkResultCommand;
+import dexter.banking.booktransfers.core.usecase.event.ProcessLimitEarmarkResultCommand;
 import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.JmsConstants;
 import dexter.banking.model.LimitManagementResponse;

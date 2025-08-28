@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.core.usecase.payment.mapper;
 
-import dexter.banking.booktransfers.core.domain.model.PaymentCommand;
+import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.model.CreditCardBankingRequest;
 import dexter.banking.model.DepositBankingRequest;
 import dexter.banking.model.LimitManagementRequest;
