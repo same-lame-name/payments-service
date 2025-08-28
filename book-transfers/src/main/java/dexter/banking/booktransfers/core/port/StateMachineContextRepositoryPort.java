@@ -9,7 +9,7 @@ import java.util.UUID;
  * the raw, serialized context of the state machine, decoupling the orchestration adapter from
  * the specifics of the persistence technology.
  */
-public interface StateMachineContextRepository {
+public interface StateMachineContextRepositoryPort {
     /**
      * Persists the serialized state machine context.
      *

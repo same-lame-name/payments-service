@@ -1,9 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.cli;
 
-import dexter.banking.booktransfers.core.domain.model.ApiVersion;
-import dexter.banking.booktransfers.core.domain.model.ModeOfTransfer;
-import dexter.banking.booktransfers.core.domain.model.PaymentCommand;
-import dexter.banking.booktransfers.core.domain.model.PaymentResponse;
+import dexter.banking.booktransfers.core.domain.model.*;
 import dexter.banking.booktransfers.core.usecase.payment.query.PaymentQueryUseCase;
 import dexter.banking.booktransfers.core.usecase.payment.query.PaymentView;
 import dexter.banking.commandbus.CommandBus;
@@ -42,8 +39,8 @@ public class PaymentCommands {
                 .version(ApiVersion.V1)
                 .build();
 
-        PaymentResponse response = command.execute(commandBus);
-        return String.format("✅ V1 Payment submission accepted. Transaction ID: %s", response.getTransactionId());
+        PaymentResult response = command.execute(commandBus);
+        return String.format("✅ V1 Payment submission accepted. Transaction ID: %s", response.transactionId());
     }
 
     @ShellMethod(key = "submit-payment-v2", value = "Submits a new payment transaction via the V2 orchestrated flow.")
@@ -69,8 +66,8 @@ public class PaymentCommands {
                 .version(ApiVersion.V2)
                 .build();
 
-        PaymentResponse response = command.execute(commandBus);
-        return String.format("✅ V2 Payment submission accepted via %s. Transaction ID: %s", modeOfTransfer, response.getTransactionId());
+        PaymentResult response = command.execute(commandBus);
+        return String.format("✅ V2 Payment submission accepted via %s. Transaction ID: %s", modeOfTransfer, response.transactionId());
     }
 
     @ShellMethod(key = "get-payment-by-id", value = "Gets the status of a payment by its system ID.")

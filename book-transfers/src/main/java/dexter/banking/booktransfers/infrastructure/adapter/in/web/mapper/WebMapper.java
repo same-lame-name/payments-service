@@ -3,7 +3,7 @@ package dexter.banking.booktransfers.infrastructure.adapter.in.web.mapper;
 import dexter.banking.booktransfers.core.domain.model.ApiVersion;
 import dexter.banking.booktransfers.core.domain.model.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.model.PaymentCommand;
-import dexter.banking.booktransfers.core.domain.model.PaymentResponse;
+import dexter.banking.booktransfers.core.domain.model.PaymentResult;
 import dexter.banking.booktransfers.infrastructure.adapter.in.web.dto.BookTransferRequest;
 import dexter.banking.booktransfers.infrastructure.adapter.in.web.dto.BookTransferResponse;
 import org.springframework.stereotype.Component;
@@ -23,20 +23,20 @@ public class WebMapper {
                 .cardNumber(dto.getCardNumber())
                 .webhookUrl(dto.getWebhookUrl())
                 .realtime(dto.getRealtime())
-                .modeOfTransfer(StringUtils.hasText(dto.getModeOfTransfer()) ? ModeOfTransfer.valueOf(dto.getModeOfTransfer()) : ModeOfTransfer.ASYNC)
+                .modeOfTransfer(StringUtils.hasText(dto.getModeOfTransfer()) ? ModeOfTransfer.valueOf(dto.getModeOfTransfer().toUpperCase()) : ModeOfTransfer.ASYNC)
                 .version(version) // Set the version from the controller
                 .build();
     }
 
-    public BookTransferResponse toResponse(PaymentResponse paymentResponse) {
-        if (paymentResponse == null) {
+    public BookTransferResponse toResponse(PaymentResult paymentResult) {
+        if (paymentResult == null) {
             return null;
         }
 
         return BookTransferResponse.builder()
-                .transactionId(paymentResponse.getTransactionId())
-                .status(paymentResponse.getStatus())
-                .state(paymentResponse.getState())
+                .transactionId(paymentResult.transactionId())
+                .status(paymentResult.status())
+                .state(paymentResult.state())
                 .build();
     }
 }

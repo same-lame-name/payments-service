@@ -1,12 +1,12 @@
 package dexter.banking.booktransfers.core.usecase.payment;
 
 import dexter.banking.booktransfers.core.domain.model.ApiVersion;
+import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.domain.model.PaymentCommand;
-import dexter.banking.booktransfers.core.domain.model.PaymentResponse;
+import dexter.banking.booktransfers.core.domain.model.PaymentResult;
 import dexter.banking.booktransfers.core.domain.model.TransactionState;
 import dexter.banking.booktransfers.core.port.*;
-import dexter.banking.booktransfers.core.usecase.payment.mapper.SubmitPaymentV1RequestMapper;
-import dexter.banking.booktransfers.core.usecase.payment.mapper.SubmitPaymentV1StatusMapper;
+import dexter.banking.booktransfers.core.port.PaymentRepositoryPort;
 import dexter.banking.commandbus.CommandHandler;
 import dexter.banking.model.*;
 import lombok.RequiredArgsConstructor;
@@ -16,20 +16,21 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 /**
- * A dedicated application service for the V1 procedural payment flow.
+ * The Application Service for the V1 procedural flow.
+ * Its role is to orchestrate the use case:
+ * 1. Call external services via ports.
+ * 2. Based on the outcome, determine the correct next state.
+ * 3. Command the aggregate to record the data and transition to the new state.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentCommand, PaymentResponse> {
+public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentCommand, PaymentResult> {
 
     private final CreditCardPort creditCardPort;
     private final DepositPort depositPort;
     private final LimitPort limitPort;
-    private final WebhookPort webhookPort;
-    private final TransactionRepository transactionRepository;
-    private final SubmitPaymentV1StatusMapper statusMapper;
-    private final SubmitPaymentV1RequestMapper requestMapper;
+    private final PaymentRepositoryPort paymentRepositoryPort;
 
     @Override
     public boolean matches(PaymentCommand command) {
@@ -37,115 +38,139 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     @Override
-    public PaymentResponse handle(PaymentCommand command) {
-        // CORRECTED: The transactionId is a server-generated, internal identifier.
-        // It MUST NOT be coupled to the client-provided idempotencyKey.
-        UUID transactionId = UUID.randomUUID();
-        log.info("▶️ [V1] Starting procedural transaction for TXN_ID: {}", transactionId);
-        PaymentResponse response = PaymentResponse.builder()
-                .transactionId(transactionId)
-                .transactionReference(command.getTransactionReference())
-                .state(TransactionState.NEW)
-                .build();
-        response = transactionRepository.save(response);
+    public PaymentResult handle(PaymentCommand command) {
+        log.info("▶️ [V1] Starting procedural transaction for Command: {}", command.getTransactionReference());
+
+        Payment payment = Payment.startNew(command, UUID::randomUUID);
+        paymentRepositoryPort.save(payment);
 
         try {
-            executeLimitEarmark(command, response);
-            executeDebitLeg(command, response);
-            executeCreditLeg(command, response);
+            // Step 1: Limit Earmark
+            executeLimitEarmark(payment, command);
 
-            response.setState(TransactionState.TRANSACTION_SUCCESSFUL);
-            transactionRepository.update(response);
-            log.info("🏁 [V1] Procedural transaction SUCCEEDED for TXN_ID: {}", transactionId);
-            webhookPort.notifyTransactionComplete(command.getWebhookUrl(), response.getState());
-            return response;
-        } catch (Exception e) {
+            // Step 2: Debit Leg
+            executeDebitLeg(payment, command);
+
+            // Step 3: Credit Leg
+            executeCreditLeg(payment, command);
+
+            // Final success state
+            payment.setState(TransactionState.TRANSACTION_SUCCESSFUL);
+            paymentRepositoryPort.update(payment);
+
+        } catch (StepFailedException e) {
             log.error("❌ [V1] Procedural transaction FAILED at state '{}' for TXN_ID: {}. Initiating SAGA compensation...",
-                    response.getState(), transactionId, e);
-            PaymentResponse lastSavedResponse = transactionRepository.findByTransactionId(transactionId).orElse(response);
+                    payment.getState(), payment.getTransactionId(), e);
+
+            // Reload the last persisted state to ensure we compensate from the correct point
+            Payment lastSavedPayment = paymentRepositoryPort.findById(payment.getTransactionId())
+                    .orElseThrow(() -> new IllegalStateException("Payment disappeared during failed transaction: " + payment.getTransactionId()));
 
             // Manual Saga Compensation
-            switch (lastSavedResponse.getState()) {
-                case DEBIT_LEG_IN_PROGRESS:
-                    compensateFromCreditFailure(lastSavedResponse, command);
-                    break;
-                case LIMIT_EARMARK_IN_PROGRESS:
-                    compensateFromDebitFailure(lastSavedResponse, command);
-                    break;
-                default:
-                    log.warn("  [COMPENSATION] Failure occurred at initial state. Nothing to compensate.");
-                    lastSavedResponse.setState(TransactionState.TRANSACTION_FAILED);
-                    transactionRepository.update(lastSavedResponse);
-                    webhookPort.notifyTransactionComplete(command.getWebhookUrl(), lastSavedResponse.getState());
-            }
-            return lastSavedResponse;
+            compensate(lastSavedPayment, command);
         }
+
+        Payment finalPaymentState = paymentRepositoryPort.findById(payment.getTransactionId()).orElseThrow();
+        log.info("🏁 [V1] Procedural transaction finished for TXN_ID: {}. Final state: {}",
+                finalPaymentState.getTransactionId(), finalPaymentState.getState());
+        return PaymentResult.from(finalPaymentState);
     }
 
-    private void executeLimitEarmark(PaymentCommand command, PaymentResponse response) {
-        LimitManagementRequest limitRequest = requestMapper.toLimitManagementRequest(response.getTransactionId(), command);
+    private void executeLimitEarmark(Payment payment, PaymentCommand command) throws StepFailedException {
+        var limitRequest = LimitManagementRequest.builder().transactionId(payment.getTransactionId()).limitType(command.getLimitType()).build();
         LimitManagementResponse limitResponse = limitPort.earmarkLimit(limitRequest);
-        response.setLimitManagementResponse(limitResponse);
-        if (limitResponse.getStatus() != LimitEarmarkStatus.SUCCESSFUL) {
+        payment.recordLimitEarmarkResult(limitResponse);
+
+        if (limitResponse.getStatus() == LimitEarmarkStatus.SUCCESSFUL) {
+            payment.setState(TransactionState.LIMIT_EARMARK_COMPLETED);
+        } else {
+            payment.setState(TransactionState.TRANSACTION_FAILED);
+            paymentRepositoryPort.update(payment);
             throw new StepFailedException("Limit Earmark Failed");
         }
-        response.setState(TransactionState.LIMIT_EARMARK_IN_PROGRESS);
-        transactionRepository.update(response);
+        paymentRepositoryPort.update(payment);
     }
 
-    private void executeDebitLeg(PaymentCommand command, PaymentResponse response) {
-        DepositBankingRequest depositRequest = requestMapper.toDepositBankingRequest(response.getTransactionId(), command);
+    private void executeDebitLeg(Payment payment, PaymentCommand command) throws StepFailedException {
+        var depositRequest = DepositBankingRequest.builder().transactionId(payment.getTransactionId()).accountNumber(command.getAccountNumber()).build();
         DepositBankingResponse depositResponse = depositPort.submitDeposit(depositRequest);
-        response.setDepositBankingResponse(depositResponse);
-        if (depositResponse.getStatus() != DepositBankingStatus.SUCCESSFUL) {
+        payment.recordDebitResult(depositResponse);
+
+        if (depositResponse.getStatus() == DepositBankingStatus.SUCCESSFUL) {
+            payment.setState(TransactionState.DEBIT_LEG_COMPLETED);
+        } else {
+            payment.setState(TransactionState.DEBIT_LEG_FAILED);
+            paymentRepositoryPort.update(payment);
             throw new StepFailedException("Deposit (Debit) Failed");
         }
-        response.setState(TransactionState.DEBIT_LEG_IN_PROGRESS);
-        transactionRepository.update(response);
+        paymentRepositoryPort.update(payment);
     }
 
-    private void executeCreditLeg(PaymentCommand command, PaymentResponse response) {
-        CreditCardBankingRequest creditCardRequest = requestMapper.toCreditCardBankingRequest(response.getTransactionId(), command);
-        CreditCardBankingResponse creditCardResponse = creditCardPort.submitCreditCardPayment(creditCardRequest);
-        response.setCreditCardBankingResponse(creditCardResponse);
-        if (creditCardResponse.getStatus() != CreditCardBankingStatus.SUCCESSFUL) {
+    private void executeCreditLeg(Payment payment, PaymentCommand command) throws StepFailedException {
+        var creditRequest = CreditCardBankingRequest.builder().transactionId(payment.getTransactionId()).cardNumber(command.getCardNumber()).build();
+        CreditCardBankingResponse creditResponse = creditCardPort.submitCreditCardPayment(creditRequest);
+        payment.recordCreditResult(creditResponse);
+
+        if (creditResponse.getStatus() != CreditCardBankingStatus.SUCCESSFUL) {
+            payment.setState(TransactionState.CREDIT_LEG_FAILED);
+            paymentRepositoryPort.update(payment);
             throw new StepFailedException("Credit Card payment Failed");
         }
+        paymentRepositoryPort.update(payment);
     }
 
-    private void compensateFromCreditFailure(PaymentResponse response, PaymentCommand command) {
-        log.warn("  [COMPENSATION] Reversing Debit Leg for TXN_ID: {}...", response.getTransactionId());
-        DepositBankingReversalRequest reversalRequest = statusMapper.toDepositReversalRequest(response.getTransactionId(), response);
-        DepositBankingResponse reversalResponse = depositPort.submitDepositReversal(response.getDepositBankingResponse().getDepositId(), reversalRequest);
+    private void compensate(Payment payment, PaymentCommand command) {
+        switch (payment.getState()) {
+            case CREDIT_LEG_FAILED:
+                compensateDebitLeg(payment, command);
+                break;
+            case DEBIT_LEG_FAILED:
+                compensateLimitEarmark(payment, command);
+                break;
+            default:
+                log.warn("  [COMPENSATION] Failure occurred at initial state {}. Nothing to compensate.", payment.getState());
+                payment.setState(TransactionState.TRANSACTION_FAILED);
+                paymentRepositoryPort.update(payment);
+        }
+    }
+
+    private void compensateDebitLeg(Payment payment, PaymentCommand command) {
+        log.warn("  [COMPENSATION] Reversing Debit Leg for TXN_ID: {}...", payment.getTransactionId());
+        var reversalRequest = DepositBankingReversalRequest.builder()
+                .transactionId(payment.getTransactionId())
+                .reservationId(payment.getDepositBankingResponse().getDepositId())
+                .build();
+        var reversalResponse = depositPort.submitDepositReversal(payment.getDepositBankingResponse().getDepositId(), reversalRequest);
+        payment.recordDebitReversalResult(reversalResponse);
 
         if (reversalResponse.getStatus() != DepositBankingStatus.REVERSAL_SUCCESSFUL) {
-            handleFatalReversal("Debit Leg", response, command);
+            payment.setState(TransactionState.MANUAL_INTERVENTION_REQUIRED);
+            paymentRepositoryPort.update(payment);
             return;
         }
+
+        payment.setState(TransactionState.DEBIT_LEG_REVERSAL_COMPLETED);
+        paymentRepositoryPort.update(payment);
         log.info("  [COMPENSATION] Debit Leg reversed successfully. Continuing compensation...");
-        compensateFromDebitFailure(response, command);
+        compensateLimitEarmark(payment, command);
     }
 
-    private void compensateFromDebitFailure(PaymentResponse response, PaymentCommand command) {
-        log.warn("  [COMPENSATION] Reversing Limit Earmark for TXN_ID: {}...", response.getTransactionId());
-        LimitManagementReversalRequest reversalRequest = statusMapper.toLimitEarmarkReversalRequest(response.getTransactionId(), response);
-        LimitManagementResponse reversalResponse = limitPort.reverseLimitEarmark(response.getLimitManagementResponse().getLimitId(), reversalRequest);
+    private void compensateLimitEarmark(Payment payment, PaymentCommand command) {
+        log.warn("  [COMPENSATION] Reversing Limit Earmark for TXN_ID: {}...", payment.getTransactionId());
+        var reversalRequest = LimitManagementReversalRequest.builder()
+                .transactionId(payment.getTransactionId())
+                .limitManagementId(payment.getLimitManagementResponse().getLimitId())
+                .build();
+        var reversalResponse = limitPort.reverseLimitEarmark(payment.getLimitManagementResponse().getLimitId(), reversalRequest);
+        payment.recordLimitReversalResult(reversalResponse);
 
         if (reversalResponse.getStatus() != LimitEarmarkStatus.REVERSAL_SUCCESSFUL) {
-            handleFatalReversal("Limit Earmark", response, command);
+            payment.setState(TransactionState.MANUAL_INTERVENTION_REQUIRED);
         } else {
+            payment.setState(TransactionState.TRANSACTION_FAILED);
             log.info("  [COMPENSATION] Limit Earmark reversed successfully. Transaction is FAILED.");
-            response.setState(TransactionState.TRANSACTION_FAILED);
-            transactionRepository.update(response);
-            webhookPort.notifyTransactionComplete(command.getWebhookUrl(), response.getState());
         }
-    }
-
-    private void handleFatalReversal(String leg, PaymentResponse response, PaymentCommand command) {
-        log.error("  [FATAL] FAILED to reverse {} for TXN_ID: {}. REQUIRES MANUAL INTERVENTION.", leg, response.getTransactionId());
-        response.setState(TransactionState.MANUAL_INTERVENTION_REQUIRED);
-        transactionRepository.update(response);
-        webhookPort.notifyTransactionComplete(command.getWebhookUrl(), response.getState());
+        paymentRepositoryPort.update(payment);
     }
 
     private static class StepFailedException extends RuntimeException {

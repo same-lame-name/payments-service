@@ -3,7 +3,7 @@ package dexter.banking.booktransfers.infrastructure.adapter.in.web;
 import dexter.banking.booktransfers.core.domain.exception.TransactionNotFoundException;
 import dexter.banking.booktransfers.core.domain.model.ApiVersion;
 import dexter.banking.booktransfers.core.domain.model.PaymentCommand;
-import dexter.banking.booktransfers.core.domain.model.PaymentResponse;
+import dexter.banking.booktransfers.core.domain.model.PaymentResult;
 import dexter.banking.booktransfers.core.usecase.payment.query.PaymentQueryUseCase;
 import dexter.banking.booktransfers.core.usecase.payment.query.PaymentView;
 import dexter.banking.booktransfers.infrastructure.adapter.in.web.dto.BookTransferRequest;
@@ -33,19 +33,18 @@ public class BookTransferController {
     private final CommandBus commandBus;
     private final PaymentQueryUseCase paymentQueryUseCase;
     private final WebMapper webMapper;
-
     @PostMapping("/v1/book-transfers/payment")
     public BookTransferResponse submitTransactionV1(@RequestBody @Valid BookTransferRequest bookTransferRequest) {
         PaymentCommand command = webMapper.toCommand(bookTransferRequest, ApiVersion.V1);
-        PaymentResponse initiatedPaymentResponse = command.execute(commandBus);
-        return webMapper.toResponse(initiatedPaymentResponse);
+        PaymentResult initiatedPayment = command.execute(commandBus);
+        return webMapper.toResponse(initiatedPayment);
     }
 
     @PostMapping("/v2/book-transfers/payment")
     public BookTransferResponse submitTransactionV2(@RequestBody @Valid BookTransferRequest bookTransferRequest) {
         PaymentCommand command = webMapper.toCommand(bookTransferRequest, ApiVersion.V2);
-        PaymentResponse initiatedPaymentResponse = command.execute(commandBus);
-        return webMapper.toResponse(initiatedPaymentResponse);
+        PaymentResult initiatedPayment = command.execute(commandBus);
+        return webMapper.toResponse(initiatedPayment);
     }
 
 

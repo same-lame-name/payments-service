@@ -8,7 +8,7 @@ import javax.validation.constraints.NotNull;
 import java.util.UUID;
 @Value
 @Builder
-public class PaymentCommand implements IdempotentCommand<PaymentResponse> {
+public class PaymentCommand implements IdempotentCommand<PaymentResult> {
 
     @NotNull
     UUID idempotencyKey;
