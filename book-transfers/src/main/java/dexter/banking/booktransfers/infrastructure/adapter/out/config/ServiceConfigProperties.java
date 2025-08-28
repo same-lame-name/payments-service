@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.config.model;
+package dexter.banking.booktransfers.infrastructure.adapter.out.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

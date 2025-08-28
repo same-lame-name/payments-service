@@ -26,8 +26,9 @@ public class IdempotencyMiddleware implements Middleware {
     @Override
     @SuppressWarnings("unchecked")
     public <R, C extends Command<R>> R invoke(C command, Next<R> next) {
+        // This middleware is now pure. It depends only on the core context and core ports.
         boolean isApplicable = CommandProcessingContextHolder.getContext()
-                .map(ctx -> ctx.getServiceConfig().isIdempotencyApplicable())
+                .map(ctx -> ctx.getCommandConfiguration().isIdempotencyEnabled())
                 .orElse(false);
 
         if (!isApplicable || !(command instanceof IdempotentCommand<?> idempotentCommand)) {
@@ -52,7 +53,8 @@ public class IdempotencyMiddleware implements Middleware {
             // Lock was NOT acquired. Key already exists. Now, we find out why.
             log.debug("Idempotency key {} already exists. Fetching status...", key);
             IdempotencyData record = idempotencyPort.getOperationData(key)
-                    .orElseThrow(() -> new IllegalStateException("FATAL: Lock failed but no record found for key: " + key)); // Should be impossible
+                    .orElseThrow(() -> new IllegalStateException("FATAL: Lock failed but no record found for key: " + key));
+            // Should be impossible
 
             if (record.status() == IdempotencyStatus.COMPLETED) {
                 // It's a duplicate request.
