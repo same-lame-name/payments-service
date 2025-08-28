@@ -1,6 +1,8 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.statemachine;
-
 import dexter.banking.booktransfers.core.domain.model.Payment;
+import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.model.results.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.model.PaymentResult;
 import dexter.banking.booktransfers.core.domain.model.TransactionEvent;
@@ -9,7 +11,6 @@ import dexter.banking.booktransfers.core.port.AsyncOrchestrationEventPort;
 import dexter.banking.booktransfers.core.port.TransactionOrchestratorPort;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.component.TransactionStateMachinePersister;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.TransactionContext;
-import dexter.banking.model.*;
 import dexter.banking.statemachine.StateMachine;
 import dexter.banking.statemachine.StateMachineFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -44,57 +45,55 @@ public class TransactionOrchestratorAdapter implements TransactionOrchestratorPo
     }
 
     @Override
-    public void processCreditLegResult(CreditCardBankingResponse response) {
-
-        handleAsyncEvent(response.getTransactionId(), sm -> {
+    public void processCreditLegResult(UUID transactionId, CreditLegResult result) {
+        handleAsyncEvent(transactionId, sm -> {
             var payment = sm.getContext().getPayment();
-
-            payment.recordCreditResult(response);
-            TransactionEvent event = response.getStatus() == CreditCardBankingStatus.SUCCESSFUL ?
+            payment.recordCreditResult(result);
+            TransactionEvent event = result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
                     TransactionEvent.CREDIT_LEG_SUCCEEDED : TransactionEvent.CREDIT_LEG_FAILED;
             sm.fire(event);
         });
     }
 
     @Override
-    public void processDebitLegResult(DepositBankingResponse response) {
-        handleAsyncEvent(response.getTransactionId(), sm -> {
+    public void processDebitLegResult(UUID transactionId, DebitLegResult result) {
+        handleAsyncEvent(transactionId, sm -> {
             var payment = sm.getContext().getPayment();
-            payment.recordDebitResult(response);
-            TransactionEvent event = response.getStatus() == DepositBankingStatus.SUCCESSFUL ?
+            payment.recordDebitResult(result);
+            TransactionEvent event = result.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL ?
                     TransactionEvent.DEBIT_LEG_SUCCEEDED : TransactionEvent.DEBIT_LEG_FAILED;
             sm.fire(event);
         });
     }
 
     @Override
-    public void processLimitEarmarkResult(LimitManagementResponse response) {
-        handleAsyncEvent(response.getTransactionId(), sm -> {
+    public void processLimitEarmarkResult(UUID transactionId, LimitEarmarkResult result) {
+        handleAsyncEvent(transactionId, sm -> {
             var payment = sm.getContext().getPayment();
-            payment.recordLimitEarmarkResult(response);
-            TransactionEvent event = response.getStatus() == LimitEarmarkStatus.SUCCESSFUL ?
+            payment.recordLimitEarmarkResult(result);
+            TransactionEvent event = result.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL ?
                     TransactionEvent.LIMIT_EARMARK_SUCCEEDED : TransactionEvent.LIMIT_EARMARK_FAILED;
             sm.fire(event);
         });
     }
 
     @Override
-    public void processDebitLegReversalResult(DepositBankingResponse response) {
-        handleAsyncEvent(response.getTransactionId(), sm -> {
+    public void processDebitLegReversalResult(UUID transactionId, DebitLegResult result) {
+        handleAsyncEvent(transactionId, sm -> {
             var payment = sm.getContext().getPayment();
-            payment.recordDebitReversalResult(response);
-            TransactionEvent event = response.getStatus() == DepositBankingStatus.REVERSAL_SUCCESSFUL ?
+            payment.recordDebitReversalResult(result);
+            TransactionEvent event = result.status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL ?
                     TransactionEvent.DEBIT_LEG_REVERSAL_SUCCEEDED : TransactionEvent.DEBIT_LEG_REVERSAL_FAILED;
             sm.fire(event);
         });
     }
 
     @Override
-    public void processLimitEarmarkReversalResult(LimitManagementResponse response) {
-        handleAsyncEvent(response.getTransactionId(), sm -> {
+    public void processLimitEarmarkReversalResult(UUID transactionId, LimitEarmarkResult result) {
+        handleAsyncEvent(transactionId, sm -> {
             var payment = sm.getContext().getPayment();
-            payment.recordLimitReversalResult(response);
-            TransactionEvent event = response.getStatus() == LimitEarmarkStatus.REVERSAL_SUCCESSFUL ?
+            payment.recordLimitReversalResult(result);
+            TransactionEvent event = result.status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL ?
                     TransactionEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED : TransactionEvent.LIMIT_EARMARK_REVERSAL_FAILED;
             sm.fire(event);
         });

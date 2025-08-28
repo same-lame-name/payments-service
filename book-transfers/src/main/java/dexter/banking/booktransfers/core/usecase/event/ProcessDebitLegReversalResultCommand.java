@@ -1,14 +1,18 @@
 package dexter.banking.booktransfers.core.usecase.event;
 
+import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
 import dexter.banking.commandbus.Command;
-import dexter.banking.model.DepositBankingResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
+
+import java.util.UUID;
 
 @Value
 @RequiredArgsConstructor
 public class ProcessDebitLegReversalResultCommand implements Command<Void> {
-    DepositBankingResponse response;
+    // The command now carries the pure domain value object, not the external DTO.
+    UUID transactionId;
+    DebitLegResult result;
 
     @Override
     public String getIdentifier() {

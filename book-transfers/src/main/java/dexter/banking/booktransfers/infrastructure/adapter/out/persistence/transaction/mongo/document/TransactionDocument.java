@@ -2,9 +2,9 @@ package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.tran
 
 import dexter.banking.booktransfers.core.domain.model.Status;
 import dexter.banking.booktransfers.core.domain.model.TransactionState;
-import dexter.banking.model.CreditCardBankingResponse;
-import dexter.banking.model.DepositBankingResponse;
-import dexter.banking.model.LimitManagementResponse;
+import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.model.results.LimitEarmarkResult;
 import lombok.Getter;
 import lombok.Setter;
 import org.bson.types.ObjectId;
@@ -24,10 +24,12 @@ public class TransactionDocument {
     private UUID transactionId;
     private String transactionReference;
 
-    private DepositBankingResponse depositBankingResponse;
-
-    private LimitManagementResponse limitManagementResponse;
-    private CreditCardBankingResponse creditCardBankingResponse;
+    // The document now stores the pure, lean domain value objects.
+    private DebitLegResult debitLegResult;
+    private LimitEarmarkResult limitEarmarkResult;
+    private CreditLegResult creditLegResult;
+    private DebitLegResult debitLegReversalResult;
+    private LimitEarmarkResult limitEarmarkReversalResult;
 
     private Status status = Status.NEW;
     private TransactionState state = TransactionState.NEW;

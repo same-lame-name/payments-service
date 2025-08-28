@@ -1,6 +1,7 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
 import dexter.banking.booktransfers.core.usecase.event.ProcessDebitLegReversalResultCommand;
+import dexter.banking.booktransfers.infrastructure.adapter.in.messaging.mapper.MessagingAdapterMapper;
 import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.DepositBankingResponse;
 import dexter.banking.model.JmsConstants;
@@ -15,11 +16,13 @@ import org.springframework.stereotype.Component;
 public class DepositBankingReversalListener {
 
     private final CommandBus commandBus;
+    private final MessagingAdapterMapper mapper;
 
     @JmsListener(destination = JmsConstants.DEPOSIT_BANKING_REVERSAL_RESPONSE)
     public void completeDepositBankingReversal(DepositBankingResponse result) {
-        log.debug("Received Deposit banking reversal for txnId: {}. Translating to command.", result.getTransactionId());
-        var command = new ProcessDebitLegReversalResultCommand(result);
+        log.debug("Received Deposit banking reversal DTO for txnId: {}. Translating to command.", result.getTransactionId());
+        var domainResult = mapper.toReversalDomain(result);
+        var command = new ProcessDebitLegReversalResultCommand(result.getTransactionId(), domainResult);
         command.execute(commandBus);
     }
 }

@@ -14,9 +14,11 @@ public class PersistenceMapper {
         var memento = new Payment.PaymentMemento(
             document.getTransactionId(),
             document.getTransactionReference(),
-            document.getDepositBankingResponse(),
-            document.getLimitManagementResponse(),
-            document.getCreditCardBankingResponse(),
+            document.getDebitLegResult(),
+            document.getLimitEarmarkResult(),
+            document.getCreditLegResult(),
+            document.getDebitLegReversalResult(),
+            document.getLimitEarmarkReversalResult(),
             document.getStatus(),
             document.getState()
         );
@@ -38,8 +40,10 @@ public class PersistenceMapper {
         doc.setTransactionReference(memento.transactionReference());
         doc.setStatus(memento.status());
         doc.setState(memento.state());
-        doc.setDepositBankingResponse(memento.depositBankingResponse());
-        doc.setLimitManagementResponse(memento.limitManagementResponse());
-        doc.setCreditCardBankingResponse(memento.creditCardBankingResponse());
+        doc.setDebitLegResult(memento.debitLegResult());
+        doc.setLimitEarmarkResult(memento.limitEarmarkResult());
+        doc.setCreditLegResult(memento.creditLegResult());
+        doc.setDebitLegReversalResult(memento.debitLegReversalResult());
+        doc.setLimitEarmarkReversalResult(memento.limitEarmarkReversalResult());
     }
 }

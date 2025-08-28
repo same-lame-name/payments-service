@@ -13,14 +13,14 @@ public class TransactionStatusMapper {
     public LimitManagementReversalRequest toLimitEarmarkReversalRequest(UUID transactionId, Payment payment) {
         return LimitManagementReversalRequest.builder()
                 .transactionId(transactionId)
-                .limitManagementId(payment.getLimitManagementResponse().getLimitId())
+                .limitManagementId(payment.getLimitEarmarkResult().limitId())
                 .build();
     }
 
     public DepositBankingReversalRequest toDepositReversalRequest(UUID transactionId, Payment payment) {
         return DepositBankingReversalRequest.builder()
                 .transactionId(transactionId)
-                .reservationId(payment.getDepositBankingResponse().getDepositId())
+                .reservationId(payment.getDebitLegResult().depositId())
                 .build();
     }
 }

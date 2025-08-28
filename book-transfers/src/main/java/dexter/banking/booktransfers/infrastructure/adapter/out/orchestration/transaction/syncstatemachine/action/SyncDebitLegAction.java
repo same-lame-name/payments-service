@@ -2,14 +2,13 @@ package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.tr
 
 import dexter.banking.booktransfers.core.domain.model.TransactionEvent;
 import dexter.banking.booktransfers.core.domain.model.TransactionState;
+import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
 import dexter.banking.booktransfers.core.port.DepositPort;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.mapper.TransactionRequestMapper;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.mapper.TransactionStatusMapper;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.TransactionContext;
 import dexter.banking.model.DepositBankingRequest;
-import dexter.banking.model.DepositBankingResponse;
 import dexter.banking.model.DepositBankingReversalRequest;
-import dexter.banking.model.DepositBankingStatus;
 import dexter.banking.statemachine.contract.SagaAction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,12 +31,11 @@ public class SyncDebitLegAction implements SagaAction<TransactionState, Transact
         var payment = context.getPayment();
         DepositBankingRequest request = transactionRequestMapper
                 .toDepositBankingRequest(payment.getId(), context.getRequest());
-
         payment.setState(TransactionState.DEBIT_LEG_IN_PROGRESS);
-        DepositBankingResponse response = depositPort.submitDeposit(request);
-        payment.recordDebitResult(response);
+        DebitLegResult result = depositPort.submitDeposit(request);
+        payment.recordDebitResult(result);
 
-        if (response.getStatus() == DepositBankingStatus.SUCCESSFUL) {
+        if (result.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL) {
             return Optional.of(TransactionEvent.DEBIT_LEG_SUCCEEDED);
         } else {
             return Optional.of(TransactionEvent.DEBIT_LEG_FAILED);
@@ -50,12 +48,11 @@ public class SyncDebitLegAction implements SagaAction<TransactionState, Transact
         var payment = context.getPayment();
         DepositBankingReversalRequest request = transactionStatusMapper
                 .toDepositReversalRequest(payment.getId(), payment);
-
         payment.setState(TransactionState.DEBIT_LEG_REVERSAL_IN_PROGRESS);
-        DepositBankingResponse response = depositPort.submitDepositReversal(payment.getDepositBankingResponse().getDepositId(), request);
-        payment.recordDebitReversalResult(response);
+        DebitLegResult result = depositPort.submitDepositReversal(payment.getDebitLegResult().depositId(), request);
+        payment.recordDebitReversalResult(result);
 
-        if (response.getStatus() == DepositBankingStatus.REVERSAL_SUCCESSFUL) {
+        if (result.status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL) {
             return Optional.of(TransactionEvent.DEBIT_LEG_REVERSAL_SUCCEEDED);
         } else {
             return Optional.of(TransactionEvent.DEBIT_LEG_REVERSAL_FAILED);

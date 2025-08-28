@@ -1,12 +1,17 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http.deposit.feign;
 
+import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
 import dexter.banking.booktransfers.core.port.DepositPort;
+import dexter.banking.booktransfers.infrastructure.adapter.out.http.mapper.HttpAdapterMapper;
 import dexter.banking.model.ApiConstants;
 import dexter.banking.model.DepositBankingRequest;
 import dexter.banking.model.DepositBankingResponse;
 import dexter.banking.model.DepositBankingReversalRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -14,19 +19,42 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.UUID;
 
-@FeignClient(value = "deposit-banking-service")
-public interface DepositAdapter extends DepositPort {
+@Component
+@Primary
+public class DepositAdapter implements DepositPort {
+
+    private final RawDepositClient client;
+    private final HttpAdapterMapper mapper;
+
+    @Autowired
+    public DepositAdapter(RawDepositClient client, HttpAdapterMapper mapper) {
+        this.client = client;
+        this.mapper = mapper;
+    }
 
     @Override
-    @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, value = ApiConstants.API_DEPOSIT_BANKING)
-    DepositBankingResponse submitDeposit(@RequestBody DepositBankingRequest reservationRequest);
+    public DebitLegResult submitDeposit(DepositBankingRequest request) {
+        DepositBankingResponse responseDto = client.submitDeposit(request);
+        return mapper.toDomain(responseDto);
+    }
 
     @Override
-    @PutMapping(
-            produces = MediaType.APPLICATION_JSON_VALUE,
-            value = ApiConstants.API_DEPOSIT_BANKING + "/{depositRequestId}/cancelled")
-    DepositBankingResponse submitDepositReversal(@PathVariable("depositRequestId") UUID depositRequestId,
-                                                 @RequestBody DepositBankingReversalRequest depositBankingReversalRequest);
+    public DebitLegResult submitDepositReversal(UUID depositRequestId, DepositBankingReversalRequest request) {
+        DepositBankingResponse responseDto = client.submitDepositReversal(depositRequestId, request);
+        return mapper.toReversalDomain(responseDto);
+    }
+
+
+    @FeignClient(value = "deposit-banking-service")
+    interface RawDepositClient {
+
+        @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, value = ApiConstants.API_DEPOSIT_BANKING)
+        DepositBankingResponse submitDeposit(@RequestBody DepositBankingRequest reservationRequest);
+
+        @PutMapping(
+                produces = MediaType.APPLICATION_JSON_VALUE,
+                value = ApiConstants.API_DEPOSIT_BANKING + "/{depositRequestId}/cancelled")
+        DepositBankingResponse submitDepositReversal(@PathVariable("depositRequestId") UUID depositRequestId,
+                                                     @RequestBody DepositBankingReversalRequest depositBankingReversalRequest);
+    }
 }
-
-

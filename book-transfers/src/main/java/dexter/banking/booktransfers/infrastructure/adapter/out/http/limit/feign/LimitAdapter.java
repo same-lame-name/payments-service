@@ -1,12 +1,17 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http.limit.feign;
 
+import dexter.banking.booktransfers.core.domain.model.results.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.port.LimitPort;
+import dexter.banking.booktransfers.infrastructure.adapter.out.http.mapper.HttpAdapterMapper;
 import dexter.banking.model.ApiConstants;
 import dexter.banking.model.LimitManagementRequest;
 import dexter.banking.model.LimitManagementResponse;
 import dexter.banking.model.LimitManagementReversalRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.openfeign.FeignClient;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -14,19 +19,41 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.UUID;
 
-@FeignClient(value = "limit-management-service")
-public interface LimitAdapter extends LimitPort {
+@Component
+@Primary
+public class LimitAdapter implements LimitPort {
+
+    private final RawLimitClient client;
+    private final HttpAdapterMapper mapper;
+
+    @Autowired
+    public LimitAdapter(RawLimitClient client, HttpAdapterMapper mapper) {
+        this.client = client;
+        this.mapper = mapper;
+    }
 
     @Override
-    @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, value = ApiConstants.API_LIMIT_MANAGEMENT)
-    LimitManagementResponse earmarkLimit(@RequestBody LimitManagementRequest limitManagementRequest);
+    public LimitEarmarkResult earmarkLimit(LimitManagementRequest request) {
+        LimitManagementResponse responseDto = client.earmarkLimit(request);
+        return mapper.toDomain(responseDto);
+    }
 
     @Override
-    @PutMapping(
-            produces = MediaType.APPLICATION_JSON_VALUE,
-            value = ApiConstants.API_LIMIT_MANAGEMENT + "/{limitEarmarkId}/cancelled")
-    LimitManagementResponse reverseLimitEarmark(@PathVariable("limitEarmarkId") UUID limitEarmarkId,
-                                                @RequestBody LimitManagementReversalRequest limitManagementReversalRequest);
+    public LimitEarmarkResult reverseLimitEarmark(UUID limitEarmarkId, LimitManagementReversalRequest request) {
+        LimitManagementResponse responseDto = client.reverseLimitEarmark(limitEarmarkId, request);
+        return mapper.toReversalDomain(responseDto);
+    }
+
+    @FeignClient(value = "limit-management-service")
+    interface RawLimitClient {
+
+        @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, value = ApiConstants.API_LIMIT_MANAGEMENT)
+        LimitManagementResponse earmarkLimit(@RequestBody LimitManagementRequest limitManagementRequest);
+
+        @PutMapping(
+                produces = MediaType.APPLICATION_JSON_VALUE,
+                value = ApiConstants.API_LIMIT_MANAGEMENT + "/{limitEarmarkId}/cancelled")
+        LimitManagementResponse reverseLimitEarmark(@PathVariable("limitEarmarkId") UUID limitEarmarkId,
+                                                    @RequestBody LimitManagementReversalRequest limitManagementReversalRequest);
+    }
 }
-
-

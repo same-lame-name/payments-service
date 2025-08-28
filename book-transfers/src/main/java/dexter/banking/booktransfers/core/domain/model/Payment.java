@@ -1,10 +1,10 @@
 package dexter.banking.booktransfers.core.domain.model;
 
+import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.model.results.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.domain.primitives.AggregateRoot;
 import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
-import dexter.banking.model.CreditCardBankingResponse;
-import dexter.banking.model.DepositBankingResponse;
-import dexter.banking.model.LimitManagementResponse;
 import lombok.Getter;
 
 import java.util.UUID;
@@ -14,11 +14,11 @@ import java.util.function.Supplier;
 public class Payment extends AggregateRoot<UUID> {
 
     private final String transactionReference;
-
-    // --- State Fields ---
-    private DepositBankingResponse depositBankingResponse;
-    private LimitManagementResponse limitManagementResponse;
-    private CreditCardBankingResponse creditCardBankingResponse;
+    private DebitLegResult debitLegResult;
+    private LimitEarmarkResult limitEarmarkResult;
+    private CreditLegResult creditLegResult;
+    private DebitLegResult debitLegReversalResult;
+    private LimitEarmarkResult limitEarmarkReversalResult;
     private Status status;
     private TransactionState state;
 
@@ -34,9 +34,11 @@ public class Payment extends AggregateRoot<UUID> {
 
     public static Payment rehydrate(PaymentMemento memento) {
         var payment = new Payment(memento.id(), memento.transactionReference(), memento.state());
-        payment.depositBankingResponse = memento.depositBankingResponse();
-        payment.limitManagementResponse = memento.limitManagementResponse();
-        payment.creditCardBankingResponse = memento.creditCardBankingResponse();
+        payment.debitLegResult = memento.debitLegResult();
+        payment.limitEarmarkResult = memento.limitEarmarkResult();
+        payment.creditLegResult = memento.creditLegResult();
+        payment.debitLegReversalResult = memento.debitLegReversalResult();
+        payment.limitEarmarkReversalResult = memento.limitEarmarkReversalResult();
         return payment;
     }
 
@@ -44,9 +46,11 @@ public class Payment extends AggregateRoot<UUID> {
         return new PaymentMemento(
             this.id,
             this.transactionReference,
-            this.depositBankingResponse,
-            this.limitManagementResponse,
-            this.creditCardBankingResponse,
+            this.debitLegResult,
+            this.limitEarmarkResult,
+            this.creditLegResult,
+            this.debitLegReversalResult,
+            this.limitEarmarkReversalResult,
             this.status,
             this.state
         );
@@ -54,24 +58,24 @@ public class Payment extends AggregateRoot<UUID> {
 
     // --- Type-Safe Data Recording Methods ---
 
-    public void recordLimitEarmarkResult(LimitManagementResponse response) {
-        this.limitManagementResponse = response;
+    public void recordLimitEarmarkResult(LimitEarmarkResult result) {
+        this.limitEarmarkResult = result;
     }
 
-    public void recordDebitResult(DepositBankingResponse response) {
-        this.depositBankingResponse = response;
+    public void recordDebitResult(DebitLegResult result) {
+        this.debitLegResult = result;
     }
 
-    public void recordCreditResult(CreditCardBankingResponse response) {
-        this.creditCardBankingResponse = response;
+    public void recordCreditResult(CreditLegResult result) {
+        this.creditLegResult = result;
     }
 
-    public void recordDebitReversalResult(DepositBankingResponse response) {
-        this.depositBankingResponse = response;
+    public void recordDebitReversalResult(DebitLegResult result) {
+        this.debitLegReversalResult = result;
     }
 
-    public void recordLimitReversalResult(LimitManagementResponse response) {
-        this.limitManagementResponse = response;
+    public void recordLimitReversalResult(LimitEarmarkResult result) {
+        this.limitEarmarkReversalResult = result;
     }
 
 
@@ -104,9 +108,11 @@ public class Payment extends AggregateRoot<UUID> {
     public record PaymentMemento(
             UUID id,
             String transactionReference,
-            DepositBankingResponse depositBankingResponse,
-            LimitManagementResponse limitManagementResponse,
-            CreditCardBankingResponse creditCardBankingResponse,
+            DebitLegResult debitLegResult,
+            LimitEarmarkResult limitEarmarkResult,
+            CreditLegResult creditLegResult,
+            DebitLegResult debitLegReversalResult,
+            LimitEarmarkResult limitEarmarkReversalResult,
             Status status,
             TransactionState state
     ) {}

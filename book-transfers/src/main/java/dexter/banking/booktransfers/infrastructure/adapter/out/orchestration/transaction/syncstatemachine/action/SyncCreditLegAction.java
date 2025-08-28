@@ -2,12 +2,11 @@ package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.tr
 
 import dexter.banking.booktransfers.core.domain.model.TransactionEvent;
 import dexter.banking.booktransfers.core.domain.model.TransactionState;
+import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
 import dexter.banking.booktransfers.core.port.CreditCardPort;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.mapper.TransactionRequestMapper;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.TransactionContext;
 import dexter.banking.model.CreditCardBankingRequest;
-import dexter.banking.model.CreditCardBankingResponse;
-import dexter.banking.model.CreditCardBankingStatus;
 import dexter.banking.statemachine.contract.SagaAction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,19 +21,19 @@ public class SyncCreditLegAction implements SagaAction<TransactionState, Transac
 
     private final CreditCardPort creditCardPort;
     private final TransactionRequestMapper transactionRequestMapper;
+
     @Override
     public Optional<TransactionEvent> apply(TransactionContext context, TransactionEvent event) {
         log.debug("Transaction: {} - Executing synchronous Credit Leg action", context.getId());
         var payment = context.getPayment();
         CreditCardBankingRequest request = transactionRequestMapper
                 .toCreditCardBankingRequest(payment.getId(), context.getRequest());
-
         // The action's responsibility is to orchestrate: call port, then tell the aggregate.
         payment.setState(TransactionState.CREDIT_LEG_IN_PROGRESS);
-        CreditCardBankingResponse response = creditCardPort.submitCreditCardPayment(request);
-        payment.recordCreditResult(response);
+        CreditLegResult result = creditCardPort.submitCreditCardPayment(request);
+        payment.recordCreditResult(result);
 
-        if (response.getStatus() == CreditCardBankingStatus.SUCCESSFUL) {
+        if (result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL) {
             return Optional.of(TransactionEvent.CREDIT_LEG_SUCCEEDED);
         } else {
             return Optional.of(TransactionEvent.CREDIT_LEG_FAILED);

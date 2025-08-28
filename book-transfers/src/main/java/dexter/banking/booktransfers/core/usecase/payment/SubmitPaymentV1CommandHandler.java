@@ -1,5 +1,4 @@
 package dexter.banking.booktransfers.core.usecase.payment;
-
 import dexter.banking.booktransfers.core.domain.event.ManualInterventionRequiredEvent;
 import dexter.banking.booktransfers.core.domain.event.PaymentSuccessfulEvent;
 import dexter.banking.booktransfers.core.domain.event.PaymentFailedEvent;
@@ -7,6 +6,9 @@ import dexter.banking.booktransfers.core.domain.model.ApiVersion;
 import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.domain.model.PaymentResult;
 import dexter.banking.booktransfers.core.domain.model.TransactionState;
+import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.model.results.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.port.*;
 import dexter.banking.commandbus.CommandHandler;
 import dexter.banking.model.*;
@@ -39,7 +41,6 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
         log.info("▶️ [V1] Starting procedural transaction for Command: {}", command.getTransactionReference());
-
         Payment payment = Payment.startNew(command, UUID::randomUUID);
         paymentRepositoryPort.save(payment);
 
@@ -51,20 +52,16 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
             payment.setState(TransactionState.TRANSACTION_SUCCESSFUL);
             payment.registerEvent(new PaymentSuccessfulEvent(payment.getId(), buildMetadata(command, payment)));
             paymentRepositoryPort.update(payment);
-
         } catch (StepFailedException e) {
             log.error("❌ [V1] Procedural transaction FAILED at state '{}' for TXN_ID: {}. Initiating SAGA compensation...",
                     payment.getState(), payment.getId(), e);
-
             Payment lastSavedPayment = paymentRepositoryPort.findById(payment.getId())
                     .orElseThrow(() -> new IllegalStateException("Payment disappeared during failed transaction: " + payment.getId()));
-
             compensate(lastSavedPayment, command);
         }
 
         Payment finalPaymentState = paymentRepositoryPort.findById(payment.getId()).orElseThrow();
         eventDispatcher.dispatch(finalPaymentState.pullDomainEvents());
-
         log.info("🏁 [V1] Procedural transaction finished for TXN_ID: {}. Final state: {}",
                 finalPaymentState.getId(), finalPaymentState.getState());
         return PaymentResult.from(finalPaymentState);
@@ -72,10 +69,10 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
 
     private void executeLimitEarmark(Payment payment, PaymentCommand command) throws StepFailedException {
         var limitRequest = LimitManagementRequest.builder().transactionId(payment.getId()).limitType(command.getLimitType()).build();
-        LimitManagementResponse limitResponse = limitPort.earmarkLimit(limitRequest);
-        payment.recordLimitEarmarkResult(limitResponse);
+        LimitEarmarkResult limitResult = limitPort.earmarkLimit(limitRequest);
+        payment.recordLimitEarmarkResult(limitResult);
 
-        if (limitResponse.getStatus() == LimitEarmarkStatus.SUCCESSFUL) {
+        if (limitResult.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL) {
             payment.setState(TransactionState.LIMIT_EARMARK_COMPLETED);
         } else {
             payment.setState(TransactionState.TRANSACTION_FAILED);
@@ -88,10 +85,10 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
 
     private void executeDebitLeg(Payment payment, PaymentCommand command) throws StepFailedException {
         var depositRequest = DepositBankingRequest.builder().transactionId(payment.getId()).accountNumber(command.getAccountNumber()).build();
-        DepositBankingResponse depositResponse = depositPort.submitDeposit(depositRequest);
-        payment.recordDebitResult(depositResponse);
+        DebitLegResult debitResult = depositPort.submitDeposit(depositRequest);
+        payment.recordDebitResult(debitResult);
 
-        if (depositResponse.getStatus() == DepositBankingStatus.SUCCESSFUL) {
+        if (debitResult.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL) {
             payment.setState(TransactionState.DEBIT_LEG_COMPLETED);
         } else {
             payment.setState(TransactionState.DEBIT_LEG_FAILED);
@@ -103,10 +100,10 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
 
     private void executeCreditLeg(Payment payment, PaymentCommand command) throws StepFailedException {
         var creditRequest = CreditCardBankingRequest.builder().transactionId(payment.getId()).cardNumber(command.getCardNumber()).build();
-        CreditCardBankingResponse creditResponse = creditCardPort.submitCreditCardPayment(creditRequest);
-        payment.recordCreditResult(creditResponse);
+        CreditLegResult creditResult = creditCardPort.submitCreditCardPayment(creditRequest);
+        payment.recordCreditResult(creditResult);
 
-        if (creditResponse.getStatus() != CreditCardBankingStatus.SUCCESSFUL) {
+        if (creditResult.status() != CreditLegResult.CreditLegStatus.SUCCESSFUL) {
             payment.setState(TransactionState.CREDIT_LEG_FAILED);
             paymentRepositoryPort.update(payment);
             throw new StepFailedException("Credit Card payment Failed");
@@ -136,12 +133,12 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
         log.warn("  [COMPENSATION] Reversing Debit Leg for TXN_ID: {}...", payment.getId());
         var reversalRequest = DepositBankingReversalRequest.builder()
                 .transactionId(payment.getId())
-                .reservationId(payment.getDepositBankingResponse().getDepositId())
+                .reservationId(payment.getDebitLegResult().depositId())
                 .build();
-        var reversalResponse = depositPort.submitDepositReversal(payment.getDepositBankingResponse().getDepositId(), reversalRequest);
-        payment.recordDebitReversalResult(reversalResponse);
+        var reversalResult = depositPort.submitDepositReversal(payment.getDebitLegResult().depositId(), reversalRequest);
+        payment.recordDebitReversalResult(reversalResult);
 
-        if (reversalResponse.getStatus() != DepositBankingStatus.REVERSAL_SUCCESSFUL) {
+        if (reversalResult.status() != DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL) {
             payment.setState(TransactionState.MANUAL_INTERVENTION_REQUIRED);
             payment.registerEvent(new ManualInterventionRequiredEvent(payment.getId(), "Debit Leg Reversal Failed", buildMetadata(command, payment)));
             paymentRepositoryPort.update(payment);
@@ -158,12 +155,12 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
         log.warn("  [COMPENSATION] Reversing Limit Earmark for TXN_ID: {}...", payment.getId());
         var reversalRequest = LimitManagementReversalRequest.builder()
                 .transactionId(payment.getId())
-                .limitManagementId(payment.getLimitManagementResponse().getLimitId())
+                .limitManagementId(payment.getLimitEarmarkResult().limitId())
                 .build();
-        var reversalResponse = limitPort.reverseLimitEarmark(payment.getLimitManagementResponse().getLimitId(), reversalRequest);
-        payment.recordLimitReversalResult(reversalResponse);
+        var reversalResult = limitPort.reverseLimitEarmark(payment.getLimitEarmarkResult().limitId(), reversalRequest);
+        payment.recordLimitReversalResult(reversalResult);
 
-        if (reversalResponse.getStatus() != LimitEarmarkStatus.REVERSAL_SUCCESSFUL) {
+        if (reversalResult.status() != LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL) {
             payment.setState(TransactionState.MANUAL_INTERVENTION_REQUIRED);
             payment.registerEvent(new ManualInterventionRequiredEvent(payment.getId(), "Limit Earmark Reversal Failed", buildMetadata(command, payment)));
         } else {
