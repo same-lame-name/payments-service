@@ -1,0 +1,79 @@
+Project book-transfers-service: The V3 Hybrid Saga Design Blueprint
+
+This document codifies the final, agreed-upon architectural design for the "V3 Hybrid Saga with Compliance Check" feature for the book-transfers-service project. It serves as the definitive blueprint for the next implementation iteration.
+
+1. The Three-Tiered API Vision
+
+The service's evolution is defined by a three-tiered API vision, where each version showcases a progressively more sophisticated architectural pattern:
+
+    API V1: The baseline. A purely procedural, non-orchestrated flow.
+
+    API V2: The introduction to orchestration. A fully orchestrated flow using the State Machine Saga pattern, demonstrating both pure-async (fire-and-forget with JMS callbacks) and pure-sync (fully blocking) implementations.
+
+    API V3 (The Hybrid Saga): The pinnacle. An advanced, orchestrated flow demonstrating a hybrid of synchronous and asynchronous steps, integrated with a multi-aggregate DDD workflow.
+
+        The design makes a deliberate trade-off: a slightly longer initial API response time in exchange for the immense business value of immediate validation of a critical business rule (the transaction limit). This is an accepted and mature architectural decision.
+
+2. The V3 Implementation Blueprint
+
+The design to realize the V3 vision introduces the following new components and patterns.
+
+A. The V3 Command & API Entry Point
+
+    API Endpoint: A new POST /api/v3/book-transfers/payment endpoint.
+
+    Richer Command: The endpoint maps its request body to a new PaymentCommandV3, which contains the RelId and TransactionAmount Value Objects.
+
+    Dedicated Handler: A new SubmitPaymentV3CommandHandler is responsible for initial business validation (e.g., validating the customer via a CustomerPort) before delegating to the V3 orchestrator.
+
+B. The V3 Hybrid Orchestrator & State Machine
+
+    New Orchestrator Adapter: A HybridStateMachineOrchestratorAdapter provides the concrete implementation for the V3 flow.
+
+    New State Machine Configuration: A dedicated V3StateMachineConfig defines the hybrid logic:
+
+        Synchronous First Step: The FSM's initial action is synchronous, making a direct, blocking Feign call to the limit service. Upon success, it immediately returns the next event to fire, causing the FSM to cascade without pausing.
+
+        Compliance Pause: A subsequent action checks if compliance is required. If so, the PaymentTransaction AR transitions to a PENDING_COMPLIANCE state, publishes a PaymentRequiresComplianceCheck event, and the FSM pauses execution.
+
+        Asynchronous Later Steps: Once resumed, subsequent states (debit/credit legs) are handled by asynchronous actions (e.g., sending JMS messages) where the FSM pauses to await callbacks.
+
+C. The Compliance Subdomain & Eventing
+
+    ComplianceCase Aggregate Root: A new AR to manage the lifecycle (PENDING, APPROVED, REJECTED) of a compliance check.
+
+    ComplianceSaga: A stateless application service that listens for domain events (PaymentRequiresComplianceCheck, ComplianceCaseApproved, etc.) and issues corresponding commands to orchestrate the process between the PaymentTransaction and ComplianceCase aggregates.
+
+    DomainEventPublisher: A new driven port and adapter responsible for dispatching domain events after an aggregate has been successfully persisted. The initial implementation uses Spring's built-in ApplicationEventPublisher.
+
+3. The V3 Lifecycle Narrative
+
+The interaction of these components follows this precise sequence:
+
+    A high-value payment request hits POST /v3/payment.
+
+    The SubmitPaymentV3CommandHandler validates the customer exists via CustomerPort.
+
+    The HybridStateMachineOrchestratorAdapter is invoked.
+
+    The V3 State Machine begins. The first action makes a synchronous, blocking Feign call to the Limit service. If it fails, the entire V3 request fails and an immediate error is returned.
+
+    The limit is approved. The FSM cascades to an action that determines a compliance check is needed.
+
+    The PaymentTransaction AR's state is set to PENDING_COMPLIANCE, and it publishes a PaymentRequiresComplianceCheck event. The FSM pauses. The initial HTTP response (e.g., 202 Accepted) is sent to the client.
+
+    The DomainEventPublisher dispatches the event.
+
+    The ComplianceSaga receives the event and issues a command to create the ComplianceCase AR.
+
+    (Time passes...)
+
+    An external system approves the case, triggering a command that is handled by the ComplianceCase AR, which then publishes a ComplianceCaseApproved event.
+
+    The ComplianceSaga receives this second event and issues a ResumePaymentCommand.
+
+    The ResumePaymentCommandHandler re-hydrates the PaymentTransaction's State Machine and fires a RESUME event.
+
+    The FSM transitions out of the PENDING_COMPLIANCE state and triggers the next action, which is asynchronous (sending a JMS message for the debit leg).
+
+    The transaction proceeds to completion.
