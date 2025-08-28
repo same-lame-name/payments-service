@@ -59,7 +59,7 @@ public class TransactionOrchestratorAdapter implements TransactionOrchestratorPo
     public void processDebitLegResult(UUID transactionId, DebitLegResult result) {
         handleAsyncEvent(transactionId, sm -> {
             var payment = sm.getContext().getPayment();
-            payment.recordDebitResult(result);
+            payment.recordDebitLegOutcome(result);
             TransactionEvent event = result.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL ?
                     TransactionEvent.DEBIT_LEG_SUCCEEDED : TransactionEvent.DEBIT_LEG_FAILED;
             sm.fire(event);
@@ -70,7 +70,7 @@ public class TransactionOrchestratorAdapter implements TransactionOrchestratorPo
     public void processLimitEarmarkResult(UUID transactionId, LimitEarmarkResult result) {
         handleAsyncEvent(transactionId, sm -> {
             var payment = sm.getContext().getPayment();
-            payment.recordLimitEarmarkResult(result);
+            payment.recordLimitEarmarkOutcome(result);
             TransactionEvent event = result.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL ?
                     TransactionEvent.LIMIT_EARMARK_SUCCEEDED : TransactionEvent.LIMIT_EARMARK_FAILED;
             sm.fire(event);
@@ -81,7 +81,7 @@ public class TransactionOrchestratorAdapter implements TransactionOrchestratorPo
     public void processDebitLegReversalResult(UUID transactionId, DebitLegResult result) {
         handleAsyncEvent(transactionId, sm -> {
             var payment = sm.getContext().getPayment();
-            payment.recordDebitReversalResult(result);
+            payment.recordDebitLegOutcome(result);
             TransactionEvent event = result.status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL ?
                     TransactionEvent.DEBIT_LEG_REVERSAL_SUCCEEDED : TransactionEvent.DEBIT_LEG_REVERSAL_FAILED;
             sm.fire(event);
@@ -92,7 +92,7 @@ public class TransactionOrchestratorAdapter implements TransactionOrchestratorPo
     public void processLimitEarmarkReversalResult(UUID transactionId, LimitEarmarkResult result) {
         handleAsyncEvent(transactionId, sm -> {
             var payment = sm.getContext().getPayment();
-            payment.recordLimitReversalResult(result);
+            payment.recordLimitEarmarkOutcome(result);
             TransactionEvent event = result.status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL ?
                     TransactionEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED : TransactionEvent.LIMIT_EARMARK_REVERSAL_FAILED;
             sm.fire(event);

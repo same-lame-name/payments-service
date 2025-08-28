@@ -17,8 +17,6 @@ public class PersistenceMapper {
             document.getDebitLegResult(),
             document.getLimitEarmarkResult(),
             document.getCreditLegResult(),
-            document.getDebitLegReversalResult(),
-            document.getLimitEarmarkReversalResult(),
             document.getStatus(),
             document.getState()
         );
@@ -43,7 +41,5 @@ public class PersistenceMapper {
         doc.setDebitLegResult(memento.debitLegResult());
         doc.setLimitEarmarkResult(memento.limitEarmarkResult());
         doc.setCreditLegResult(memento.creditLegResult());
-        doc.setDebitLegReversalResult(memento.debitLegReversalResult());
-        doc.setLimitEarmarkReversalResult(memento.limitEarmarkReversalResult());
     }
 }

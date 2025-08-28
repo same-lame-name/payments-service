@@ -33,7 +33,7 @@ public class SyncLimitEarmarkAction implements SagaAction<TransactionState, Tran
                 .toLimitManagementRequest(payment.getId(), context.getRequest());
         payment.setState(TransactionState.LIMIT_EARMARK_IN_PROGRESS);
         LimitEarmarkResult result = limitPort.earmarkLimit(request);
-        payment.recordLimitEarmarkResult(result);
+        payment.recordLimitEarmarkOutcome(result);
 
         if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL) {
             return Optional.of(TransactionEvent.LIMIT_EARMARK_SUCCEEDED);
@@ -50,7 +50,7 @@ public class SyncLimitEarmarkAction implements SagaAction<TransactionState, Tran
                 .toLimitEarmarkReversalRequest(payment.getId(), payment);
         payment.setState(TransactionState.LIMIT_EARMARK_REVERSAL_IN_PROGRESS);
         LimitEarmarkResult result = limitPort.reverseLimitEarmark(payment.getLimitEarmarkResult().limitId(), request);
-        payment.recordLimitReversalResult(result);
+        payment.recordLimitEarmarkOutcome(result);
 
         if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL) {
             return Optional.of(TransactionEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED);

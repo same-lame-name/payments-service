@@ -33,7 +33,7 @@ public class SyncDebitLegAction implements SagaAction<TransactionState, Transact
                 .toDepositBankingRequest(payment.getId(), context.getRequest());
         payment.setState(TransactionState.DEBIT_LEG_IN_PROGRESS);
         DebitLegResult result = depositPort.submitDeposit(request);
-        payment.recordDebitResult(result);
+        payment.recordDebitLegOutcome(result);
 
         if (result.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL) {
             return Optional.of(TransactionEvent.DEBIT_LEG_SUCCEEDED);
@@ -50,7 +50,7 @@ public class SyncDebitLegAction implements SagaAction<TransactionState, Transact
                 .toDepositReversalRequest(payment.getId(), payment);
         payment.setState(TransactionState.DEBIT_LEG_REVERSAL_IN_PROGRESS);
         DebitLegResult result = depositPort.submitDepositReversal(payment.getDebitLegResult().depositId(), request);
-        payment.recordDebitReversalResult(result);
+        payment.recordDebitLegOutcome(result);
 
         if (result.status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL) {
             return Optional.of(TransactionEvent.DEBIT_LEG_REVERSAL_SUCCEEDED);

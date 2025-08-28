@@ -28,8 +28,6 @@ public class TransactionDocument {
     private DebitLegResult debitLegResult;
     private LimitEarmarkResult limitEarmarkResult;
     private CreditLegResult creditLegResult;
-    private DebitLegResult debitLegReversalResult;
-    private LimitEarmarkResult limitEarmarkReversalResult;
 
     private Status status = Status.NEW;
     private TransactionState state = TransactionState.NEW;

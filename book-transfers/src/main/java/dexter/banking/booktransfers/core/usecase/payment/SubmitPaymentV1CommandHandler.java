@@ -70,7 +70,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private void executeLimitEarmark(Payment payment, PaymentCommand command) throws StepFailedException {
         var limitRequest = LimitManagementRequest.builder().transactionId(payment.getId()).limitType(command.getLimitType()).build();
         LimitEarmarkResult limitResult = limitPort.earmarkLimit(limitRequest);
-        payment.recordLimitEarmarkResult(limitResult);
+        payment.recordLimitEarmarkOutcome(limitResult);
 
         if (limitResult.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL) {
             payment.setState(TransactionState.LIMIT_EARMARK_COMPLETED);
@@ -86,7 +86,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private void executeDebitLeg(Payment payment, PaymentCommand command) throws StepFailedException {
         var depositRequest = DepositBankingRequest.builder().transactionId(payment.getId()).accountNumber(command.getAccountNumber()).build();
         DebitLegResult debitResult = depositPort.submitDeposit(depositRequest);
-        payment.recordDebitResult(debitResult);
+        payment.recordDebitLegOutcome(debitResult);
 
         if (debitResult.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL) {
             payment.setState(TransactionState.DEBIT_LEG_COMPLETED);
@@ -136,7 +136,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
                 .reservationId(payment.getDebitLegResult().depositId())
                 .build();
         var reversalResult = depositPort.submitDepositReversal(payment.getDebitLegResult().depositId(), reversalRequest);
-        payment.recordDebitReversalResult(reversalResult);
+        payment.recordDebitLegOutcome(reversalResult);
 
         if (reversalResult.status() != DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL) {
             payment.setState(TransactionState.MANUAL_INTERVENTION_REQUIRED);
@@ -158,7 +158,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
                 .limitManagementId(payment.getLimitEarmarkResult().limitId())
                 .build();
         var reversalResult = limitPort.reverseLimitEarmark(payment.getLimitEarmarkResult().limitId(), reversalRequest);
-        payment.recordLimitReversalResult(reversalResult);
+        payment.recordLimitEarmarkOutcome(reversalResult);
 
         if (reversalResult.status() != LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL) {
             payment.setState(TransactionState.MANUAL_INTERVENTION_REQUIRED);

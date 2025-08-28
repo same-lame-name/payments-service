@@ -14,11 +14,11 @@ import java.util.function.Supplier;
 public class Payment extends AggregateRoot<UUID> {
 
     private final String transactionReference;
+    // --- State Fields ---
+    // The state is now consolidated. Reversal results overwrite the original leg's result.
     private DebitLegResult debitLegResult;
     private LimitEarmarkResult limitEarmarkResult;
     private CreditLegResult creditLegResult;
-    private DebitLegResult debitLegReversalResult;
-    private LimitEarmarkResult limitEarmarkReversalResult;
     private Status status;
     private TransactionState state;
 
@@ -37,8 +37,6 @@ public class Payment extends AggregateRoot<UUID> {
         payment.debitLegResult = memento.debitLegResult();
         payment.limitEarmarkResult = memento.limitEarmarkResult();
         payment.creditLegResult = memento.creditLegResult();
-        payment.debitLegReversalResult = memento.debitLegReversalResult();
-        payment.limitEarmarkReversalResult = memento.limitEarmarkReversalResult();
         return payment;
     }
 
@@ -49,8 +47,6 @@ public class Payment extends AggregateRoot<UUID> {
             this.debitLegResult,
             this.limitEarmarkResult,
             this.creditLegResult,
-            this.debitLegReversalResult,
-            this.limitEarmarkReversalResult,
             this.status,
             this.state
         );
@@ -58,24 +54,16 @@ public class Payment extends AggregateRoot<UUID> {
 
     // --- Type-Safe Data Recording Methods ---
 
-    public void recordLimitEarmarkResult(LimitEarmarkResult result) {
+    public void recordLimitEarmarkOutcome(LimitEarmarkResult result) {
         this.limitEarmarkResult = result;
     }
 
-    public void recordDebitResult(DebitLegResult result) {
+    public void recordDebitLegOutcome(DebitLegResult result) {
         this.debitLegResult = result;
     }
 
     public void recordCreditResult(CreditLegResult result) {
         this.creditLegResult = result;
-    }
-
-    public void recordDebitReversalResult(DebitLegResult result) {
-        this.debitLegReversalResult = result;
-    }
-
-    public void recordLimitReversalResult(LimitEarmarkResult result) {
-        this.limitEarmarkReversalResult = result;
     }
 
 
@@ -111,8 +99,6 @@ public class Payment extends AggregateRoot<UUID> {
             DebitLegResult debitLegResult,
             LimitEarmarkResult limitEarmarkResult,
             CreditLegResult creditLegResult,
-            DebitLegResult debitLegReversalResult,
-            LimitEarmarkResult limitEarmarkReversalResult,
             Status status,
             TransactionState state
     ) {}
