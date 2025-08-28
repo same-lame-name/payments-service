@@ -9,6 +9,7 @@ import dexter.banking.booktransfers.core.domain.model.TransactionState;
 import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.model.results.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.primitives.DomainEvent;
 import dexter.banking.booktransfers.core.port.*;
 import dexter.banking.commandbus.CommandHandler;
 import dexter.banking.model.*;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -51,20 +53,36 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
 
             payment.setState(TransactionState.TRANSACTION_SUCCESSFUL);
             payment.registerEvent(new PaymentSuccessfulEvent(payment.getId(), buildMetadata(command, payment)));
+
+            // --- CORRECTED ATOMIC SEQUENCE (SUCCESS PATH) ---
+            // 1. Pull events from the live, in-memory aggregate.
+            List<DomainEvent<?>> eventsToDispatch = payment.pullDomainEvents();
+            // 2. Persist the final state of the aggregate.
             paymentRepositoryPort.update(payment);
+            // 3. Dispatch the pulled events within the same transaction.
+            eventDispatcher.dispatch(eventsToDispatch);
+
         } catch (StepFailedException e) {
             log.error("❌ [V1] Procedural transaction FAILED at state '{}' for TXN_ID: {}. Initiating SAGA compensation...",
                     payment.getState(), payment.getId(), e);
+            // Re-fetch to ensure we compensate from the last durable state.
+            Payment finalPayment = payment;
             Payment lastSavedPayment = paymentRepositoryPort.findById(payment.getId())
-                    .orElseThrow(() -> new IllegalStateException("Payment disappeared during failed transaction: " + payment.getId()));
-            compensate(lastSavedPayment, command);
+                    .orElseThrow(() -> new IllegalStateException("Payment disappeared during failed transaction: " + finalPayment.getId()));
+
+            // --- CORRECTED ATOMIC SEQUENCE (FAILURE PATH) ---
+            // 1. The compensate method now returns the events it generates after persisting the compensated state.
+            List<DomainEvent<?>> eventsToDispatch = compensate(lastSavedPayment, command);
+            // 2. Dispatch the pulled events within the same transaction.
+            eventDispatcher.dispatch(eventsToDispatch);
+            // 3. Update the handle's payment reference to the final compensated state for the return value.
+            payment = lastSavedPayment;
         }
 
-        Payment finalPaymentState = paymentRepositoryPort.findById(payment.getId()).orElseThrow();
-        eventDispatcher.dispatch(finalPaymentState.pullDomainEvents());
         log.info("🏁 [V1] Procedural transaction finished for TXN_ID: {}. Final state: {}",
-                finalPaymentState.getId(), finalPaymentState.getState());
-        return PaymentResult.from(finalPaymentState);
+                payment.getId(), payment.getState());
+        // Return the result from the final in-memory state of the aggregate, not a re-fetched one.
+        return PaymentResult.from(payment);
     }
 
     private void executeLimitEarmark(Payment payment, PaymentCommand command) throws StepFailedException {
@@ -80,6 +98,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
             paymentRepositoryPort.update(payment);
             throw new StepFailedException("Limit Earmark Failed");
         }
+        // Persist progress after each successful leg.
         paymentRepositoryPort.update(payment);
     }
 
@@ -111,7 +130,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
         paymentRepositoryPort.update(payment);
     }
 
-    private void compensate(Payment payment, PaymentCommand command) {
+    private List<DomainEvent<?>> compensate(Payment payment, PaymentCommand command) {
         switch (payment.getState()) {
             case CREDIT_LEG_FAILED:
                 compensateDebitLeg(payment, command);
@@ -127,6 +146,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
                 }
                 paymentRepositoryPort.update(payment);
         }
+        // Pull and return the events registered during compensation.
+        return payment.pullDomainEvents();
     }
 
     private void compensateDebitLeg(Payment payment, PaymentCommand command) {
