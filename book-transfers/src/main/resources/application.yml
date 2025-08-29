@@ -1,29 +1,65 @@
 logging.level.tech: debug
 logging.level.dexter.banking.booktransfers.infrastructure.middleware: debug
 logging.level.dexter.banking.booktransfers.core.usecase: info
+logging.level.org.springframework.transaction.event: DEBUG # To see transactional event listeners working
 
 spring:
   jackson:
+    # Disable default serialization features that are not needed
+    # and might interfere with our custom object mapper configuration.
+    # We will rely on our primary ObjectMapper bean.
+    default-property-inclusion: non_null
     serialization:
       write-dates-as-timestamps: false
-      write-date-timestamps-as-nanoseconds: true
+      # The following are often default, but explicitly setting them ensures consistency
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
 
-# --- Service Configuration is now version-aware ---
+
+# --- Service Configuration for Commands and Business Process Journeys ---
 service-config:
+  # Defines behavior for specific commands, like idempotency and which business journey to use.
   commands:
     PAYMENT_SUBMIT_V1:
       idempotencyApplicable: true
+      journeyName: "V1_PROCEDURAL_PAYMENT"
     PAYMENT_SUBMIT_V2_SYNC:
-      idempotencyApplicable: true # As per your requirement
+      idempotencyApplicable: true
+      journeyName: "V2_SYNC_PAYMENT"
     PAYMENT_SUBMIT_V2_ASYNC:
-      idempotencyApplicable: false # Correct for fire-and-forget
-    PROCESS_LIMIT_EARMARK:
+      idempotencyApplicable: false # Fire-and-forget; idempotency is handled by the initial submission
+      journeyName: "V2_ASYNC_PAYMENT"
+    # Internal commands do not need idempotency checks at this layer
+    RecordLimitEarmarkResult:
       idempotencyApplicable: false
-    PROCESS_DEBIT_LEG:
+      journeyName: "DEFAULT_JOURNEY" # Use a default for internal consistency
+    RecordDebitResult:
       idempotencyApplicable: false
-    PROCESS_CREDIT_LEG:
+      journeyName: "DEFAULT_JOURNEY"
+    RecordCreditResult:
       idempotencyApplicable: false
-    PROCESS_DEBIT_LEG_REVERSAL:
+      journeyName: "DEFAULT_JOURNEY"
+    RecordDebitReversalResult:
       idempotencyApplicable: false
-    PROCESS_LIMIT_EARMARK_REVERSAL:
-       idempotencyApplicable: false
+      journeyName: "DEFAULT_JOURNEY"
+    RecordLimitReversalResult:
+      idempotencyApplicable: false
+      journeyName: "DEFAULT_JOURNEY"
+
+
+  # Defines the composition of business policies for each "journey".
+  # Each journey is a list of Spring bean names that implement BusinessPolicy.
+  payment-journeys:
+    V1_PROCEDURAL_PAYMENT:
+      policies:
+        - "stateTransitionPolicy" # Enforces the basic state machine rules
+    V2_SYNC_PAYMENT:
+      policies:
+        - "stateTransitionPolicy"
+    V2_ASYNC_PAYMENT:
+      policies:
+        - "stateTransitionPolicy"
+    DEFAULT_JOURNEY: # A baseline journey for internal commands
+      policies:
+        - "stateTransitionPolicy"

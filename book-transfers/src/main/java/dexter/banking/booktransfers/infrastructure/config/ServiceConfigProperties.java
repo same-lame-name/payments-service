@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.config;
+package dexter.banking.booktransfers.infrastructure.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -15,4 +15,7 @@ import java.util.Map;
 public class ServiceConfigProperties {
     @NotNull
     private Map<String, CommandConfig> commands;
+
+    @NotNull
+    private Map<String, JourneyConfig> paymentJourneys;
 }

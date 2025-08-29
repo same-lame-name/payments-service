@@ -1,10 +1,10 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action;
 
-import dexter.banking.booktransfers.core.domain.model.TransactionEvent;
-import dexter.banking.booktransfers.core.domain.model.TransactionState;
 import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
 import dexter.banking.booktransfers.core.port.CreditCardPort;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.mapper.TransactionRequestMapper;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessEvent;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessState;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.TransactionContext;
 import dexter.banking.model.CreditCardBankingRequest;
 import dexter.banking.statemachine.contract.SagaAction;
@@ -14,35 +14,39 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
-public class SyncCreditLegAction implements SagaAction<TransactionState, TransactionEvent, TransactionContext> {
+@Slf4j
+public class SyncCreditLegAction implements SagaAction<ProcessState, ProcessEvent, TransactionContext> {
 
     private final CreditCardPort creditCardPort;
     private final TransactionRequestMapper transactionRequestMapper;
 
     @Override
-    public Optional<TransactionEvent> apply(TransactionContext context, TransactionEvent event) {
-        log.debug("Transaction: {} - Executing synchronous Credit Leg action", context.getId());
+    public Optional<ProcessEvent> apply(TransactionContext context, ProcessEvent event) {
         var payment = context.getPayment();
-        CreditCardBankingRequest request = transactionRequestMapper
-                .toCreditCardBankingRequest(payment.getId(), context.getRequest());
-        // The action's responsibility is to orchestrate: call port, then tell the aggregate.
-        payment.setState(TransactionState.CREDIT_LEG_IN_PROGRESS);
-        CreditLegResult result = creditCardPort.submitCreditCardPayment(request);
-        payment.recordCreditResult(result);
+        CreditCardBankingRequest request = transactionRequestMapper.toCreditCardBankingRequest(payment.getId(), context.getRequest());
 
-        if (result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL) {
-            return Optional.of(TransactionEvent.CREDIT_LEG_SUCCEEDED);
-        } else {
-            return Optional.of(TransactionEvent.CREDIT_LEG_FAILED);
+        try {
+            CreditLegResult result = creditCardPort.submitCreditCardPayment(request);
+
+            if (result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL) {
+                payment.recordCreditSuccess(result, null);
+                return Optional.of(ProcessEvent.CREDIT_LEG_SUCCEEDED);
+            } else {
+                payment.recordCreditFailure(result, null);
+                return Optional.of(ProcessEvent.CREDIT_LEG_FAILED);
+            }
+        } catch (Exception e) {
+            log.error("Sync Credit Leg failed with exception", e);
+            payment.recordCreditFailure(new CreditLegResult(null, CreditLegResult.CreditLegStatus.FAILED), null);
+            return Optional.of(ProcessEvent.CREDIT_LEG_FAILED);
         }
     }
 
     @Override
-    public Optional<TransactionEvent> compensate(TransactionContext context, TransactionEvent event) {
-        // Not implemented for this flow
+    public Optional<ProcessEvent> compensate(TransactionContext context, ProcessEvent event) {
+        // Not implemented for this flow; debit leg compensation is the entry point
         return Optional.empty();
     }
 }

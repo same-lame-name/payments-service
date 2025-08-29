@@ -1,0 +1,119 @@
+Architectural Implementation Specification: Foundational Refactoring (Retry)
+
+1.0 Objective
+
+To execute a complete and robust foundational refactoring of the book-transfers-service. This includes:
+
+    Strictly separating the Process Model (for the State Machine) from the Domain Model (for the Aggregate Root).
+
+    Implementing a universal, generic, and composable policy framework for all business rule enforcement.
+
+    Establishing the Application Layer Command Handler as the sole owner of the atomic Unit of Work (persistence and event publication).
+
+    Implementing a durable, context-aware mechanism for Aggregate Root rehydration that preserves the integrity of its governing BusinessPolicy.
+
+2.0 Governing Architectural Principles (Non-Negotiable)
+
+Any deviation from these principles constitutes a failure.
+
+    2.1: The Dependency Rule: All dependencies must flow from outer layers (Infrastructure) to inner layers (Application, Domain). The Core (Application, Domain) must have zero knowledge of the Infrastructure.
+
+    2.2: Aggregate as Domain Guardian: The Aggregate Root is the sole guardian of its state and consistency. Its state transitions are governed exclusively by an immutable BusinessPolicy injected at creation. It exposes rich business methods, not anemic setters.
+
+    2.3: Principle of Contextual Integrity: An Aggregate Root's state and its governing BusinessPolicy are inseparable.
+
+    2.4: Principle of Persisted Context: To ensure contextual integrity, the identifier for the Aggregate's "journey" (which determines its policy composition) must be persisted as part of the Aggregate's state.
+
+    2.5: Principle of Rehydration Orchestration: The Application Layer (Command Handlers) is solely responsible for orchestrating the rehydration of an Aggregate Root. This involves fetching the raw state (Memento), determining context (journeyName), acquiring the correct policy, and then constructing the live domain object.
+
+    2.6: Unit of Work Atomicity: The Application Layer Command Handler is the exclusive owner of the transactional unit of work. This includes rehydrating/creating an aggregate, executing a business method on it, saving the aggregate via its repository, and publishing the resulting domain events.
+
+    2.7: Principle of Complete Refactoring: The refactoring is not complete until all components that interact with the refactored model (e.g., SubmitPaymentV1CommandHandler) are updated to be fully compliant with the new architecture.
+
+3.0 Component Specification
+
+The following components will be created or modified as specified.
+
+3.1: State Model Decoupling
+
+    ProcessState.java (New, Infrastructure): An enum exclusively for the State Machine, representing workflow steps. Values: NEW, EARMARKING_LIMIT, DEBITING_FUNDS, CREDITING_FUNDS, REVERSING_LIMIT_EARMARK, REVERSING_DEBIT, PROCESS_COMPLETED, PROCESS_FAILED, REMEDIATION_REQUIRED.
+
+    PaymentState.java (Modified, Domain): Renamed from TransactionState. Represents the business status of the Payment aggregate. Values: NEW, PENDING_COMPLIANCE, LIMIT_RESERVED, FUNDS_DEBITED, SETTLED, FAILED, REMEDIATION_NEEDED.
+
+3.2: Universal Policy Framework
+
+    BusinessPolicy.java (New, Domain): The generic, universal interface for all business rule evaluation.
+
+    PolicyEvaluationContext.java (New, Domain): The immutable record used to pass context to policies.
+
+    BusinessAction.java (New, Domain): The type-safe enum representing the business action being attempted.
+
+    CompositeBusinessPolicy.java (New, Infrastructure): The concrete implementation of the Composite Pattern for policies.
+
+    StateTransitionPolicy.java (New, Infrastructure): A concrete BusinessPolicy that enforces the fundamental state transition graph for a Payment.
+
+    CompliancePolicy.java (New, Infrastructure): A concrete BusinessPolicy for compliance checks.
+
+3.3: Core Domain Layer (core.domain)
+
+    Payment.java:
+
+        Will have a private final BusinessPolicy policy field.
+
+        The startNew() factory method will accept a BusinessPolicy and a journeyName.
+
+        The rehydrate() method will accept a PaymentMemento and a BusinessPolicy.
+
+        Will contain rich business methods (e.g., recordDebitSuccess()) that create a PolicyEvaluationContext and call this.policy.evaluate(...) before mutating state.
+
+    Payment.PaymentMemento (record):
+
+        A String journeyName field must be added.
+
+3.4: Core Application Layer (core.usecase, core.port)
+
+    PaymentRepositoryPort.java:
+
+        The Optional<Payment> findById(UUID) method is removed.
+
+        A new method, Optional<Payment.PaymentMemento> findMementoById(UUID transactionId), is added.
+
+    PaymentPolicyFactory.java (New Port):
+
+        Defines the contract BusinessPolicy getPolicyForJourney(String journeyName).
+
+    SubmitPaymentV1CommandHandler.java (Refactored):
+
+        Must be fully refactored to comply with the new architecture, including using the policy factory and calling rich methods on the Payment aggregate.
+
+    New Internal Command Handlers (e.g., RecordDebitLegResultCommandHandler):
+
+        Must be created for each distinct business operation.
+
+        Must implement the full rehydration orchestration logic (fetch memento -> get journey -> get policy -> rehydrate AR).
+
+        Must own the full atomic Unit of Work.
+
+3.5: Infrastructure Layer (infrastructure)
+
+    TransactionDocument.java: A private String journeyName field must be added.
+
+    PersistenceMapper.java: The toDomain method is removed and replaced with a toMemento method.
+
+    MongoPaymentRepository.java: Will implement the new findMementoById port method. save/update methods will persist the journeyName.
+
+    YamlPaymentPolicyFactory.java (New): The concrete implementation of PaymentPolicyFactory. It reads the payment-journeys configuration from YAML, retrieves policy beans from the Spring Context, and assembles the CompositeBusinessPolicy.
+
+    TransactionStateMachinePersister.java (Refactored): Its implementation will be replaced to delegate only to the lean OrchestrationContextRepositoryPort for saving/loading the TransactionContext. It will no longer have any knowledge of the domain repository.
+
+    All State Machine Actions (Refactored): Will be simplified to be single-line command dispatchers.
+
+    application.yml (Modified):
+
+        The service-config.commands section will be updated, with each command mapping to a journey.
+
+        A new service-config.payment-journeys section will be added to define the composition of policies for each journey.
+
+4.0 Required Artifacts for Execution
+
+To execute this specification, provide the following five artifacts in their entirety: blueprint.txt, bt_structure.txt, blueprint_cd.txt, cd_structure.txt, book_transfers_service_demo.postman_collection.json.

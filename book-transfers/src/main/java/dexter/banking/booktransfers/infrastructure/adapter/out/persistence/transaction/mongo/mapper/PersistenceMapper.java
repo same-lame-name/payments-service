@@ -7,20 +7,25 @@ import org.springframework.stereotype.Component;
 @Component
 public class PersistenceMapper {
 
-    public Payment toDomain(TransactionDocument document) {
+    /**
+     * Maps a TransactionDocument to a pure data-only PaymentMemento.
+     * This is part of the Anti-Corruption Layer, preventing persistence details
+     * from leaking into the domain rehydration process.
+     */
+    public Payment.PaymentMemento toMemento(TransactionDocument document) {
         if (document == null) {
             return null;
         }
-        var memento = new Payment.PaymentMemento(
+        return new Payment.PaymentMemento(
             document.getTransactionId(),
             document.getTransactionReference(),
+            document.getJourneyName(),
             document.getDebitLegResult(),
             document.getLimitEarmarkResult(),
             document.getCreditLegResult(),
             document.getStatus(),
             document.getState()
         );
-        return Payment.rehydrate(memento);
     }
 
     public TransactionDocument toDocument(Payment payment) {
@@ -36,6 +41,7 @@ public class PersistenceMapper {
         Payment.PaymentMemento memento = payment.getMemento();
         doc.setTransactionId(memento.id());
         doc.setTransactionReference(memento.transactionReference());
+        doc.setJourneyName(memento.journeyName()); // Persist the journey context
         doc.setStatus(memento.status());
         doc.setState(memento.state());
         doc.setDebitLegResult(memento.debitLegResult());

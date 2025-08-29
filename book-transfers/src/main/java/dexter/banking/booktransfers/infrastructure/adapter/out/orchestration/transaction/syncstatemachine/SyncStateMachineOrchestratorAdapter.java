@@ -1,44 +1,52 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine;
 
 import dexter.banking.booktransfers.core.domain.model.Payment;
-import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.model.PaymentResult;
-import dexter.banking.booktransfers.core.domain.model.TransactionEvent;
-import dexter.banking.booktransfers.core.domain.model.TransactionState;
+import dexter.banking.booktransfers.core.port.PaymentRepositoryPort;
 import dexter.banking.booktransfers.core.port.TransactionOrchestratorPort;
+import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.component.TransactionStateMachinePersister;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessEvent;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessState;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.TransactionContext;
 import dexter.banking.statemachine.StateMachineFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
-
-import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The primary adapter for the SYNCHRONOUS State Machine.
+ * This adapter's processTransaction method IS the Unit of Work boundary.
  */
 @Component("syncStatemachine")
 public class SyncStateMachineOrchestratorAdapter implements TransactionOrchestratorPort {
 
-    private final StateMachineFactory<TransactionState, TransactionEvent, TransactionContext> stateMachineFactory;
+    private final StateMachineFactory<ProcessState, ProcessEvent, TransactionContext> stateMachineFactory;
+    private final PaymentRepositoryPort paymentRepository;
 
-    private final TransactionStateMachinePersister persister;
     public SyncStateMachineOrchestratorAdapter(
-            @Qualifier("syncTransactionFsmFactory") StateMachineFactory<TransactionState, TransactionEvent, TransactionContext> stateMachineFactory,
-            TransactionStateMachinePersister persister) {
+            @Qualifier("syncTransactionFsmFactory") StateMachineFactory<ProcessState, ProcessEvent, TransactionContext> stateMachineFactory,
+            PaymentRepositoryPort paymentRepository) {
         this.stateMachineFactory = stateMachineFactory;
-        this.persister = persister;
+        this.paymentRepository = paymentRepository;
     }
 
     @Override
-    public PaymentResult processTransaction(PaymentCommand command) {
-        Payment payment = Payment.startNew(command, UUID::randomUUID);
+    @Transactional
+    public PaymentResult processTransaction(PaymentCommand command, Payment payment) {
+        // For the sync machine, the live aggregate is passed in the context and mutated in memory.
         var context = new TransactionContext(payment, command);
-        persister.saveContext(context);
+
+        // No need for separate persister; the transaction boundary is here.
+        // We save the initial state.
+        paymentRepository.save(payment);
 
         var stateMachine = stateMachineFactory.acquireStateMachine(context);
-        stateMachine.fire(TransactionEvent.SUBMIT);
+        stateMachine.fire(ProcessEvent.SUBMIT); // This blocks until the FSM reaches a terminal state
 
+        // The 'payment' object inside the context has been mutated by the FSM actions.
+        // We save the final state of the aggregate at the end of the transaction.
+        paymentRepository.update(payment);
         return PaymentResult.from(context.getPayment());
     }
 }

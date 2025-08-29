@@ -55,7 +55,7 @@ public class MongoIdempotencyAdapter implements IdempotencyPort {
     @Override
     public void markCompleted(UUID key, Object response) {
         try {
-            String responseBody = (response == null || response.getClass().equals(Void.class)) ?
+            String responseBody = (response == null || response.getClass().equals(Void.class) || response.getClass().equals(Void.TYPE)) ?
                     null : objectMapper.writeValueAsString(response);
             String responseClassName = (response == null) ? Void.class.getName() : response.getClass().getName();
 

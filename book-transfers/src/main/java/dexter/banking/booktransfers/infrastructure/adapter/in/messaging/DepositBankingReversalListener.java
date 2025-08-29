@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.usecase.event.ProcessDebitLegReversalResultCommand;
+import dexter.banking.booktransfers.core.usecase.payment.event.RecordDebitReversalResultCommand;
 import dexter.banking.booktransfers.infrastructure.adapter.in.messaging.mapper.MessagingAdapterMapper;
 import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.DepositBankingResponse;
@@ -22,7 +22,7 @@ public class DepositBankingReversalListener {
     public void completeDepositBankingReversal(DepositBankingResponse result) {
         log.debug("Received Deposit banking reversal DTO for txnId: {}. Translating to command.", result.getTransactionId());
         var domainResult = mapper.toReversalDomain(result);
-        var command = new ProcessDebitLegReversalResultCommand(result.getTransactionId(), domainResult);
+        var command = new RecordDebitReversalResultCommand(result.getTransactionId(), domainResult);
         command.execute(commandBus);
     }
 }

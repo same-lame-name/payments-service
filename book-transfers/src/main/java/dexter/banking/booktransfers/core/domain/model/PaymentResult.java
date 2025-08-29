@@ -8,7 +8,7 @@ public record PaymentResult(
     UUID transactionId,
     String transactionReference,
     Status status,
-    TransactionState state
+    PaymentState state
 ) implements ValueObject {
     public static PaymentResult from(Payment payment) {
         return new PaymentResult(

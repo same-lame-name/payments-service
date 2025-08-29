@@ -2,8 +2,8 @@ package dexter.banking.booktransfers.infrastructure.adapter.in.web.mapper;
 
 import dexter.banking.booktransfers.core.domain.model.ApiVersion;
 import dexter.banking.booktransfers.core.domain.model.ModeOfTransfer;
-import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.model.PaymentResult;
+import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.booktransfers.infrastructure.adapter.in.web.dto.BookTransferRequest;
 import dexter.banking.booktransfers.infrastructure.adapter.in.web.dto.BookTransferResponse;
 import org.springframework.stereotype.Component;

@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.usecase.event.ProcessDebitLegResultCommand;
+import dexter.banking.booktransfers.core.usecase.payment.event.RecordDebitResultCommand;
 import dexter.banking.booktransfers.infrastructure.adapter.in.messaging.mapper.MessagingAdapterMapper;
 import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.DepositBankingResponse;
@@ -22,7 +22,7 @@ public class DepositBankingListener {
     public void completeDepositBanking(DepositBankingResponse result) {
         log.debug("Received Deposit banking Result DTO for txnId: {}. Translating to command.", result.getTransactionId());
         var domainResult = mapper.toDomain(result);
-        var command = new ProcessDebitLegResultCommand(result.getTransactionId(), domainResult);
+        var command = new RecordDebitResultCommand(result.getTransactionId(), domainResult);
         command.execute(commandBus);
     }
 }

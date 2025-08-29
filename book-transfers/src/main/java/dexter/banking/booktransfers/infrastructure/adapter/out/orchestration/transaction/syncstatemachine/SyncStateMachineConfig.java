@@ -1,12 +1,12 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine;
 
-import dexter.banking.booktransfers.core.domain.model.TransactionEvent;
-import dexter.banking.booktransfers.core.domain.model.TransactionState;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.component.TransactionStateMachinePersister;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.guard.DebitLegSucceededGuard;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.guard.LimitEarmarkSucceededGuard;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessEvent;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessState;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.TransactionContext;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.*;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.SyncCreditLegAction;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.SyncDebitLegAction;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.SyncLimitEarmarkAction;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.SyncTransactionCompleteAction;
 import dexter.banking.statemachine.StateMachineBuilder;
 import dexter.banking.statemachine.StateMachineConfig;
 import dexter.banking.statemachine.StateMachineFactory;
@@ -21,80 +21,73 @@ import java.util.EnumSet;
 @RequiredArgsConstructor
 public class SyncStateMachineConfig {
 
-    private final TransactionStateMachinePersister persister;
-
-    // Actions are specific to the sync FSM
     private final SyncLimitEarmarkAction limitEarmarkAction;
     private final SyncDebitLegAction debitLegAction;
     private final SyncCreditLegAction creditLegAction;
     private final SyncTransactionCompleteAction transactionCompleteAction;
 
-    // Guards are now shared from the common package
-    private final DebitLegSucceededGuard debitLegSucceededGuard;
-    private final LimitEarmarkSucceededGuard limitEarmarkSucceededGuard;
-
     @Bean("syncPaymentStateMachineConfig")
-    public StateMachineConfig<TransactionState, TransactionEvent, TransactionContext> syncPaymentStateMachineConfig() {
-        // The config now uses the unified TransactionContext
-        return StateMachineBuilder.<TransactionState, TransactionEvent, TransactionContext>newBuilder()
-                .states(EnumSet.allOf(TransactionState.class))
-                .initial(TransactionState.NEW)
-                .end(TransactionState.TRANSACTION_FAILED)
-                .end(TransactionState.TRANSACTION_SUCCESSFUL)
-                .end(TransactionState.MANUAL_INTERVENTION_REQUIRED)
-                .withPersister(persister)
-            .from(TransactionState.NEW).on(TransactionEvent.SUBMIT)
-                .to(TransactionState.LIMIT_EARMARK_IN_PROGRESS)
+    public StateMachineConfig<ProcessState, ProcessEvent, TransactionContext> syncPaymentStateMachineConfig() {
+        return StateMachineBuilder.<ProcessState, ProcessEvent, TransactionContext>newBuilder()
+                .states(EnumSet.allOf(ProcessState.class))
+                .initial(ProcessState.NEW)
+                .end(ProcessState.PROCESS_FAILED)
+                .end(ProcessState.PROCESS_COMPLETED)
+                .end(ProcessState.REMEDIATION_REQUIRED)
+            // No persister for sync machine as it's fully in-memory within one transaction
+            // --- Happy Path ---
+            .from(ProcessState.NEW).on(ProcessEvent.SUBMIT)
+                .to(ProcessState.EARMARKING_LIMIT)
                 .withAction(limitEarmarkAction::apply)
                 .add()
-            .from(TransactionState.LIMIT_EARMARK_IN_PROGRESS).on(TransactionEvent.LIMIT_EARMARK_SUCCEEDED)
-                .to(TransactionState.DEBIT_LEG_IN_PROGRESS)
+            .from(ProcessState.EARMARKING_LIMIT).on(ProcessEvent.LIMIT_EARMARK_SUCCEEDED)
+                .to(ProcessState.DEBITING_FUNDS)
                 .withAction(debitLegAction::apply)
-                .withGuard(limitEarmarkSucceededGuard)
                 .add()
-            .from(TransactionState.DEBIT_LEG_IN_PROGRESS).on(TransactionEvent.DEBIT_LEG_SUCCEEDED)
-                .to(TransactionState.CREDIT_LEG_IN_PROGRESS)
+            .from(ProcessState.DEBITING_FUNDS).on(ProcessEvent.DEBIT_LEG_SUCCEEDED)
+                .to(ProcessState.CREDITING_FUNDS)
                 .withAction(creditLegAction::apply)
-                .withGuard(debitLegSucceededGuard)
                 .add()
-            .from(TransactionState.CREDIT_LEG_IN_PROGRESS).on(TransactionEvent.CREDIT_LEG_SUCCEEDED)
-                .to(TransactionState.TRANSACTION_SUCCESSFUL)
+            .from(ProcessState.CREDITING_FUNDS).on(ProcessEvent.CREDIT_LEG_SUCCEEDED)
+                .to(ProcessState.PROCESS_COMPLETED)
                 .withAction(transactionCompleteAction)
                 .add()
-            .from(TransactionState.CREDIT_LEG_IN_PROGRESS).on(TransactionEvent.CREDIT_LEG_FAILED)
-                .to(TransactionState.DEBIT_LEG_REVERSAL_IN_PROGRESS)
+            // --- Compensation Path ---
+            .from(ProcessState.CREDITING_FUNDS).on(ProcessEvent.CREDIT_LEG_FAILED)
+                .to(ProcessState.REVERSING_DEBIT)
                 .withAction(debitLegAction::compensate)
                 .add()
-            .from(TransactionState.DEBIT_LEG_IN_PROGRESS).on(TransactionEvent.DEBIT_LEG_FAILED)
-                .to(TransactionState.LIMIT_EARMARK_REVERSAL_IN_PROGRESS)
+            .from(ProcessState.DEBITING_FUNDS).on(ProcessEvent.DEBIT_LEG_FAILED)
+                .to(ProcessState.REVERSING_LIMIT_EARMARK)
                 .withAction(limitEarmarkAction::compensate)
                 .add()
-            .from(TransactionState.LIMIT_EARMARK_IN_PROGRESS).on(TransactionEvent.LIMIT_EARMARK_FAILED)
-                .to(TransactionState.TRANSACTION_FAILED)
+            .from(ProcessState.EARMARKING_LIMIT).on(ProcessEvent.LIMIT_EARMARK_FAILED)
+                .to(ProcessState.PROCESS_FAILED)
                 .withAction(transactionCompleteAction)
                 .add()
-            .from(TransactionState.DEBIT_LEG_REVERSAL_IN_PROGRESS).on(TransactionEvent.DEBIT_LEG_REVERSAL_SUCCEEDED)
-                .to(TransactionState.LIMIT_EARMARK_REVERSAL_IN_PROGRESS)
+            .from(ProcessState.REVERSING_DEBIT).on(ProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED)
+                .to(ProcessState.REVERSING_LIMIT_EARMARK)
                 .withAction(limitEarmarkAction::compensate)
                 .add()
-            .from(TransactionState.DEBIT_LEG_REVERSAL_IN_PROGRESS).on(TransactionEvent.DEBIT_LEG_REVERSAL_FAILED)
-                .to(TransactionState.MANUAL_INTERVENTION_REQUIRED)
+            .from(ProcessState.REVERSING_LIMIT_EARMARK).on(ProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED)
+                .to(ProcessState.PROCESS_FAILED)
                 .withAction(transactionCompleteAction)
                 .add()
-            .from(TransactionState.LIMIT_EARMARK_REVERSAL_IN_PROGRESS).on(TransactionEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED)
-                .to(TransactionState.TRANSACTION_FAILED)
+            // --- Remediation Path ---
+            .from(ProcessState.REVERSING_DEBIT).on(ProcessEvent.DEBIT_LEG_REVERSAL_FAILED)
+                .to(ProcessState.REMEDIATION_REQUIRED)
                 .withAction(transactionCompleteAction)
                 .add()
-            .from(TransactionState.LIMIT_EARMARK_REVERSAL_IN_PROGRESS).on(TransactionEvent.LIMIT_EARMARK_REVERSAL_FAILED)
-                .to(TransactionState.MANUAL_INTERVENTION_REQUIRED)
+            .from(ProcessState.REVERSING_LIMIT_EARMARK).on(ProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED)
+                .to(ProcessState.REMEDIATION_REQUIRED)
                 .withAction(transactionCompleteAction)
                 .add()
             .build();
     }
 
     @Bean("syncTransactionFsmFactory")
-    public StateMachineFactory<TransactionState, TransactionEvent, TransactionContext> transactionFsmFactory(
-            @Qualifier("syncPaymentStateMachineConfig") StateMachineConfig<TransactionState, TransactionEvent, TransactionContext> config) {
+    public StateMachineFactory<ProcessState, ProcessEvent, TransactionContext> transactionFsmFactory(
+            @Qualifier("syncPaymentStateMachineConfig") StateMachineConfig<ProcessState, ProcessEvent, TransactionContext> config) {
         return new StateMachineFactory<>(config);
     }
 }

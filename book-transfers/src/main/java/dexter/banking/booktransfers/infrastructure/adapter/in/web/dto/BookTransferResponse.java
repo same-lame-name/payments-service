@@ -1,7 +1,7 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.web.dto;
 
+import dexter.banking.booktransfers.core.domain.model.PaymentState;
 import dexter.banking.booktransfers.core.domain.model.Status;
-import dexter.banking.booktransfers.core.domain.model.TransactionState;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,6 +21,5 @@ import java.util.UUID;
 public class BookTransferResponse {
     private UUID transactionId;
     private Status status;
-    private TransactionState state;
+    private PaymentState state;
 }
-

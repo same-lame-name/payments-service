@@ -2,9 +2,10 @@ package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.tr
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dexter.banking.booktransfers.core.domain.model.TransactionState;
+import dexter.banking.booktransfers.core.port.OrchestrationContextRepositoryPort;
 import dexter.banking.booktransfers.core.port.PaymentRepositoryPort;
-import dexter.banking.booktransfers.core.port.StateMachineContextRepositoryPort;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessEvent;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessState;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.TransactionContext;
 import dexter.banking.statemachine.contract.StateMachinePersister;
 import lombok.RequiredArgsConstructor;
@@ -18,12 +19,12 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class TransactionStateMachinePersister implements StateMachinePersister<TransactionState, TransactionContext> {
+public class TransactionStateMachinePersister implements StateMachinePersister<ProcessState, TransactionContext> {
 
-    // The persister now depends on two clean, segregated ports.
     private final PaymentRepositoryPort paymentRepositoryPort;
-    private final StateMachineContextRepositoryPort contextRepository;
+    private final OrchestrationContextRepositoryPort contextRepository;
     private final ObjectMapper objectMapper;
+
     @Override
     public void saveContext(TransactionContext context) {
         // 1. Update the business aggregate using the business repository port.

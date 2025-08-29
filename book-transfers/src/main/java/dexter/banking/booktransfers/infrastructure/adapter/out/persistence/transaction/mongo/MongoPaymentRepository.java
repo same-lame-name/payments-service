@@ -21,23 +21,25 @@ public class MongoPaymentRepository implements PaymentRepositoryPort {
     @Override
     public Payment save(Payment payment) {
         TransactionDocument document = mapper.toDocument(payment);
-        TransactionDocument savedDocument = repository.save(document);
-        return mapper.toDomain(savedDocument);
+        repository.save(document);
+        // We return the original aggregate as its state is authoritative.
+        // The saved document is just a persistence artifact.
+        return payment;
     }
 
     @Override
     public Payment update(Payment payment) {
         TransactionDocument doc = repository.findByTransactionId(payment.getId())
-                .orElseGet(TransactionDocument::new);
+                .orElseThrow(() -> new IllegalStateException("Attempted to update a non-existent payment: " + payment.getId()));
         mapper.updateDocumentFromDomain(doc, payment);
-
-        TransactionDocument savedDocument = repository.save(doc);
-        return mapper.toDomain(savedDocument);
+        repository.save(doc);
+        // Return original aggregate, which holds the live BusinessPolicy and correct state.
+        return payment;
     }
 
     @Override
-    public Optional<Payment> findById(UUID transactionId) {
-        Optional<TransactionDocument> documentOptional = repository.findByTransactionId(transactionId);
-        return documentOptional.map(mapper::toDomain);
+    public Optional<Payment.PaymentMemento> findMementoById(UUID transactionId) {
+        return repository.findByTransactionId(transactionId)
+                .map(mapper::toMemento);
     }
 }

@@ -4,12 +4,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * A dedicated, fine-grained Driven Port for the state machine's technical persistence needs.
- * This adheres to the Interface Segregation Principle. Its only job is to save and retrieve
- * the raw, serialized context of the state machine, decoupling the orchestration adapter from
- * the specifics of the persistence technology.
+ * A dedicated, lean Driven Port for persisting the state machine's technical context.
  */
-public interface StateMachineContextRepositoryPort {
+public interface OrchestrationContextRepositoryPort {
     /**
      * Persists the serialized state machine context.
      *

@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.usecase.event.ProcessLimitEarmarkResultCommand;
+import dexter.banking.booktransfers.core.usecase.payment.event.RecordLimitEarmarkResultCommand;
 import dexter.banking.booktransfers.infrastructure.adapter.in.messaging.mapper.MessagingAdapterMapper;
 import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.JmsConstants;
@@ -22,7 +22,7 @@ public class LimitEarmarkListener {
     public void completeLimitEarmark(LimitManagementResponse result) {
         log.debug("Received Limit earmark Result DTO for txnId: {}. Translating to command.", result.getTransactionId());
         var domainResult = mapper.toDomain(result);
-        var command = new ProcessLimitEarmarkResultCommand(result.getTransactionId(), domainResult);
+        var command = new RecordLimitEarmarkResultCommand(result.getTransactionId(), domainResult);
         command.execute(commandBus);
     }
 }

@@ -7,6 +7,7 @@ import dexter.banking.booktransfers.core.domain.primitives.ValueObject;
  * This is the contract defined by the core that the infrastructure layer must fulfill.
  */
 public record CommandConfiguration(
-        boolean isIdempotencyEnabled
+        boolean isIdempotencyEnabled,
+        String journeyName
 ) implements ValueObject {
 }

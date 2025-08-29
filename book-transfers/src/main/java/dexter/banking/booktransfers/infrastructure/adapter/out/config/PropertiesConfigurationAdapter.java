@@ -2,6 +2,8 @@ package dexter.banking.booktransfers.infrastructure.adapter.out.config;
 
 import dexter.banking.booktransfers.core.domain.model.config.CommandConfiguration;
 import dexter.banking.booktransfers.core.port.ConfigurationPort;
+import dexter.banking.booktransfers.infrastructure.config.CommandConfig;
+import dexter.banking.booktransfers.infrastructure.config.ServiceConfigProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +31,6 @@ public class PropertiesConfigurationAdapter implements ConfigurationPort {
     }
 
     private CommandConfiguration toDomain(CommandConfig infraConfig) {
-        return new CommandConfiguration(infraConfig.isIdempotencyApplicable());
+        return new CommandConfiguration(infraConfig.isIdempotencyApplicable(), infraConfig.getJourneyName());
     }
 }

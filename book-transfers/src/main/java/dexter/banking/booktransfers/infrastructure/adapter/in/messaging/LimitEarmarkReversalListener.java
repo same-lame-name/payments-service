@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.usecase.event.ProcessLimitEarmarkReversalResultCommand;
+import dexter.banking.booktransfers.core.usecase.payment.event.RecordLimitReversalResultCommand;
 import dexter.banking.booktransfers.infrastructure.adapter.in.messaging.mapper.MessagingAdapterMapper;
 import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.JmsConstants;
@@ -22,7 +22,7 @@ public class LimitEarmarkReversalListener {
     public void completeLimitEarmarkReversal(LimitManagementResponse result) {
         log.debug("Received Limit earmark reversal DTO for txnId: {}. Translating to command.", result.getTransactionId());
         var domainResult = mapper.toReversalDomain(result);
-        var command = new ProcessLimitEarmarkReversalResultCommand(result.getTransactionId(), domainResult);
+        var command = new RecordLimitReversalResultCommand(result.getTransactionId(), domainResult);
         command.execute(commandBus);
     }
 }
