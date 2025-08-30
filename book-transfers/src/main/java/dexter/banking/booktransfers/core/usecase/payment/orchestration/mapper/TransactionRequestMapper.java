@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.mapper;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.mapper;
 
 import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.model.CreditCardBankingRequest;

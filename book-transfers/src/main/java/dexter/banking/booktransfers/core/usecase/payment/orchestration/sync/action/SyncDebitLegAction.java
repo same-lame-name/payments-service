@@ -1,15 +1,12 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.action;
 
 import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
 import dexter.banking.booktransfers.core.port.DepositPort;
-import dexter.banking.booktransfers.core.port.EventDispatcherPort;
-import dexter.banking.booktransfers.core.port.PaymentRepositoryPort;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.mapper.TransactionRequestMapper;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.mapper.TransactionStatusMapper;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessEvent;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessState;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.TransactionContext;
-import dexter.banking.commandbus.CommandBus;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.mapper.TransactionRequestMapper;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.mapper.TransactionStatusMapper;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessEvent;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.TransactionContext;
 import dexter.banking.model.DepositBankingRequest;
 import dexter.banking.model.DepositBankingReversalRequest;
 import dexter.banking.statemachine.contract.SagaAction;
@@ -28,8 +25,6 @@ public class SyncDebitLegAction implements SagaAction<ProcessState, ProcessEvent
     private final DepositPort depositPort;
     private final TransactionRequestMapper transactionRequestMapper;
     private final TransactionStatusMapper transactionStatusMapper;
-    private final EventDispatcherPort eventDispatcher;
-    private final PaymentRepositoryPort paymentRepository;
 
     @Override
     public Optional<ProcessEvent> apply(TransactionContext context, ProcessEvent event) {
@@ -39,15 +34,11 @@ public class SyncDebitLegAction implements SagaAction<ProcessState, ProcessEvent
         try {
             DebitLegResult result = depositPort.submitDeposit(request);
             payment.recordDebit(result, Collections.emptyMap());
-
-            ProcessEvent nextEvent = (result.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL)
-                    ? ProcessEvent.DEBIT_LEG_SUCCEEDED
-                    : ProcessEvent.DEBIT_LEG_FAILED;
-
-            paymentRepository.update(payment);
-            eventDispatcher.dispatch(payment.pullDomainEvents());
-
-            return Optional.of(nextEvent);
+            if (result.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL) {
+                return Optional.of(ProcessEvent.DEBIT_LEG_SUCCEEDED);
+            } else {
+                return Optional.of(ProcessEvent.DEBIT_LEG_FAILED);
+            }
         } catch (Exception e) {
             log.error("Sync Debit Leg failed with exception", e);
             payment.recordDebit(new DebitLegResult(null, DebitLegResult.DebitLegStatus.FAILED), Collections.emptyMap());
@@ -64,17 +55,14 @@ public class SyncDebitLegAction implements SagaAction<ProcessState, ProcessEvent
             DebitLegResult result = depositPort.submitDepositReversal(payment.getDebitLegResult().depositId(), request);
             payment.recordDebitReversal(result, Collections.emptyMap());
 
-            ProcessEvent nextEvent = (result.status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL)
-                    ? ProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED
-                    : ProcessEvent.DEBIT_LEG_REVERSAL_FAILED;
-
-            paymentRepository.update(payment);
-            eventDispatcher.dispatch(payment.pullDomainEvents());
-
-            return Optional.of(nextEvent);
+            if (result.status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL) {
+                return Optional.of(ProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED);
+            } else {
+                return Optional.of(ProcessEvent.DEBIT_LEG_REVERSAL_FAILED);
+            }
         } catch (Exception e) {
             log.error("Sync Debit Leg compensation failed with exception", e);
-            payment.recordDebitReversal(new DebitLegResult(null, DebitLegResult.DebitLegStatus.REVERSAL_FAILED), Collections.emptyMap());
+            payment.recordDebitReversal(new DebitLegResult(payment.getDebitLegResult().depositId(), DebitLegResult.DebitLegStatus.REVERSAL_FAILED), Collections.emptyMap());
             return Optional.of(ProcessEvent.DEBIT_LEG_REVERSAL_FAILED);
         }
     }

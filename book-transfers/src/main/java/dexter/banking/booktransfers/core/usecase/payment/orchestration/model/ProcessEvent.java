@@ -1,8 +1,8 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.model;
 
 /**
  * Defines the events that can trigger state transitions in the orchestration process.
- * This is an infrastructure-level concept, distinct from the domain's events.
+ * This is an application-level concept, distinct from the domain's events.
  */
 public enum ProcessEvent {
     SUBMIT,

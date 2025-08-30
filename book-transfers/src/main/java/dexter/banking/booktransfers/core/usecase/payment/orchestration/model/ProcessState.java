@@ -1,8 +1,8 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.model;
 
 /**
  * Defines the possible states a transaction orchestration can be in during its lifecycle.
- * This is an infrastructure-level concept, representing workflow steps, and is
+ * This is an application-level concept, representing workflow steps, and is
  * completely separate from the domain's PaymentState.
  */
 public enum ProcessState {

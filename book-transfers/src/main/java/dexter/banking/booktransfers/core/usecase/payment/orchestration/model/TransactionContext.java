@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

@@ -1,12 +1,12 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.sync;
 
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessEvent;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessState;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.TransactionContext;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.SyncCreditLegAction;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.SyncDebitLegAction;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.SyncLimitEarmarkAction;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.component.SyncTransactionCompleteAction;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessEvent;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.TransactionContext;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.action.SyncCreditLegAction;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.action.SyncDebitLegAction;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.action.SyncLimitEarmarkAction;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.action.SyncTransactionCompleteAction;
 import dexter.banking.statemachine.StateMachineBuilder;
 import dexter.banking.statemachine.StateMachineConfig;
 import dexter.banking.statemachine.StateMachineFactory;
@@ -34,8 +34,6 @@ public class SyncStateMachineConfig {
                 .end(ProcessState.PROCESS_FAILED)
                 .end(ProcessState.PROCESS_COMPLETED)
                 .end(ProcessState.REMEDIATION_REQUIRED)
-            // No persister for sync machine as it's fully in-memory within one transaction
-            // --- Happy Path ---
             .from(ProcessState.NEW).on(ProcessEvent.SUBMIT)
                 .to(ProcessState.EARMARKING_LIMIT)
                 .withAction(limitEarmarkAction::apply)
@@ -52,7 +50,6 @@ public class SyncStateMachineConfig {
                 .to(ProcessState.PROCESS_COMPLETED)
                 .withAction(transactionCompleteAction)
                 .add()
-            // --- Compensation Path ---
             .from(ProcessState.CREDITING_FUNDS).on(ProcessEvent.CREDIT_LEG_FAILED)
                 .to(ProcessState.REVERSING_DEBIT)
                 .withAction(debitLegAction::compensate)
@@ -73,7 +70,6 @@ public class SyncStateMachineConfig {
                 .to(ProcessState.PROCESS_FAILED)
                 .withAction(transactionCompleteAction)
                 .add()
-            // --- Remediation Path ---
             .from(ProcessState.REVERSING_DEBIT).on(ProcessEvent.DEBIT_LEG_REVERSAL_FAILED)
                 .to(ProcessState.REMEDIATION_REQUIRED)
                 .withAction(transactionCompleteAction)
