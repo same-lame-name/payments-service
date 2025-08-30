@@ -1,8 +1,12 @@
 package dexter.banking.booktransfers.core.port;
 
 import dexter.banking.booktransfers.core.domain.model.Payment;
+import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
 import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.model.PaymentResult;
+
+import java.util.UUID;
 
 /**
  * Driven Port for the orchestration logic (e.g., the State Machine).

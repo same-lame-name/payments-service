@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Command Handler for the V1 procedural flow.
@@ -58,6 +59,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
                 .map(CommandConfiguration::journeyName)
                 .orElseThrow(() -> new IllegalStateException("No journey configured for command: " + command.getIdentifier()));
 
+        String reasonForFailure = "";
+
         BusinessPolicy policy = policyFactory.getPolicyForJourney(journeyName);
 
         Payment payment = Payment.startNew(command, policy, journeyName);
@@ -76,10 +79,19 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
         } catch (Exception e) {
             log.error("❌ [V1] Procedural transaction FAILED for TXN_ID: {}. Initiating SAGA compensation...",
                     payment.getId(), e);
+            reasonForFailure = Optional.of(e).map(Throwable::getMessage).orElse("Unknown error");
             compensate(payment, command);
-        }
+        } finally {
 
-        eventDispatcher.dispatch(payment.pullDomainEvents());
+            switch(payment.getState()) {
+                case FUNDS_CREDITED -> payment.recordPaymentSettled(buildMetadata(command, payment));
+                case LIMIT_COULD_NOT_BE_RESERVED, LIMIT_REVERSED -> payment.recordPaymentFailed(reasonForFailure, buildMetadata(command, payment));
+                default -> payment.recordPaymentRemediationNeeded(reasonForFailure, buildMetadata(command, payment));
+            }
+
+            paymentRepository.update(payment);
+            eventDispatcher.dispatch(payment.pullDomainEvents());
+        }
 
         log.info("🏁 [V1] Procedural transaction finished for TXN_ID: {}. Final state: {}",
                 payment.getId(), payment.getState());
@@ -91,13 +103,13 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
                 new CreditCardBankingRequest(payment.getId(), command.getCardNumber())
         );
 
-        if (creditResult.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL) {
-            payment.recordCreditSuccess(creditResult, buildMetadata(command, payment));
-        } else {
-            payment.recordCreditFailure(creditResult, buildMetadata(command, payment));
+        payment.recordCredit(creditResult, buildMetadata(command, payment));
+        paymentRepository.update(payment);
+
+        if (creditResult.status() == CreditLegResult.CreditLegStatus.FAILED) {
+            throw new StepFailedException("Credit Leg failed");
         }
 
-        paymentRepository.update(payment);
     }
 
     private void performDebitLeg(PaymentCommand command, Payment payment) {
@@ -105,13 +117,12 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
                 new DepositBankingRequest(payment.getId(), command.getAccountNumber())
         );
 
-        if (debitResult.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL) {
-            payment.recordDebitSuccess(debitResult, buildMetadata(command, payment));
-        } else {
-            payment.recordDebitFailure(debitResult, buildMetadata(command, payment));
-        }
-
+        payment.recordDebit(debitResult, buildMetadata(command, payment));
         paymentRepository.update(payment);
+
+        if (debitResult.status() == DebitLegResult.DebitLegStatus.FAILED) {
+            throw new StepFailedException("Debit Leg failed");
+        }
     }
 
     private void performLimitEarmark(PaymentCommand command, Payment payment) {
@@ -119,23 +130,21 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
                 new LimitManagementRequest(payment.getId(), command.getLimitType())
         );
 
-        if (limitResult.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL) {
-            payment.recordLimitEarmarkSuccess(limitResult, buildMetadata(command, payment));
-        } else {
-            payment.recordLimitEarmarkFailure(limitResult, buildMetadata(command, payment));
+        payment.recordLimitEarmark(limitResult, buildMetadata(command, payment));
+        paymentRepository.update(payment);
+
+        if (limitResult.status() == LimitEarmarkResult.LimitEarmarkStatus.FAILED) {
             throw new StepFailedException("Limit Earmark failed");
         }
-
-        paymentRepository.update(payment);
     }
 
     private void compensate(Payment payment, PaymentCommand command) {
         // SAGA compensation logic
         switch (payment.getState()) {
-            case FUNDS_DEBITED:
+            case FUNDS_COULD_NOT_BE_CREDITED:
                 compensateDebitLeg(payment, command);
                 break;
-            case LIMIT_RESERVED:
+            case FUNDS_COULD_NOT_BE_DEBITED:
                 compensateLimitEarmark(payment, command);
                 break;
             default:
@@ -149,22 +158,20 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
         try {
             var reversalRequest = new DepositBankingReversalRequest(payment.getId(), payment.getDebitLegResult().depositId());
             DebitLegResult reversalResult = depositPort.submitDepositReversal(payment.getDebitLegResult().depositId(), reversalRequest);
-            if (reversalResult.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL) {
-                log.info("  [COMPENSATION] Debit leg reversed successfully. Transaction is FAILED.");
-                payment.recordDebitReversalSuccess(reversalResult, buildMetadata(command, payment));
-                paymentRepository.update(payment);
 
+            payment.recordDebitReversal(reversalResult, buildMetadata(command, payment));
+            paymentRepository.update(payment);
+
+            if (reversalResult.status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL) {
+                log.info("  [COMPENSATION] Debit leg reversed successfully. Compensation saga in progress.");
                 compensateLimitEarmark(payment, command);
             } else {
                 log.error("  [COMPENSATION] FATAL: Reversing Debit Leg FAILED. Manual intervention required.");
-                payment.recordDebitReversalFailure(reversalResult, buildMetadata(command, payment));
-                paymentRepository.update(payment);
             }
 
         } catch (Exception e) {
             log.error("  [COMPENSATION] FATAL: Reversing Debit Leg FAILED. Manual intervention required.", e);
-            payment.recordDebitReversalFailure(payment.getDebitLegResult(), buildMetadata(command, payment));
-
+            payment.recordDebitReversal(new DebitLegResult(null, DebitLegResult.DebitLegStatus.REVERSAL_FAILED), buildMetadata(command, payment));
             paymentRepository.update(payment);
         }
     }
@@ -174,17 +181,10 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
         try {
             var reversalRequest = new LimitManagementReversalRequest(payment.getId(), payment.getLimitEarmarkResult().limitId());
             LimitEarmarkResult reversalResult = limitPort.reverseLimitEarmark(payment.getLimitEarmarkResult().limitId(), reversalRequest);
-            if (reversalResult.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL) {
-                log.info("  [COMPENSATION] Limit Earmark reversed successfully. Transaction is FAILED.");
-                payment.recordLimitReversalSuccess(reversalResult, buildMetadata(command, payment));
-            } else {
-                log.error("  [COMPENSATION] FATAL: Reversing Limit Earmark FAILED. Manual intervention required.");
-                payment.recordLimitReversalFailure(payment.getLimitEarmarkResult(), buildMetadata(command, payment));
-            }
-
+            payment.recordLimitReversal(reversalResult, buildMetadata(command, payment));
         } catch (Exception e) {
             log.error("  [COMPENSATION] FATAL: Reversing Limit Earmark FAILED. Manual intervention required.", e);
-            payment.recordLimitReversalFailure(payment.getLimitEarmarkResult(), buildMetadata(command, payment));
+            payment.recordLimitReversal(new LimitEarmarkResult(null, LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED), buildMetadata(command, payment));
         } finally {
             paymentRepository.update(payment);
         }
@@ -193,7 +193,6 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private Map<String, Object> buildMetadata(PaymentCommand command, Payment payment) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("webhookUrl", command.getWebhookUrl());
-        metadata.put("state", payment.getState());
         metadata.put("transactionReference", payment.getTransactionReference());
         return metadata;
     }

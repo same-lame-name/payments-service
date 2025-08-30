@@ -4,6 +4,7 @@ import dexter.banking.booktransfers.core.domain.exception.TransactionNotFoundExc
 import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.domain.model.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
+import dexter.banking.booktransfers.core.port.AsyncOrchestrationEventPort;
 import dexter.banking.booktransfers.core.port.EventDispatcherPort;
 import dexter.banking.booktransfers.core.port.PaymentPolicyFactory;
 import dexter.banking.booktransfers.core.port.PaymentRepositoryPort;
@@ -13,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -21,6 +24,7 @@ public class RecordCreditResultCommandHandler implements CommandHandler<RecordCr
     private final PaymentRepositoryPort paymentRepository;
     private final PaymentPolicyFactory policyFactory;
     private final EventDispatcherPort eventDispatcher;
+    private final AsyncOrchestrationEventPort orchestrationEventPort;
 
     @Override
     @Transactional
@@ -34,16 +38,12 @@ public class RecordCreditResultCommandHandler implements CommandHandler<RecordCr
 
         Payment payment = Payment.rehydrate(memento, policy);
 
-        if (command.getResult().status() == CreditLegResult.CreditLegStatus.SUCCESSFUL) {
-            payment.recordCreditSuccess(command.getResult(), null);
-        } else {
-            payment.recordCreditFailure(command.getResult(), null);
-            // Here you would trigger the compensation saga, likely by dispatching another command
-            // For now, we assume the policy will set the state to FAILED or REMEDIATION_NEEDED
-        }
+        payment.recordCredit(command.getResult(), Collections.emptyMap());
 
         paymentRepository.update(payment);
         eventDispatcher.dispatch(payment.pullDomainEvents());
+
+        orchestrationEventPort.processCreditLegResult(command.getTransactionId(), command.getResult());
 
         return null;
     }

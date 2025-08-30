@@ -1,7 +1,7 @@
 logging.level.tech: debug
 logging.level.dexter.banking.booktransfers.infrastructure.middleware: debug
 logging.level.dexter.banking.booktransfers.core.usecase: info
-logging.level.org.springframework.transaction.event: DEBUG # To see transactional event listeners working
+logging.level.org.springframework.transaction.event: warn
 
 spring:
   jackson:

@@ -44,9 +44,6 @@ public class SyncStateMachineOrchestratorAdapter implements TransactionOrchestra
         var stateMachine = stateMachineFactory.acquireStateMachine(context);
         stateMachine.fire(ProcessEvent.SUBMIT); // This blocks until the FSM reaches a terminal state
 
-        // The 'payment' object inside the context has been mutated by the FSM actions.
-        // We save the final state of the aggregate at the end of the transaction.
-        paymentRepository.update(payment);
         return PaymentResult.from(context.getPayment());
     }
 }

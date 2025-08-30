@@ -6,7 +6,7 @@ import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.tra
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.SyncCreditLegAction;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.SyncDebitLegAction;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.SyncLimitEarmarkAction;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.syncstatemachine.action.SyncTransactionCompleteAction;
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.component.SyncTransactionCompleteAction;
 import dexter.banking.statemachine.StateMachineBuilder;
 import dexter.banking.statemachine.StateMachineConfig;
 import dexter.banking.statemachine.StateMachineFactory;

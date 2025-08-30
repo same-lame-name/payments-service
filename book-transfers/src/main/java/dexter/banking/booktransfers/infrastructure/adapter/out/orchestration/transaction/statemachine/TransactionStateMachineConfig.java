@@ -1,13 +1,10 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.statemachine;
 
+import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.component.SyncTransactionCompleteAction;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.component.TransactionStateMachinePersister;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessEvent;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessState;
 import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.TransactionContext;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.statemachine.action.CreditLegAction;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.statemachine.action.DebitLegAction;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.statemachine.action.LimitEarmarkAction;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.statemachine.action.TransactionCompleteAction;
 import dexter.banking.statemachine.StateMachineBuilder;
 import dexter.banking.statemachine.StateMachineConfig;
 import dexter.banking.statemachine.StateMachineFactory;
@@ -27,7 +24,7 @@ public class TransactionStateMachineConfig {
     private final SagaAction<ProcessState, ProcessEvent, TransactionContext> limitEarmarkAction;
     private final SagaAction<ProcessState, ProcessEvent, TransactionContext> debitLegAction;
     private final SagaAction<ProcessState, ProcessEvent, TransactionContext> creditLegAction;
-    private final TransactionCompleteAction transactionCompleteAction;
+    private final SyncTransactionCompleteAction transactionCompleteAction;
 
 
     @Bean

@@ -21,16 +21,11 @@ import java.util.UUID;
 @Slf4j
 public class TransactionStateMachinePersister implements StateMachinePersister<ProcessState, TransactionContext> {
 
-    private final PaymentRepositoryPort paymentRepositoryPort;
     private final OrchestrationContextRepositoryPort contextRepository;
     private final ObjectMapper objectMapper;
 
     @Override
     public void saveContext(TransactionContext context) {
-        // 1. Update the business aggregate using the business repository port.
-        paymentRepositoryPort.update(context.getPayment());
-
-        // 2. Serialize the technical context and save it using the technical repository port.
         try {
             byte[] contextBytes = objectMapper.writeValueAsBytes(context);
             contextRepository.save(UUID.fromString(context.getId()), contextBytes);

@@ -24,9 +24,9 @@ import java.util.Optional;
 public class SubmitPaymentV2CommandHandler implements CommandHandler<PaymentCommand, PaymentResult> {
 
     private final Map<String, TransactionOrchestratorPort> orchestratorStrategies;
-    private final EventDispatcherPort eventDispatcher;
     private final PaymentPolicyFactory policyFactory;
     private final ConfigurationPort configurationPort;
+    private final PaymentRepositoryPort paymentRepository;
 
     @Override
     public boolean matches(PaymentCommand command) {
@@ -43,13 +43,10 @@ public class SubmitPaymentV2CommandHandler implements CommandHandler<PaymentComm
         BusinessPolicy policy = policyFactory.getPolicyForJourney(journeyName);
         Payment payment = Payment.startNew(command, policy, journeyName);
 
+        paymentRepository.save(payment);
+
         TransactionOrchestratorPort selectedOrchestrator = findOrchestrator(command.getModeOfTransfer());
-        PaymentResult result = selectedOrchestrator.processTransaction(command, payment);
-
-        // Dispatch any events generated during the orchestration (especially relevant for SYNC)
-        eventDispatcher.dispatch(payment.pullDomainEvents());
-
-        return result;
+        return selectedOrchestrator.processTransaction(command, payment);
     }
 
     private TransactionOrchestratorPort findOrchestrator(ModeOfTransfer mode) {

@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.statemachine.action;
+package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.component;
 
 import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.port.EventDispatcherPort;
@@ -16,19 +16,30 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class TransactionCompleteAction implements Action<ProcessState, ProcessEvent, TransactionContext> {
+public class SyncTransactionCompleteAction implements Action<ProcessState, ProcessEvent, TransactionContext> {
     private final EventDispatcherPort eventDispatcher;
     private final PaymentRepositoryPort paymentRepository;
 
     @Override
     public Optional<ProcessEvent> execute(TransactionContext context, ProcessEvent event) {
-        PaymentCommand command = context.getRequest();
-        log.info("Transaction flow for {} has reached a terminal state: {}", command.getTransactionReference(), context.getCurrentState());
-        // This is a terminal action. It performs no logic and does not cascade.
-        // It's a placeholder for any final logging or metrics.
+        log.info("SYNC Transaction flow for {} has reached a terminal state: {}", context.getRequest().getTransactionReference(), context.getCurrentState());
+
+        var payment = context.getPayment();
+
+        switch (event) {
+            case CREDIT_LEG_SUCCEEDED -> payment.recordPaymentSettled(buildMetadata(context.getRequest(), payment));
+            case LIMIT_EARMARK_FAILED, LIMIT_EARMARK_REVERSAL_SUCCEEDED -> payment.recordPaymentFailed("Payment compensated", buildMetadata(context.getRequest(), payment));
+            case LIMIT_EARMARK_REVERSAL_FAILED, DEBIT_LEG_REVERSAL_FAILED -> payment.recordPaymentRemediationNeeded("Compensation Failed", buildMetadata(context.getRequest(), payment));
+            default -> throw new IllegalStateException("Unexpected event: " + event);
+        }
+
+        paymentRepository.update(payment);
+        eventDispatcher.dispatch(payment.pullDomainEvents());
+
         return Optional.empty();
     }
 

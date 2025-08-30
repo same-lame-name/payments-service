@@ -31,33 +31,32 @@ public class TransactionalDomainEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(PaymentSuccessfulEvent event) {
         log.info("Handling successful payment event for transaction {}", event.aggregateId());
-        notifyWebhook(event.aggregateId(), event.metadata());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(PaymentFailedEvent event) {
         log.info("Handling failed payment event for transaction {}", event.aggregateId());
-        notifyWebhook(event.aggregateId(), event.metadata());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(ManualInterventionRequiredEvent event) {
         log.info("Handling manual intervention event for transaction {}", event.aggregateId());
-        notifyWebhook(event.aggregateId(), event.metadata());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(PaymentInProgressEvent event) {
         log.info("Handling in-progress payment event for transaction {}", event.aggregateId());
-        notifyWebhook(event.aggregateId(), event.metadata());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
     }
 
-    private void notifyWebhook(UUID aggregateId, Map<String, Object> metadata) {
+    private void notifyWebhook(UUID aggregateId, PaymentState paymentState, Map<String, Object> metadata) {
         String webhookUrl = (String) metadata.get("webhookUrl");
-        PaymentState finalState = (PaymentState) metadata.get("state");
-        log.info("Notifying webhook {} for transaction {} with final state {}", webhookUrl, aggregateId, finalState);
+        log.info("Notifying webhook {} for transaction {} with final state {}", webhookUrl, aggregateId, paymentState);
         if (webhookUrl != null && !webhookUrl.isBlank()) {
-            webhookPort.notifyTransactionComplete(webhookUrl, finalState);
+            webhookPort.notifyTransactionComplete(webhookUrl, paymentState);
         }
     }
 }

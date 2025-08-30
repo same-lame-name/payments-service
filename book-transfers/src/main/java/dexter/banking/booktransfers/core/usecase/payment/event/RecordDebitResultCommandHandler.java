@@ -4,6 +4,7 @@ import dexter.banking.booktransfers.core.domain.exception.TransactionNotFoundExc
 import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.domain.model.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
+import dexter.banking.booktransfers.core.port.AsyncOrchestrationEventPort;
 import dexter.banking.booktransfers.core.port.EventDispatcherPort;
 import dexter.banking.booktransfers.core.port.PaymentPolicyFactory;
 import dexter.banking.booktransfers.core.port.PaymentRepositoryPort;
@@ -13,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -21,6 +24,7 @@ public class RecordDebitResultCommandHandler implements CommandHandler<RecordDeb
     private final PaymentRepositoryPort paymentRepository;
     private final PaymentPolicyFactory policyFactory;
     private final EventDispatcherPort eventDispatcher;
+    private final AsyncOrchestrationEventPort orchestrationEventPort;
 
     @Override
     @Transactional
@@ -34,14 +38,12 @@ public class RecordDebitResultCommandHandler implements CommandHandler<RecordDeb
 
         Payment payment = Payment.rehydrate(memento, policy);
 
-        if (command.getResult().status() == DebitLegResult.DebitLegStatus.SUCCESSFUL) {
-            payment.recordDebitSuccess(command.getResult(), null);
-        } else {
-            payment.recordDebitFailure(command.getResult(), null);
-        }
+        payment.recordDebit(command.getResult(), Collections.emptyMap());
 
         paymentRepository.update(payment);
         eventDispatcher.dispatch(payment.pullDomainEvents());
+
+        orchestrationEventPort.processDebitLegResult(command.getTransactionId(), command.getResult());
 
         return null;
     }

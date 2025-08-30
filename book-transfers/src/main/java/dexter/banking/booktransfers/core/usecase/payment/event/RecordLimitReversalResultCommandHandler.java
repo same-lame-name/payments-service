@@ -4,6 +4,7 @@ import dexter.banking.booktransfers.core.domain.exception.TransactionNotFoundExc
 import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.domain.model.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.domain.model.results.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.port.AsyncOrchestrationEventPort;
 import dexter.banking.booktransfers.core.port.EventDispatcherPort;
 import dexter.banking.booktransfers.core.port.PaymentPolicyFactory;
 import dexter.banking.booktransfers.core.port.PaymentRepositoryPort;
@@ -13,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -21,6 +24,7 @@ public class RecordLimitReversalResultCommandHandler implements CommandHandler<R
     private final PaymentRepositoryPort paymentRepository;
     private final PaymentPolicyFactory policyFactory;
     private final EventDispatcherPort eventDispatcher;
+    private final AsyncOrchestrationEventPort orchestrationEventPort;
 
     @Override
     @Transactional
@@ -34,15 +38,12 @@ public class RecordLimitReversalResultCommandHandler implements CommandHandler<R
 
         Payment payment = Payment.rehydrate(memento, policy);
 
-        if (command.getResult().status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL) {
-            payment.recordLimitReversalSuccess(command.getResult(), null);
-        } else {
-            payment.recordLimitReversalFailure(command.getResult(), null);
-        }
+        payment.recordLimitReversal(command.getResult(), Collections.emptyMap());
 
         paymentRepository.update(payment);
         eventDispatcher.dispatch(payment.pullDomainEvents());
 
+        orchestrationEventPort.processLimitEarmarkResult(command.getTransactionId(), command.getResult());
         return null;
     }
 }
