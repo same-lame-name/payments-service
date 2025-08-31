@@ -1,8 +1,7 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.usecase.payment.event.RecordLimitReversalResultCommand;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.AsyncPaymentV2CommandHandler;
 import dexter.banking.booktransfers.infrastructure.adapter.in.messaging.mapper.MessagingAdapterMapper;
-import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.JmsConstants;
 import dexter.banking.model.LimitManagementResponse;
 import lombok.RequiredArgsConstructor;
@@ -15,14 +14,13 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class LimitEarmarkReversalListener {
 
-    private final CommandBus commandBus;
+    private final AsyncPaymentV2CommandHandler orchestrator;
     private final MessagingAdapterMapper mapper;
 
     @JmsListener(destination = JmsConstants.LIMIT_MANAGEMENT_REVERSAL_RESPONSE)
     public void completeLimitEarmarkReversal(LimitManagementResponse result) {
-        log.debug("Received Limit earmark reversal DTO for txnId: {}. Translating to command.", result.getTransactionId());
+        log.debug("Received Limit earmark reversal DTO for txnId: {}. Delegating to orchestrator.", result.getTransactionId());
         var domainResult = mapper.toReversalDomain(result);
-        var command = new RecordLimitReversalResultCommand(result.getTransactionId(), domainResult);
-        command.execute(commandBus);
+        orchestrator.processLimitReversalResult(domainResult, result.getTransactionId());
     }
 }

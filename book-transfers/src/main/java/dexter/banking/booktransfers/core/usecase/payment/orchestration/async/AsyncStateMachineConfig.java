@@ -1,10 +1,13 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.statemachine;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.async;
 
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.component.SyncTransactionCompleteAction;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.component.TransactionStateMachinePersister;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessEvent;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.ProcessState;
-import dexter.banking.booktransfers.infrastructure.adapter.out.orchestration.transaction.common.model.TransactionContext;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.CreditLegAction;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.DebitLegAction;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.LimitEarmarkAction;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.TransactionCompleteAction;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.component.TransactionStateMachinePersister;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessEvent;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
 import dexter.banking.statemachine.StateMachineBuilder;
 import dexter.banking.statemachine.StateMachineConfig;
 import dexter.banking.statemachine.StateMachineFactory;
@@ -18,18 +21,24 @@ import java.util.EnumSet;
 
 @Configuration
 @RequiredArgsConstructor
-public class TransactionStateMachineConfig {
+public class AsyncStateMachineConfig {
 
     private final TransactionStateMachinePersister persister;
-    private final SagaAction<ProcessState, ProcessEvent, TransactionContext> limitEarmarkAction;
-    private final SagaAction<ProcessState, ProcessEvent, TransactionContext> debitLegAction;
-    private final SagaAction<ProcessState, ProcessEvent, TransactionContext> creditLegAction;
-    private final SyncTransactionCompleteAction transactionCompleteAction;
+
+    // Correctly qualify the specific SagaAction beans.
+    // The generic types must match what the builder expects.
+    private final SagaAction<ProcessState, ProcessEvent, AsyncTransactionContext> limitEarmarkAction;
+
+    private final SagaAction<ProcessState, ProcessEvent, AsyncTransactionContext> debitLegAction;
+
+    private final SagaAction<ProcessState, ProcessEvent, AsyncTransactionContext> creditLegAction;
+
+    private final TransactionCompleteAction transactionCompleteAction;
 
 
-    @Bean
-    public StateMachineConfig<ProcessState, ProcessEvent, TransactionContext> paymentStateMachineConfig() {
-        return StateMachineBuilder.<ProcessState, ProcessEvent, TransactionContext>newBuilder()
+    @Bean("asyncPaymentStateMachineConfig")
+    public StateMachineConfig<ProcessState, ProcessEvent, AsyncTransactionContext> paymentStateMachineConfig() {
+        return StateMachineBuilder.<ProcessState, ProcessEvent, AsyncTransactionContext>newBuilder()
                 .states(EnumSet.allOf(ProcessState.class))
                 .initial(ProcessState.NEW)
                 .end(ProcessState.PROCESS_FAILED)
@@ -88,9 +97,9 @@ public class TransactionStateMachineConfig {
             .build();
     }
 
-    @Bean
-    public StateMachineFactory<ProcessState, ProcessEvent, TransactionContext> transactionFsmFactory(
-            @Qualifier("paymentStateMachineConfig") StateMachineConfig<ProcessState, ProcessEvent, TransactionContext> config) {
+    @Bean("asyncTransactionFsmFactory")
+    public StateMachineFactory<ProcessState, ProcessEvent, AsyncTransactionContext> transactionFsmFactory(
+            @Qualifier("asyncPaymentStateMachineConfig") StateMachineConfig<ProcessState, ProcessEvent, AsyncTransactionContext> config) {
         return new StateMachineFactory<>(config);
     }
 }

@@ -2,13 +2,9 @@ package dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.act
 
 import dexter.banking.booktransfers.core.domain.model.results.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.port.LimitPort;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.mapper.TransactionRequestMapper;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.mapper.TransactionStatusMapper;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessEvent;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.TransactionContext;
-import dexter.banking.model.LimitManagementRequest;
-import dexter.banking.model.LimitManagementReversalRequest;
 import dexter.banking.statemachine.contract.SagaAction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,16 +19,13 @@ import java.util.Optional;
 public class SyncLimitEarmarkAction implements SagaAction<ProcessState, ProcessEvent, TransactionContext> {
 
     private final LimitPort limitPort;
-    private final TransactionRequestMapper transactionRequestMapper;
-    private final TransactionStatusMapper transactionStatusMapper;
 
     @Override
     public Optional<ProcessEvent> apply(TransactionContext context, ProcessEvent event) {
         var payment = context.getPayment();
-        LimitManagementRequest request = transactionRequestMapper.toLimitManagementRequest(payment.getId(), context.getRequest());
 
         try {
-            LimitEarmarkResult result = limitPort.earmarkLimit(request);
+            LimitEarmarkResult result = limitPort.earmarkLimit(context.getRequest());
             payment.recordLimitEarmark(result, Collections.emptyMap());
 
             if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL) {
@@ -50,10 +43,9 @@ public class SyncLimitEarmarkAction implements SagaAction<ProcessState, ProcessE
     @Override
     public Optional<ProcessEvent> compensate(TransactionContext context, ProcessEvent event) {
         var payment = context.getPayment();
-        LimitManagementReversalRequest request = transactionStatusMapper.toLimitEarmarkReversalRequest(payment.getId(), payment);
 
         try {
-            LimitEarmarkResult result = limitPort.reverseLimitEarmark(payment.getLimitEarmarkResult().limitId(), request);
+            LimitEarmarkResult result = limitPort.reverseLimitEarmark(payment);
             payment.recordLimitReversal(result, Collections.emptyMap());
             if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL) {
                 return Optional.of(ProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED);

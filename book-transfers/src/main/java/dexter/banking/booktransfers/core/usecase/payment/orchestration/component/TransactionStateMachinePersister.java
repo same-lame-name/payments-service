@@ -3,9 +3,8 @@ package dexter.banking.booktransfers.core.usecase.payment.orchestration.componen
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dexter.banking.booktransfers.core.port.OrchestrationContextRepositoryPort;
-import dexter.banking.booktransfers.core.port.PaymentRepositoryPort;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.AsyncTransactionContext;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.TransactionContext;
 import dexter.banking.statemachine.contract.StateMachinePersister;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,16 +17,16 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class TransactionStateMachinePersister implements StateMachinePersister<ProcessState, TransactionContext> {
+public class TransactionStateMachinePersister implements StateMachinePersister<ProcessState, AsyncTransactionContext> {
 
     private final OrchestrationContextRepositoryPort contextRepository;
     private final ObjectMapper objectMapper;
 
     @Override
-    public void saveContext(TransactionContext context) {
+    public void saveContext(AsyncTransactionContext context) {
         try {
             byte[] contextBytes = objectMapper.writeValueAsBytes(context);
-            contextRepository.save(UUID.fromString(context.getId()), contextBytes);
+            contextRepository.save(context.getPaymentId(), contextBytes);
             log.debug("Successfully persisted context for transactionId: {}", context.getId());
         } catch (JsonProcessingException e) {
             log.error("FATAL: Failed to serialize context for transactionId: {}", context.getId(), e);
@@ -36,17 +35,14 @@ public class TransactionStateMachinePersister implements StateMachinePersister<P
     }
 
     @Override
-    public Optional<TransactionContext> findContextById(String id) {
-        // 1. Find the raw context data using the technical repository port.
+    public Optional<AsyncTransactionContext> findContextById(String id) {
         return contextRepository.findById(UUID.fromString(id))
             .flatMap(contextBytes -> {
-                // 2. If found, deserialize it back into a full TransactionContext object.
                 try {
                     log.debug("Found context data for transactionId: {}. Deserializing...", id);
-                    return Optional.of(objectMapper.readValue(contextBytes, TransactionContext.class));
+                    return Optional.of(objectMapper.readValue(contextBytes, AsyncTransactionContext.class));
                 } catch (IOException e) {
                     log.error("FATAL: Failed to deserialize context for transactionId: {}", id, e);
-                    // Return empty if deserialization fails, preventing a corrupt state from spreading.
                     return Optional.empty();
                 }
             });

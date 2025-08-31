@@ -1,12 +1,9 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.messaging.transaction.jms;
 
+import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.port.TransactionLegPort;
-import dexter.banking.model.CreditCardBankingRequest;
-import dexter.banking.model.DepositBankingRequest;
-import dexter.banking.model.DepositBankingReversalRequest;
+import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.model.JmsConstants;
-import dexter.banking.model.LimitManagementRequest;
-import dexter.banking.model.LimitManagementReversalRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Component;
@@ -21,30 +18,35 @@ import org.springframework.stereotype.Component;
 public class JmsTransactionLegAdapter implements TransactionLegPort {
 
     private final JmsTemplate jmsTemplate;
+    private final JmsAdapterMapper mapper;
 
     @Override
-    public void sendCreditCardRequest(CreditCardBankingRequest request) {
+    public void sendCreditCardRequest(PaymentCommand command) {
+        var request = mapper.toCreditCardBankingRequest(command);
         jmsTemplate.convertAndSend(JmsConstants.CREDIT_CARD_BANKING_REQUEST, request);
     }
 
     @Override
-    public void sendDepositRequest(DepositBankingRequest request) {
+    public void sendDepositRequest(PaymentCommand command) {
+        var request = mapper.toDepositBankingRequest(command);
         jmsTemplate.convertAndSend(JmsConstants.DEPOSIT_BANKING_REQUEST, request);
     }
 
     @Override
-    public void sendLimitManagementRequest(LimitManagementRequest request) {
+    public void sendLimitManagementRequest(PaymentCommand command) {
+        var request = mapper.toLimitManagementRequest(command);
         jmsTemplate.convertAndSend(JmsConstants.LIMIT_MANAGEMENT_REQUEST, request);
     }
 
     @Override
-    public void sendDepositReversalRequest(DepositBankingReversalRequest request) {
+    public void sendDepositReversalRequest(Payment payment) {
+        var request = mapper.toDepositReversalRequest(payment);
         jmsTemplate.convertAndSend(JmsConstants.DEPOSIT_BANKING_REVERSAL_REQUEST, request);
     }
 
     @Override
-    public void sendLimitReversalRequest(LimitManagementReversalRequest request) {
+    public void sendLimitReversalRequest(Payment payment) {
+        var request = mapper.toLimitEarmarkReversalRequest(payment);
         jmsTemplate.convertAndSend(JmsConstants.LIMIT_MANAGEMENT_REVERSAL_REQUEST, request);
     }
 }
-

@@ -3,12 +3,12 @@ import dexter.banking.booktransfers.core.domain.model.ApiVersion;
 import dexter.banking.booktransfers.core.domain.model.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.model.PaymentResult;
 import dexter.banking.commandbus.IdempotentCommand;
-import lombok.Builder;
-import lombok.Value;
+import lombok.*;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import java.util.UUID;
+
 @Value
 @Builder
 public class PaymentCommand implements IdempotentCommand<PaymentResult> {

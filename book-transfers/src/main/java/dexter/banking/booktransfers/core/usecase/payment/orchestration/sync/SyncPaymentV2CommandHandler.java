@@ -17,7 +17,6 @@ import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.Tra
 import dexter.banking.commandbus.CommandHandler;
 import dexter.banking.statemachine.StateMachineFactory;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 

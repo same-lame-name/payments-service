@@ -1,119 +1,111 @@
-Architectural Implementation Specification: Foundational Refactoring (Retry)
+The Grand Design: Moving Orchestration to the Core
 
-1.0 Objective
+The objective is to refactor the V2 orchestration logic into first-class command handlers within the application core. This will eliminate unnecessary indirection and make the orchestrators the true owners of the payment processing use case.
 
-To execute a complete and robust foundational refactoring of the book-transfers-service. This includes:
+Here is the complete plan, with all the nuts and bolts:
 
-    Strictly separating the Process Model (for the State Machine) from the Domain Model (for the Aggregate Root).
+1. Core Application Layer (core/usecase)
 
-    Implementing a universal, generic, and composable policy framework for all business rule enforcement.
+    Delete:
 
-    Establishing the Application Layer Command Handler as the sole owner of the atomic Unit of Work (persistence and event publication).
+        SubmitPaymentV2CommandHandler.java: This broker is no longer needed.
 
-    Implementing a durable, context-aware mechanism for Aggregate Root rehydration that preserves the integrity of its governing BusinessPolicy.
+        The entire core/usecase/payment/event package (Record...Command and Record...CommandHandler classes): This logic will be absorbed by the new orchestrator handlers.
 
-2.0 Governing Architectural Principles (Non-Negotiable)
+        core/port/TransactionOrchestratorPort.java: The orchestrators will be handlers, not port implementations.
 
-Any deviation from these principles constitutes a failure.
+        core/port/AsyncOrchestrationEventPort.java: Obsoleted by direct method calls to the async handler.
 
-    2.1: The Dependency Rule: All dependencies must flow from outer layers (Infrastructure) to inner layers (Application, Domain). The Core (Application, Domain) must have zero knowledge of the Infrastructure.
+    Create:
 
-    2.2: Aggregate as Domain Guardian: The Aggregate Root is the sole guardian of its state and consistency. Its state transitions are governed exclusively by an immutable BusinessPolicy injected at creation. It exposes rich business methods, not anemic setters.
+        core/usecase/payment/orchestration/AsyncPaymentV2CommandHandler.java: This new class will:
 
-    2.3: Principle of Contextual Integrity: An Aggregate Root's state and its governing BusinessPolicy are inseparable.
+            Implement CommandHandler<PaymentCommand, PaymentResult>.
 
-    2.4: Principle of Persisted Context: To ensure contextual integrity, the identifier for the Aggregate's "journey" (which determines its policy composition) must be persisted as part of the Aggregate's state.
+            Use its matches() method to claim commands for V2 and ASYNC mode.
 
-    2.5: Principle of Rehydration Orchestration: The Application Layer (Command Handlers) is solely responsible for orchestrating the rehydration of an Aggregate Root. This involves fetching the raw state (Memento), determining context (journeyName), acquiring the correct policy, and then constructing the live domain object.
+            Contain the async state machine logic.
 
-    2.6: Unit of Work Atomicity: The Application Layer Command Handler is the exclusive owner of the transactional unit of work. This includes rehydrating/creating an aggregate, executing a business method on it, saving the aggregate via its repository, and publishing the resulting domain events.
+            Be injected with PaymentRepositoryPort, PaymentPolicyFactory, etc.
 
-    2.7: Principle of Complete Refactoring: The refactoring is not complete until all components that interact with the refactored model (e.g., SubmitPaymentV1CommandHandler) are updated to be fully compliant with the new architecture.
+            Expose public methods like processLimitEarmarkResult(..) for JMS listeners to call. These methods will contain the full rehydration and process continuation logic.
 
-3.0 Component Specification
+        core/usecase/payment/orchestration/SyncPaymentV2CommandHandler.java: This new class will:
 
-The following components will be created or modified as specified.
+            Implement CommandHandler<PaymentCommand, PaymentResult>.
 
-3.1: State Model Decoupling
+            Use its matches() method to claim commands for V2 and SYNC mode.
 
-    ProcessState.java (New, Infrastructure): An enum exclusively for the State Machine, representing workflow steps. Values: NEW, EARMARKING_LIMIT, DEBITING_FUNDS, CREDITING_FUNDS, REVERSING_LIMIT_EARMARK, REVERSING_DEBIT, PROCESS_COMPLETED, PROCESS_FAILED, REMEDIATION_REQUIRED.
+            Contain the sync state machine logic.
 
-    PaymentState.java (Modified, Domain): Renamed from TransactionState. Represents the business status of the Payment aggregate. Values: NEW, PENDING_COMPLIANCE, LIMIT_RESERVED, FUNDS_DEBITED, SETTLED, FAILED, REMEDIATION_NEEDED.
+    Move & Relocate:
 
-3.2: Universal Policy Framework
+        The entire infrastructure/adapter/out/orchestration package will be moved into core/usecase/payment/orchestration.
 
-    BusinessPolicy.java (New, Domain): The generic, universal interface for all business rule evaluation.
+        Its contents will be renamed and refactored to remove the "adapter" nomenclature (e.g., TransactionOrchestratorAdapter becomes part of AsyncPaymentV2CommandHandler).
 
-    PolicyEvaluationContext.java (New, Domain): The immutable record used to pass context to policies.
+2. Infrastructure Layer (infrastructure)
 
-    BusinessAction.java (New, Domain): The type-safe enum representing the business action being attempted.
+    Refactor JMS Listeners (infrastructure/adapter/in/messaging):
 
-    CompositeBusinessPolicy.java (New, Infrastructure): The concrete implementation of the Composite Pattern for policies.
+        All five listeners (CreditBankingListener, etc.) will be simplified.
 
-    StateTransitionPolicy.java (New, Infrastructure): A concrete BusinessPolicy that enforces the fundamental state transition graph for a Payment.
+        They will no longer create and dispatch Record...Commands.
 
-    CompliancePolicy.java (New, Infrastructure): A concrete BusinessPolicy for compliance checks.
+        Instead, they will be injected with the AsyncPaymentV2CommandHandler and will make direct method calls (e.g., orchestrator.processCreditLegResult(...)).
 
-3.3: Core Domain Layer (core.domain)
+The MVP (Minimum Viable Product) Approach
 
-    Payment.java:
+As you suggested, we will not implement this in a single "big bang." We will break it down into two distinct, verifiable MVPs. We will iterate on MVP 1 until it is perfect before beginning MVP 2.
 
-        Will have a private final BusinessPolicy policy field.
+MVP 1: Refactor the Synchronous Flow
 
-        The startNew() factory method will accept a BusinessPolicy and a journeyName.
+    Goal: To move the entire synchronous orchestration into the core and make it a fully functional, self-contained command handler.
 
-        The rehydrate() method will accept a PaymentMemento and a BusinessPolicy.
+    Why first?: It is the simpler of the two flows as it does not involve JMS listeners or the complexities of asynchronous state rehydration, making it an ideal first step.
 
-        Will contain rich business methods (e.g., recordDebitSuccess()) that create a PolicyEvaluationContext and call this.policy.evaluate(...) before mutating state.
+    Key Steps for MVP 1:
 
-    Payment.PaymentMemento (record):
+        Create the new core/usecase/payment/orchestration structure.
 
-        A String journeyName field must be added.
+        Move the relevant sync components (SyncStateMachine..., sync actions) into this new structure.
 
-3.4: Core Application Layer (core.usecase, core.port)
+        Create the new SyncPaymentV2CommandHandler, integrating the moved logic.
 
-    PaymentRepositoryPort.java:
+        Delete the old SubmitPaymentV2CommandHandler.
 
-        The Optional<Payment> findById(UUID) method is removed.
+        Ensure the command bus correctly routes SYNC mode commands to this new handler.
 
-        A new method, Optional<Payment.PaymentMemento> findMementoById(UUID transactionId), is added.
+MVP 2: Refactor the Asynchronous Flow
 
-    PaymentPolicyFactory.java (New Port):
+    Goal: To move the asynchronous orchestration into the core, eliminate the Record...Command subsystem, and refactor the JMS listeners.
 
-        Defines the contract BusinessPolicy getPolicyForJourney(String journeyName).
+    Why second?: This builds upon the structural changes of MVP 1 and tackles the more complex logic of async events and state management.
 
-    SubmitPaymentV1CommandHandler.java (Refactored):
 
-        Must be fully refactored to comply with the new architecture, including using the policy factory and calling rich methods on the Payment aggregate.
+com.fasterxml.jackson.databind.exc.InvalidDefinitionException: Cannot construct instance of `dexter.banking.booktransfers.core.usecase.payment.PaymentCommand` (no Creators, like default constructor, exist): cannot deserialize from Object value (no delegate- or property-based Creator)
+ at [Source: (byte[])"{"paymentId":"73d468d8-9dac-4f2a-81d0-239c5335fefb","request":{"idempotencyKey":"73d468d8-9dac-4f2a-81d0-239c5335fefb","transactionReference":"REF-V2-ASYNC-1756622046","limitType":"Daily","accountNumber":"1312134","cardNumber":"123111","webhookUrl":"","realtime":"","modeOfTransfer":"ASYNC","version":"V2","identifier":"PAYMENT_SUBMIT_V2_ASYNC"},"currentState":"EARMARKING_LIMIT","id":"73d468d8-9dac-4f2a-81d0-239c5335fefb"}"; line: 1, column: 64] (through reference chain: dexter.banking.booktransfers.core.usecase.payment.orchestration.model.AsyncTransactionContext["request"])
 
-    New Internal Command Handlers (e.g., RecordDebitLegResultCommandHandler):
 
-        Must be created for each distinct business operation.
+Objective for next iteration:
 
-        Must implement the full rehydration orchestration logic (fetch memento -> get journey -> get policy -> rehydrate AR).
 
-        Must own the full atomic Unit of Work.
+Right now our TransactionContexts contain the PaymentCommand, which is not deserializable.
 
-3.5: Infrastructure Layer (infrastructure)
 
-    TransactionDocument.java: A private String journeyName field must be added.
+I don't want our TransactionContexts to contain directly injected commands or repsonse or anything, TransactionContext should have seriazilable data fields for all the fields (required or not) from the current injected required fields. And a mapper to create TransactionContexts and get the original objects back from it.
 
-    PersistenceMapper.java: The toDomain method is removed and replaced with a toMemento method.
 
-    MongoPaymentRepository.java: Will implement the new findMementoById port method. save/update methods will persist the journeyName.
+For instance I want my AysncTransactionContext to have all the bare fields from PaymentCommand flattened inside the AsyncTransactionContext instead of having a reference object of the same, a mapper can do this task, and we will have our independent implementation of context, not relying on the serialiazability of the PaymentCommand and other items. Similarly for TransactionContext
 
-    YamlPaymentPolicyFactory.java (New): The concrete implementation of PaymentPolicyFactory. It reads the payment-journeys configuration from YAML, retrieves policy beans from the Spring Context, and assembles the CompositeBusinessPolicy.
 
-    TransactionStateMachinePersister.java (Refactored): Its implementation will be replaced to delegate only to the lean OrchestrationContextRepositoryPort for saving/loading the TransactionContext. It will no longer have any knowledge of the domain repository.
+@Getter
 
-    All State Machine Actions (Refactored): Will be simplified to be single-line command dispatchers.
+public class AsyncTransactionContext implements StateMachineContext<ProcessState> {
 
-    application.yml (Modified):
 
-        The service-config.commands section will be updated, with each command mapping to a journey.
+    private final UUID paymentId;
 
-        A new service-config.payment-journeys section will be added to define the composition of policies for each journey.
+    private final PaymentCommand request;
 
-4.0 Required Artifacts for Execution
-
-To execute this specification, provide the following five artifacts in their entirety: blueprint.txt, bt_structure.txt, blueprint_cd.txt, cd_structure.txt, book_transfers_service_demo.postman_collection.json.
+    private ProcessState currentState;

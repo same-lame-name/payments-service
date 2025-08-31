@@ -1,7 +1,9 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http.limit.feign;
 
+import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.domain.model.results.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.port.LimitPort;
+import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.booktransfers.infrastructure.adapter.out.http.mapper.HttpAdapterMapper;
 import dexter.banking.model.ApiConstants;
 import dexter.banking.model.LimitManagementRequest;
@@ -16,7 +18,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-
 import java.util.UUID;
 
 @Component
@@ -25,7 +26,6 @@ public class LimitAdapter implements LimitPort {
 
     private final RawLimitClient client;
     private final HttpAdapterMapper mapper;
-
     @Autowired
     public LimitAdapter(RawLimitClient client, HttpAdapterMapper mapper) {
         this.client = client;
@@ -33,14 +33,16 @@ public class LimitAdapter implements LimitPort {
     }
 
     @Override
-    public LimitEarmarkResult earmarkLimit(LimitManagementRequest request) {
+    public LimitEarmarkResult earmarkLimit(PaymentCommand command) {
+        LimitManagementRequest request = mapper.toLimitManagementRequest(command);
         LimitManagementResponse responseDto = client.earmarkLimit(request);
         return mapper.toDomain(responseDto);
     }
 
     @Override
-    public LimitEarmarkResult reverseLimitEarmark(UUID limitEarmarkId, LimitManagementReversalRequest request) {
-        LimitManagementResponse responseDto = client.reverseLimitEarmark(limitEarmarkId, request);
+    public LimitEarmarkResult reverseLimitEarmark(Payment payment) {
+        LimitManagementReversalRequest request = mapper.toLimitEarmarkReversalRequest(payment);
+        LimitManagementResponse responseDto = client.reverseLimitEarmark(payment.getLimitEarmarkResult().limitId(), request);
         return mapper.toReversalDomain(responseDto);
     }
 
@@ -49,11 +51,10 @@ public class LimitAdapter implements LimitPort {
 
         @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, value = ApiConstants.API_LIMIT_MANAGEMENT)
         LimitManagementResponse earmarkLimit(@RequestBody LimitManagementRequest limitManagementRequest);
-
         @PutMapping(
                 produces = MediaType.APPLICATION_JSON_VALUE,
                 value = ApiConstants.API_LIMIT_MANAGEMENT + "/{limitEarmarkId}/cancelled")
         LimitManagementResponse reverseLimitEarmark(@PathVariable("limitEarmarkId") UUID limitEarmarkId,
-                                                    @RequestBody LimitManagementReversalRequest limitManagementReversalRequest);
+                                                      @RequestBody LimitManagementReversalRequest limitManagementReversalRequest);
     }
 }

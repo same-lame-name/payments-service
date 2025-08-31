@@ -8,15 +8,8 @@ import dexter.banking.booktransfers.core.domain.model.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.model.results.LimitEarmarkResult;
-import dexter.banking.booktransfers.core.port.ConfigurationPort;
-import dexter.banking.booktransfers.core.port.CreditCardPort;
-import dexter.banking.booktransfers.core.port.DepositPort;
-import dexter.banking.booktransfers.core.port.EventDispatcherPort;
-import dexter.banking.booktransfers.core.port.LimitPort;
-import dexter.banking.booktransfers.core.port.PaymentPolicyFactory;
-import dexter.banking.booktransfers.core.port.PaymentRepositoryPort;
+import dexter.banking.booktransfers.core.port.*;
 import dexter.banking.commandbus.CommandHandler;
-import dexter.banking.model.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -54,11 +47,9 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
         log.info("▶️ [V1] Starting procedural transaction for Command: {}", command.getTransactionReference());
-
         String journeyName = configurationPort.findForCommand(command.getIdentifier())
                 .map(CommandConfiguration::journeyName)
                 .orElseThrow(() -> new IllegalStateException("No journey configured for command: " + command.getIdentifier()));
-
         String reasonForFailure = "";
 
         BusinessPolicy policy = policyFactory.getPolicyForJourney(journeyName);
@@ -75,7 +66,6 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
 
             // Step 3: Credit Leg
             performCreditLeg(command, payment);
-
         } catch (Exception e) {
             log.error("❌ [V1] Procedural transaction FAILED for TXN_ID: {}. Initiating SAGA compensation...",
                     payment.getId(), e);
@@ -99,10 +89,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performCreditLeg(PaymentCommand command, Payment payment) {
-        CreditLegResult creditResult = creditCardPort.submitCreditCardPayment(
-                new CreditCardBankingRequest(payment.getId(), command.getCardNumber())
-        );
-
+        CreditLegResult creditResult = creditCardPort.submitCreditCardPayment(command);
         payment.recordCredit(creditResult, buildMetadata(command, payment));
         paymentRepository.update(payment);
 
@@ -113,10 +100,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performDebitLeg(PaymentCommand command, Payment payment) {
-        DebitLegResult debitResult = depositPort.submitDeposit(
-                new DepositBankingRequest(payment.getId(), command.getAccountNumber())
-        );
-
+        DebitLegResult debitResult = depositPort.submitDeposit(command);
         payment.recordDebit(debitResult, buildMetadata(command, payment));
         paymentRepository.update(payment);
 
@@ -126,10 +110,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performLimitEarmark(PaymentCommand command, Payment payment) {
-        LimitEarmarkResult limitResult = limitPort.earmarkLimit(
-                new LimitManagementRequest(payment.getId(), command.getLimitType())
-        );
-
+        LimitEarmarkResult limitResult = limitPort.earmarkLimit(command);
         payment.recordLimitEarmark(limitResult, buildMetadata(command, payment));
         paymentRepository.update(payment);
 
@@ -156,8 +137,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private void compensateDebitLeg(Payment payment, PaymentCommand command) {
         log.warn("  [COMPENSATION] Reversing Debit Leg for TXN_ID: {}...", payment.getId());
         try {
-            var reversalRequest = new DepositBankingReversalRequest(payment.getId(), payment.getDebitLegResult().depositId());
-            DebitLegResult reversalResult = depositPort.submitDepositReversal(payment.getDebitLegResult().depositId(), reversalRequest);
+            DebitLegResult reversalResult = depositPort.submitDepositReversal(payment);
 
             payment.recordDebitReversal(reversalResult, buildMetadata(command, payment));
             paymentRepository.update(payment);
@@ -179,8 +159,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private void compensateLimitEarmark(Payment payment, PaymentCommand command) {
         log.warn("  [COMPENSATION] Reversing Limit Earmark for TXN_ID: {}...", payment.getId());
         try {
-            var reversalRequest = new LimitManagementReversalRequest(payment.getId(), payment.getLimitEarmarkResult().limitId());
-            LimitEarmarkResult reversalResult = limitPort.reverseLimitEarmark(payment.getLimitEarmarkResult().limitId(), reversalRequest);
+            LimitEarmarkResult reversalResult = limitPort.reverseLimitEarmark(payment);
             payment.recordLimitReversal(reversalResult, buildMetadata(command, payment));
         } catch (Exception e) {
             log.error("  [COMPENSATION] FATAL: Reversing Limit Earmark FAILED. Manual intervention required.", e);

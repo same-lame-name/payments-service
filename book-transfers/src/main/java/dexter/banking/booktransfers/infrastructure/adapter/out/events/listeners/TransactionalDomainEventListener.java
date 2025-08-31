@@ -54,9 +54,11 @@ public class TransactionalDomainEventListener {
 
     private void notifyWebhook(UUID aggregateId, PaymentState paymentState, Map<String, Object> metadata) {
         String webhookUrl = (String) metadata.get("webhookUrl");
-        log.info("Notifying webhook {} for transaction {} with final state {}", webhookUrl, aggregateId, paymentState);
         if (webhookUrl != null && !webhookUrl.isBlank()) {
+            log.info("Notifying webhook {} for transaction {} with final state {}", webhookUrl, aggregateId, paymentState);
             webhookPort.notifyTransactionComplete(webhookUrl, paymentState);
+        } else {
+            log.info("No webhook URL configured for transaction {}. Skipping notification.", aggregateId);
         }
     }
 }

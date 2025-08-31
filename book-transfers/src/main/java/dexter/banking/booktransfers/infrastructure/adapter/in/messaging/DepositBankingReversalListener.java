@@ -1,8 +1,7 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.usecase.payment.event.RecordDebitReversalResultCommand;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.AsyncPaymentV2CommandHandler;
 import dexter.banking.booktransfers.infrastructure.adapter.in.messaging.mapper.MessagingAdapterMapper;
-import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.DepositBankingResponse;
 import dexter.banking.model.JmsConstants;
 import lombok.RequiredArgsConstructor;
@@ -15,14 +14,13 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class DepositBankingReversalListener {
 
-    private final CommandBus commandBus;
+    private final AsyncPaymentV2CommandHandler orchestrator;
     private final MessagingAdapterMapper mapper;
 
     @JmsListener(destination = JmsConstants.DEPOSIT_BANKING_REVERSAL_RESPONSE)
     public void completeDepositBankingReversal(DepositBankingResponse result) {
-        log.debug("Received Deposit banking reversal DTO for txnId: {}. Translating to command.", result.getTransactionId());
+        log.debug("Received Deposit banking reversal DTO for txnId: {}. Delegating to orchestrator.", result.getTransactionId());
         var domainResult = mapper.toReversalDomain(result);
-        var command = new RecordDebitReversalResultCommand(result.getTransactionId(), domainResult);
-        command.execute(commandBus);
+        orchestrator.processDebitReversalResult(domainResult, result.getTransactionId());
     }
 }

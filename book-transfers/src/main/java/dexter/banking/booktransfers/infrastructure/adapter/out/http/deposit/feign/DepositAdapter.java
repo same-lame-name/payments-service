@@ -1,7 +1,9 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http.deposit.feign;
 
+import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
 import dexter.banking.booktransfers.core.port.DepositPort;
+import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.booktransfers.infrastructure.adapter.out.http.mapper.HttpAdapterMapper;
 import dexter.banking.model.ApiConstants;
 import dexter.banking.model.DepositBankingRequest;
@@ -18,14 +20,12 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.UUID;
-
 @Component
 @Primary
 public class DepositAdapter implements DepositPort {
 
     private final RawDepositClient client;
     private final HttpAdapterMapper mapper;
-
     @Autowired
     public DepositAdapter(RawDepositClient client, HttpAdapterMapper mapper) {
         this.client = client;
@@ -33,14 +33,16 @@ public class DepositAdapter implements DepositPort {
     }
 
     @Override
-    public DebitLegResult submitDeposit(DepositBankingRequest request) {
+    public DebitLegResult submitDeposit(PaymentCommand command) {
+        DepositBankingRequest request = mapper.toDepositBankingRequest(command);
         DepositBankingResponse responseDto = client.submitDeposit(request);
         return mapper.toDomain(responseDto);
     }
 
     @Override
-    public DebitLegResult submitDepositReversal(UUID depositRequestId, DepositBankingReversalRequest request) {
-        DepositBankingResponse responseDto = client.submitDepositReversal(depositRequestId, request);
+    public DebitLegResult submitDepositReversal(Payment payment) {
+        DepositBankingReversalRequest request = mapper.toDepositReversalRequest(payment);
+        DepositBankingResponse responseDto = client.submitDepositReversal(payment.getDebitLegResult().depositId(), request);
         return mapper.toReversalDomain(responseDto);
     }
 
@@ -50,7 +52,6 @@ public class DepositAdapter implements DepositPort {
 
         @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE, value = ApiConstants.API_DEPOSIT_BANKING)
         DepositBankingResponse submitDeposit(@RequestBody DepositBankingRequest reservationRequest);
-
         @PutMapping(
                 produces = MediaType.APPLICATION_JSON_VALUE,
                 value = ApiConstants.API_DEPOSIT_BANKING + "/{depositRequestId}/cancelled")

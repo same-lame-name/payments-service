@@ -2,11 +2,9 @@ package dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.act
 
 import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
 import dexter.banking.booktransfers.core.port.CreditCardPort;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.mapper.TransactionRequestMapper;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessEvent;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.TransactionContext;
-import dexter.banking.model.CreditCardBankingRequest;
 import dexter.banking.statemachine.contract.SagaAction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,15 +19,13 @@ import java.util.Optional;
 public class SyncCreditLegAction implements SagaAction<ProcessState, ProcessEvent, TransactionContext> {
 
     private final CreditCardPort creditCardPort;
-    private final TransactionRequestMapper transactionRequestMapper;
 
     @Override
     public Optional<ProcessEvent> apply(TransactionContext context, ProcessEvent event) {
         var payment = context.getPayment();
-        CreditCardBankingRequest request = transactionRequestMapper.toCreditCardBankingRequest(payment.getId(), context.getRequest());
 
         try {
-            CreditLegResult result = creditCardPort.submitCreditCardPayment(request);
+            CreditLegResult result = creditCardPort.submitCreditCardPayment(context.getRequest());
             payment.recordCredit(result, Collections.emptyMap());
             if (result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL) {
                 return Optional.of(ProcessEvent.CREDIT_LEG_SUCCEEDED);
