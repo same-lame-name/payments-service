@@ -84,7 +84,7 @@ MVP 2: Refactor the Asynchronous Flow
 
 
 com.fasterxml.jackson.databind.exc.InvalidDefinitionException: Cannot construct instance of `dexter.banking.booktransfers.core.usecase.payment.PaymentCommand` (no Creators, like default constructor, exist): cannot deserialize from Object value (no delegate- or property-based Creator)
- at [Source: (byte[])"{"paymentId":"73d468d8-9dac-4f2a-81d0-239c5335fefb","request":{"idempotencyKey":"73d468d8-9dac-4f2a-81d0-239c5335fefb","transactionReference":"REF-V2-ASYNC-1756622046","limitType":"Daily","accountNumber":"1312134","cardNumber":"123111","webhookUrl":"","realtime":"","modeOfTransfer":"ASYNC","version":"V2","identifier":"PAYMENT_SUBMIT_V2_ASYNC"},"currentState":"EARMARKING_LIMIT","id":"73d468d8-9dac-4f2a-81d0-239c5335fefb"}"; line: 1, column: 64] (through reference chain: dexter.banking.booktransfers.core.usecase.payment.orchestration.model.AsyncTransactionContext["request"])
+ at [Source: (byte[])"{"paymentId":"73d468d8-9dac-4f2a-81d0-239c5335fefb","request":{"idempotencyKey":"73d468d8-9dac-4f2a-81d0-239c5335fefb","transactionReference":"REF-V2-ASYNC-1756622046","limitType":"Daily","accountNumber":"1312134","cardNumber":"123111","webhookUrl":"","realtime":"","modeOfTransfer":"ASYNC","version":"V2","identifier":"PAYMENT_SUBMIT_V2_ASYNC"},"currentState":"EARMARKING_LIMIT","id":"73d468d8-9dac-4f2a-81d0-239c5335fefb"}"; line: 1, column: 64] (through reference chain: dexter.banking.booktransfers.core.usecase.payment.orchestration.async.component.AsyncTransactionContext["request"])
 
 
 Objective for next iteration:

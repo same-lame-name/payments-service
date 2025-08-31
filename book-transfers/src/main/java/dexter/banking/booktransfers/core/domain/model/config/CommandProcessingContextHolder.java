@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.core.middleware.context;
+package dexter.banking.booktransfers.core.domain.model.config;
 
 import org.springframework.core.NamedThreadLocal;
 

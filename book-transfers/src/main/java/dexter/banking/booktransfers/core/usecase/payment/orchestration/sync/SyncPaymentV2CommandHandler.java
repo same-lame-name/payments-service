@@ -1,14 +1,14 @@
 package dexter.banking.booktransfers.core.usecase.payment.orchestration.sync;
-
 import dexter.banking.booktransfers.core.domain.model.ApiVersion;
 import dexter.banking.booktransfers.core.domain.model.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.domain.model.PaymentResult;
-import dexter.banking.booktransfers.core.domain.model.config.CommandConfiguration;
+import dexter.banking.booktransfers.core.domain.model.config.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.model.policy.BusinessPolicy;
-import dexter.banking.booktransfers.core.port.ConfigurationPort;
+import dexter.banking.booktransfers.core.domain.model.config.CommandProcessingContext;
+import dexter.banking.booktransfers.core.domain.model.config.CommandProcessingContextHolder;
+import dexter.banking.booktransfers.core.port.BusinessPolicyFactory;
 import dexter.banking.booktransfers.core.port.EventDispatcherPort;
-import dexter.banking.booktransfers.core.port.PaymentPolicyFactory;
 import dexter.banking.booktransfers.core.port.PaymentRepositoryPort;
 import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessEvent;
@@ -27,8 +27,7 @@ public class SyncPaymentV2CommandHandler implements CommandHandler<PaymentComman
     private final StateMachineFactory<ProcessState, ProcessEvent, TransactionContext> stateMachineFactory;
     private final PaymentRepositoryPort paymentRepository;
     private final EventDispatcherPort eventDispatcher;
-    private final PaymentPolicyFactory policyFactory;
-    private final ConfigurationPort configurationPort;
+    private final BusinessPolicyFactory policyFactory;
 
     @Override
     public boolean matches(PaymentCommand command) {
@@ -38,12 +37,14 @@ public class SyncPaymentV2CommandHandler implements CommandHandler<PaymentComman
     @Override
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
-        String journeyName = configurationPort.findForCommand(command.getIdentifier())
-                .map(CommandConfiguration::journeyName)
-                .orElseThrow(() -> new IllegalStateException("No journey configured for command: " + command.getIdentifier()));
+        JourneySpecification spec = CommandProcessingContextHolder.getContext()
+                .map(CommandProcessingContext::getJourneySpecification)
+                .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context"));
 
-        BusinessPolicy policy = policyFactory.getPolicyForJourney(journeyName);
-        Payment payment = Payment.startNew(command, policy, journeyName);
+        BusinessPolicy policy = policyFactory.create(spec);
+
+        String journeyIdentifier = command.getIdentifier();
+        Payment payment = Payment.startNew(command, policy, journeyIdentifier);
 
         // For the sync machine, the live aggregate is passed in the context and mutated in memory.
         var context = new TransactionContext(payment, command);

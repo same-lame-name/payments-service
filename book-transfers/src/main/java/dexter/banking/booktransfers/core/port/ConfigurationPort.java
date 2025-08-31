@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.core.port;
 
-import dexter.banking.booktransfers.core.domain.model.config.CommandConfiguration;
+import dexter.banking.booktransfers.core.domain.model.config.JourneySpecification;
 
 import java.util.Optional;
 
@@ -11,9 +11,9 @@ import java.util.Optional;
  */
 public interface ConfigurationPort {
     /**
-     * Finds the command-specific configuration.
-     * @param commandIdentifier The unique identifier of the command (e.g., "PAYMENT_SUBMIT_V1").
+     * Finds the journey-specific configuration.
+     * @param journeyIdentifier The unique identifier of the journey (e.g., "PAYMENT_SUBMIT_V1").
      * @return An Optional containing the pure, domain-aligned configuration if found.
      */
-    Optional<CommandConfiguration> findForCommand(String commandIdentifier);
+    Optional<JourneySpecification> findForJourney(String journeyIdentifier);
 }

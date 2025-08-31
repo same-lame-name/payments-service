@@ -17,49 +17,18 @@ spring:
       fail-on-unknown-properties: false
 
 
-# --- Service Configuration for Commands and Business Process Journeys ---
+# --- Unified Service Configuration for Business Process Journeys ---
 service-config:
-  # Defines behavior for specific commands, like idempotency and which business journey to use.
-  commands:
+  journeys:
     PAYMENT_SUBMIT_V1:
-      idempotencyApplicable: true
-      journeyName: "V1_PROCEDURAL_PAYMENT"
+      idempotencyEnabled: true
+      policies:
+        - "stateTransitionPolicy"
     PAYMENT_SUBMIT_V2_SYNC:
-      idempotencyApplicable: true
-      journeyName: "V2_SYNC_PAYMENT"
+      idempotencyEnabled: true
+      policies:
+        - "stateTransitionPolicy"
     PAYMENT_SUBMIT_V2_ASYNC:
-      idempotencyApplicable: false # Fire-and-forget; idempotency is handled by the initial submission
-      journeyName: "V2_ASYNC_PAYMENT"
-    # Internal commands do not need idempotency checks at this layer
-    RecordLimitEarmarkResult:
-      idempotencyApplicable: false
-      journeyName: "DEFAULT_JOURNEY" # Use a default for internal consistency
-    RecordDebitResult:
-      idempotencyApplicable: false
-      journeyName: "DEFAULT_JOURNEY"
-    RecordCreditResult:
-      idempotencyApplicable: false
-      journeyName: "DEFAULT_JOURNEY"
-    RecordDebitReversalResult:
-      idempotencyApplicable: false
-      journeyName: "DEFAULT_JOURNEY"
-    RecordLimitReversalResult:
-      idempotencyApplicable: false
-      journeyName: "DEFAULT_JOURNEY"
-
-
-  # Defines the composition of business policies for each "journey".
-  # Each journey is a list of Spring bean names that implement BusinessPolicy.
-  payment-journeys:
-    V1_PROCEDURAL_PAYMENT:
-      policies:
-        - "stateTransitionPolicy" # Enforces the basic state machine rules
-    V2_SYNC_PAYMENT:
-      policies:
-        - "stateTransitionPolicy"
-    V2_ASYNC_PAYMENT:
-      policies:
-        - "stateTransitionPolicy"
-    DEFAULT_JOURNEY: # A baseline journey for internal commands
+      idempotencyEnabled: false # Fire-and-forget; idempotency is handled by the initial submission
       policies:
         - "stateTransitionPolicy"

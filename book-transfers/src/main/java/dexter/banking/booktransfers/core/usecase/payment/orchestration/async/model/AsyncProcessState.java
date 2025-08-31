@@ -16,5 +16,5 @@ public enum AsyncProcessState {
     // Terminal States
     REMEDIATION_REQUIRED,
     PROCESS_FAILED,
-    PROCESS_COMPLETED
+    PROCESS_SETTLED,
 }

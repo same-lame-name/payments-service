@@ -1,8 +1,8 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.config;
 
-import dexter.banking.booktransfers.core.domain.model.config.CommandConfiguration;
+import dexter.banking.booktransfers.core.domain.model.config.JourneySpecification;
 import dexter.banking.booktransfers.core.port.ConfigurationPort;
-import dexter.banking.booktransfers.infrastructure.config.CommandConfig;
+import dexter.banking.booktransfers.infrastructure.config.JourneyProperties;
 import dexter.banking.booktransfers.infrastructure.config.ServiceConfigProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -22,15 +22,15 @@ public class PropertiesConfigurationAdapter implements ConfigurationPort {
     private final ServiceConfigProperties serviceConfigProperties;
 
     @Override
-    public Optional<CommandConfiguration> findForCommand(String commandIdentifier) {
+    public Optional<JourneySpecification> findForJourney(String journeyIdentifier) {
         // 1. Get the infrastructure-specific configuration object.
-        CommandConfig infraConfig = serviceConfigProperties.getCommands().get(commandIdentifier);
+        JourneyProperties infraConfig = serviceConfigProperties.getJourneys().get(journeyIdentifier);
 
         // 2. Map it to the pure core/domain configuration object.
         return Optional.ofNullable(infraConfig).map(this::toDomain);
     }
 
-    private CommandConfiguration toDomain(CommandConfig infraConfig) {
-        return new CommandConfiguration(infraConfig.isIdempotencyApplicable(), infraConfig.getJourneyName());
+    private JourneySpecification toDomain(JourneyProperties infraConfig) {
+        return new JourneySpecification(infraConfig.isIdempotencyEnabled(), infraConfig.getPolicies());
     }
 }

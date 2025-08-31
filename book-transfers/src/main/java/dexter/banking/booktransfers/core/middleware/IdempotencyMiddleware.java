@@ -3,7 +3,7 @@ package dexter.banking.booktransfers.core.middleware;
 import dexter.banking.booktransfers.core.domain.exception.IdempotencyConflictException;
 import dexter.banking.booktransfers.core.domain.model.IdempotencyData;
 import dexter.banking.booktransfers.core.domain.model.IdempotencyStatus;
-import dexter.banking.booktransfers.core.middleware.context.CommandProcessingContextHolder;
+import dexter.banking.booktransfers.core.domain.model.config.CommandProcessingContextHolder;
 import dexter.banking.booktransfers.core.port.IdempotencyPort;
 import dexter.banking.commandbus.Command;
 import dexter.banking.commandbus.IdempotentCommand;
@@ -28,7 +28,7 @@ public class IdempotencyMiddleware implements Middleware {
     public <R, C extends Command<R>> R invoke(C command, Next<R> next) {
         // This middleware is now pure. It depends only on the core context and core ports.
         boolean isApplicable = CommandProcessingContextHolder.getContext()
-                .map(ctx -> ctx.getCommandConfiguration().isIdempotencyEnabled())
+                .map(ctx -> ctx.getJourneySpecification().isIdempotencyEnabled())
                 .orElse(false);
 
         if (!isApplicable || !(command instanceof IdempotentCommand<?> idempotentCommand)) {
@@ -53,8 +53,7 @@ public class IdempotencyMiddleware implements Middleware {
             // Lock was NOT acquired. Key already exists. Now, we find out why.
             log.debug("Idempotency key {} already exists. Fetching status...", key);
             IdempotencyData record = idempotencyPort.getOperationData(key)
-                    .orElseThrow(() -> new IllegalStateException("FATAL: Lock failed but no record found for key: " + key));
-            // Should be impossible
+                    .orElseThrow(() -> new IllegalStateException("FATAL: Lock failed but no record found for key: " + key)); // Should be impossible
 
             if (record.status() == IdempotencyStatus.COMPLETED) {
                 // It's a duplicate request.

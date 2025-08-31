@@ -6,11 +6,12 @@ import javax.validation.constraints.NotEmpty;
 import java.util.List;
 
 /**
- * Represents the configuration for a single payment journey,
- * specifying the sequence of business policy beans to apply.
+ * A single, unified DTO representing the configuration for a business journey,
+ * loaded from application.yml.
  */
 @Data
-public class JourneyConfig {
+public class JourneyProperties {
+    private boolean idempotencyEnabled = false;
     @NotEmpty
     private List<String> policies;
 }

@@ -14,8 +14,5 @@ import java.util.Map;
 @Validated
 public class ServiceConfigProperties {
     @NotNull
-    private Map<String, CommandConfig> commands;
-
-    @NotNull
-    private Map<String, JourneyConfig> paymentJourneys;
+    private Map<String, JourneyProperties> journeys;
 }

@@ -98,6 +98,7 @@ Our work is structured into a precise, iterative five-step loop that functions l
     Step 4: Conclusion & Progression
         After a successful validation, I will give my final approval for the iteration and ask for the objective for the next one.
     Step 4: Iteration Failure & Recovery
+
         Trigger: This step is invoked if you declare an iteration "failed" during or after Step 3, or if my own validation reveals critical flaws.
 
         Process:

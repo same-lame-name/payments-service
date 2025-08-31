@@ -1,7 +1,7 @@
-package dexter.banking.booktransfers.infrastructure.adapter.in.middleware;
+package dexter.banking.booktransfers.core.middleware;
 
-import dexter.banking.booktransfers.core.middleware.context.CommandProcessingContext;
-import dexter.banking.booktransfers.core.middleware.context.CommandProcessingContextHolder;
+import dexter.banking.booktransfers.core.domain.model.config.CommandProcessingContext;
+import dexter.banking.booktransfers.core.domain.model.config.CommandProcessingContextHolder;
 import dexter.banking.booktransfers.core.port.ConfigurationPort;
 import dexter.banking.commandbus.Command;
 import dexter.banking.commandbus.Middleware;
@@ -26,10 +26,9 @@ public class ConfigurationEnrichmentMiddleware implements Middleware {
     @Override
     public <R, C extends Command<R>> R invoke(C command, Next<R> next) {
         String identifier = command.getIdentifier();
-
         // This middleware now correctly depends on a core port, not an infrastructure detail.
-        configurationPort.findForCommand(identifier).ifPresent(config -> {
-            CommandProcessingContext context = new CommandProcessingContext(config);
+        configurationPort.findForJourney(identifier).ifPresent(spec -> {
+            CommandProcessingContext context = new CommandProcessingContext(spec);
             CommandProcessingContextHolder.setContext(context);
             log.debug("Service config for '{}' loaded into context.", identifier);
         });

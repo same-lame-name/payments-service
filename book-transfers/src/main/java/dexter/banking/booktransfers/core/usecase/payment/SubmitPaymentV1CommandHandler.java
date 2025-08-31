@@ -1,13 +1,14 @@
 package dexter.banking.booktransfers.core.usecase.payment;
-
 import dexter.banking.booktransfers.core.domain.model.ApiVersion;
 import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.domain.model.PaymentResult;
-import dexter.banking.booktransfers.core.domain.model.config.CommandConfiguration;
+import dexter.banking.booktransfers.core.domain.model.config.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.model.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.model.results.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.model.results.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.model.config.CommandProcessingContext;
+import dexter.banking.booktransfers.core.domain.model.config.CommandProcessingContextHolder;
 import dexter.banking.booktransfers.core.port.*;
 import dexter.banking.commandbus.CommandHandler;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,8 @@ import java.util.Optional;
 
 /**
  * Command Handler for the V1 procedural flow.
- * This handler is now a self-contained, transactional SAGA. It no longer depends
+ * This handler is now a self-contained, transactional SAGA.
+ * It no longer depends
  * on a state machine and directly orchestrates the calls to external services,
  * updating the aggregate's state, and performing its own compensation logic in case of failure.
  */
@@ -35,8 +37,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private final LimitPort limitPort;
     private final PaymentRepositoryPort paymentRepository;
     private final EventDispatcherPort eventDispatcher;
-    private final PaymentPolicyFactory policyFactory;
-    private final ConfigurationPort configurationPort;
+    private final BusinessPolicyFactory policyFactory;
 
     @Override
     public boolean matches(PaymentCommand command) {
@@ -47,14 +48,17 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
         log.info("▶️ [V1] Starting procedural transaction for Command: {}", command.getTransactionReference());
-        String journeyName = configurationPort.findForCommand(command.getIdentifier())
-                .map(CommandConfiguration::journeyName)
-                .orElseThrow(() -> new IllegalStateException("No journey configured for command: " + command.getIdentifier()));
+
+        JourneySpecification spec = CommandProcessingContextHolder.getContext()
+                .map(CommandProcessingContext::getJourneySpecification)
+                .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context"));
+
+        BusinessPolicy policy = policyFactory.create(spec);
+
+        String journeyIdentifier = command.getIdentifier();
         String reasonForFailure = "";
 
-        BusinessPolicy policy = policyFactory.getPolicyForJourney(journeyName);
-
-        Payment payment = Payment.startNew(command, policy, journeyName);
+        Payment payment = Payment.startNew(command, policy, journeyIdentifier);
         paymentRepository.save(payment);
 
         try {
@@ -171,7 +175,6 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
 
     private Map<String, Object> buildMetadata(PaymentCommand command, Payment payment) {
         Map<String, Object> metadata = new HashMap<>();
-        metadata.put("webhookUrl", command.getWebhookUrl());
         metadata.put("transactionReference", payment.getTransactionReference());
         return metadata;
     }

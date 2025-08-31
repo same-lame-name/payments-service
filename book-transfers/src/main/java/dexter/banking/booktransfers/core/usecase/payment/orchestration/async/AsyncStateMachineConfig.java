@@ -1,6 +1,8 @@
 package dexter.banking.booktransfers.core.usecase.payment.orchestration.async;
 
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.TransactionCompleteAction;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.TransactionRemediationAction;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.TransactionFailAction;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.TransactionSuccessAction;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.component.TransactionStateMachinePersister;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.component.AsyncTransactionContext;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.model.AsyncProcessEvent;
@@ -30,7 +32,9 @@ public class AsyncStateMachineConfig {
 
     private final SagaAction<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> creditLegAction;
 
-    private final TransactionCompleteAction transactionCompleteAction;
+    private final TransactionRemediationAction transactionRemediationAction;
+    private final TransactionSuccessAction transactionSuccessAction;
+    private final TransactionFailAction transactionFailAction;
 
 
     @Bean("asyncPaymentStateMachineConfig")
@@ -39,7 +43,7 @@ public class AsyncStateMachineConfig {
                 .states(EnumSet.allOf(AsyncProcessState.class))
                 .initial(AsyncProcessState.NEW)
                 .end(AsyncProcessState.PROCESS_FAILED)
-                .end(AsyncProcessState.PROCESS_COMPLETED)
+                .end(AsyncProcessState.PROCESS_SETTLED)
                 .end(AsyncProcessState.REMEDIATION_REQUIRED)
                 .withPersister(persister)
             // --- Happy Path ---
@@ -56,8 +60,8 @@ public class AsyncStateMachineConfig {
                 .withAction(creditLegAction::apply)
                 .add()
             .from(AsyncProcessState.CREDITING_FUNDS).on(AsyncProcessEvent.CREDIT_LEG_SUCCEEDED)
-                .to(AsyncProcessState.PROCESS_COMPLETED)
-                .withAction(transactionCompleteAction)
+                .to(AsyncProcessState.PROCESS_SETTLED)
+                .withAction(transactionSuccessAction)
                 .add()
 
             // --- Compensation Path ---
@@ -71,7 +75,7 @@ public class AsyncStateMachineConfig {
                 .add()
             .from(AsyncProcessState.EARMARKING_LIMIT).on(AsyncProcessEvent.LIMIT_EARMARK_FAILED)
                 .to(AsyncProcessState.PROCESS_FAILED)
-                .withAction(transactionCompleteAction)
+                .withAction(transactionFailAction)
                 .add()
             .from(AsyncProcessState.REVERSING_DEBIT).on(AsyncProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED)
                 .to(AsyncProcessState.REVERSING_LIMIT_EARMARK)
@@ -79,17 +83,17 @@ public class AsyncStateMachineConfig {
                 .add()
             .from(AsyncProcessState.REVERSING_LIMIT_EARMARK).on(AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED)
                 .to(AsyncProcessState.PROCESS_FAILED)
-                .withAction(transactionCompleteAction)
+                .withAction(transactionFailAction)
                 .add()
 
             // --- Remediation Path ---
             .from(AsyncProcessState.REVERSING_DEBIT).on(AsyncProcessEvent.DEBIT_LEG_REVERSAL_FAILED)
                 .to(AsyncProcessState.REMEDIATION_REQUIRED)
-                .withAction(transactionCompleteAction)
+                .withAction(transactionRemediationAction)
                 .add()
             .from(AsyncProcessState.REVERSING_LIMIT_EARMARK).on(AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED)
                 .to(AsyncProcessState.REMEDIATION_REQUIRED)
-                .withAction(transactionCompleteAction)
+                .withAction(transactionRemediationAction)
                 .add()
             .build();
     }
