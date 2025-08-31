@@ -1,13 +1,10 @@
 package dexter.banking.booktransfers.core.usecase.payment.orchestration.async;
 
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.CreditLegAction;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.DebitLegAction;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.LimitEarmarkAction;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.action.TransactionCompleteAction;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.component.TransactionStateMachinePersister;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.AsyncTransactionContext;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessEvent;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.component.TransactionStateMachinePersister;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.component.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.model.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.model.AsyncProcessState;
 import dexter.banking.statemachine.StateMachineBuilder;
 import dexter.banking.statemachine.StateMachineConfig;
 import dexter.banking.statemachine.StateMachineFactory;
@@ -27,79 +24,79 @@ public class AsyncStateMachineConfig {
 
     // Correctly qualify the specific SagaAction beans.
     // The generic types must match what the builder expects.
-    private final SagaAction<ProcessState, ProcessEvent, AsyncTransactionContext> limitEarmarkAction;
+    private final SagaAction<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> limitEarmarkAction;
 
-    private final SagaAction<ProcessState, ProcessEvent, AsyncTransactionContext> debitLegAction;
+    private final SagaAction<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> debitLegAction;
 
-    private final SagaAction<ProcessState, ProcessEvent, AsyncTransactionContext> creditLegAction;
+    private final SagaAction<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> creditLegAction;
 
     private final TransactionCompleteAction transactionCompleteAction;
 
 
     @Bean("asyncPaymentStateMachineConfig")
-    public StateMachineConfig<ProcessState, ProcessEvent, AsyncTransactionContext> paymentStateMachineConfig() {
-        return StateMachineBuilder.<ProcessState, ProcessEvent, AsyncTransactionContext>newBuilder()
-                .states(EnumSet.allOf(ProcessState.class))
-                .initial(ProcessState.NEW)
-                .end(ProcessState.PROCESS_FAILED)
-                .end(ProcessState.PROCESS_COMPLETED)
-                .end(ProcessState.REMEDIATION_REQUIRED)
+    public StateMachineConfig<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> paymentStateMachineConfig() {
+        return StateMachineBuilder.<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext>newBuilder()
+                .states(EnumSet.allOf(AsyncProcessState.class))
+                .initial(AsyncProcessState.NEW)
+                .end(AsyncProcessState.PROCESS_FAILED)
+                .end(AsyncProcessState.PROCESS_COMPLETED)
+                .end(AsyncProcessState.REMEDIATION_REQUIRED)
                 .withPersister(persister)
             // --- Happy Path ---
-            .from(ProcessState.NEW).on(ProcessEvent.SUBMIT)
-                .to(ProcessState.EARMARKING_LIMIT)
+            .from(AsyncProcessState.NEW).on(AsyncProcessEvent.SUBMIT)
+                .to(AsyncProcessState.EARMARKING_LIMIT)
                 .withAction(limitEarmarkAction::apply)
                 .add()
-            .from(ProcessState.EARMARKING_LIMIT).on(ProcessEvent.LIMIT_EARMARK_SUCCEEDED)
-                .to(ProcessState.DEBITING_FUNDS)
+            .from(AsyncProcessState.EARMARKING_LIMIT).on(AsyncProcessEvent.LIMIT_EARMARK_SUCCEEDED)
+                .to(AsyncProcessState.DEBITING_FUNDS)
                 .withAction(debitLegAction::apply)
                 .add()
-            .from(ProcessState.DEBITING_FUNDS).on(ProcessEvent.DEBIT_LEG_SUCCEEDED)
-                .to(ProcessState.CREDITING_FUNDS)
+            .from(AsyncProcessState.DEBITING_FUNDS).on(AsyncProcessEvent.DEBIT_LEG_SUCCEEDED)
+                .to(AsyncProcessState.CREDITING_FUNDS)
                 .withAction(creditLegAction::apply)
                 .add()
-            .from(ProcessState.CREDITING_FUNDS).on(ProcessEvent.CREDIT_LEG_SUCCEEDED)
-                .to(ProcessState.PROCESS_COMPLETED)
+            .from(AsyncProcessState.CREDITING_FUNDS).on(AsyncProcessEvent.CREDIT_LEG_SUCCEEDED)
+                .to(AsyncProcessState.PROCESS_COMPLETED)
                 .withAction(transactionCompleteAction)
                 .add()
 
             // --- Compensation Path ---
-            .from(ProcessState.CREDITING_FUNDS).on(ProcessEvent.CREDIT_LEG_FAILED)
-                .to(ProcessState.REVERSING_DEBIT)
+            .from(AsyncProcessState.CREDITING_FUNDS).on(AsyncProcessEvent.CREDIT_LEG_FAILED)
+                .to(AsyncProcessState.REVERSING_DEBIT)
                 .withAction(debitLegAction::compensate)
                 .add()
-            .from(ProcessState.DEBITING_FUNDS).on(ProcessEvent.DEBIT_LEG_FAILED)
-                .to(ProcessState.REVERSING_LIMIT_EARMARK)
+            .from(AsyncProcessState.DEBITING_FUNDS).on(AsyncProcessEvent.DEBIT_LEG_FAILED)
+                .to(AsyncProcessState.REVERSING_LIMIT_EARMARK)
                 .withAction(limitEarmarkAction::compensate)
                 .add()
-            .from(ProcessState.EARMARKING_LIMIT).on(ProcessEvent.LIMIT_EARMARK_FAILED)
-                .to(ProcessState.PROCESS_FAILED)
+            .from(AsyncProcessState.EARMARKING_LIMIT).on(AsyncProcessEvent.LIMIT_EARMARK_FAILED)
+                .to(AsyncProcessState.PROCESS_FAILED)
                 .withAction(transactionCompleteAction)
                 .add()
-            .from(ProcessState.REVERSING_DEBIT).on(ProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED)
-                .to(ProcessState.REVERSING_LIMIT_EARMARK)
+            .from(AsyncProcessState.REVERSING_DEBIT).on(AsyncProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED)
+                .to(AsyncProcessState.REVERSING_LIMIT_EARMARK)
                 .withAction(limitEarmarkAction::compensate)
                 .add()
-            .from(ProcessState.REVERSING_LIMIT_EARMARK).on(ProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED)
-                .to(ProcessState.PROCESS_FAILED)
+            .from(AsyncProcessState.REVERSING_LIMIT_EARMARK).on(AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED)
+                .to(AsyncProcessState.PROCESS_FAILED)
                 .withAction(transactionCompleteAction)
                 .add()
 
             // --- Remediation Path ---
-            .from(ProcessState.REVERSING_DEBIT).on(ProcessEvent.DEBIT_LEG_REVERSAL_FAILED)
-                .to(ProcessState.REMEDIATION_REQUIRED)
+            .from(AsyncProcessState.REVERSING_DEBIT).on(AsyncProcessEvent.DEBIT_LEG_REVERSAL_FAILED)
+                .to(AsyncProcessState.REMEDIATION_REQUIRED)
                 .withAction(transactionCompleteAction)
                 .add()
-            .from(ProcessState.REVERSING_LIMIT_EARMARK).on(ProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED)
-                .to(ProcessState.REMEDIATION_REQUIRED)
+            .from(AsyncProcessState.REVERSING_LIMIT_EARMARK).on(AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED)
+                .to(AsyncProcessState.REMEDIATION_REQUIRED)
                 .withAction(transactionCompleteAction)
                 .add()
             .build();
     }
 
     @Bean("asyncTransactionFsmFactory")
-    public StateMachineFactory<ProcessState, ProcessEvent, AsyncTransactionContext> transactionFsmFactory(
-            @Qualifier("asyncPaymentStateMachineConfig") StateMachineConfig<ProcessState, ProcessEvent, AsyncTransactionContext> config) {
+    public StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> transactionFsmFactory(
+            @Qualifier("asyncPaymentStateMachineConfig") StateMachineConfig<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> config) {
         return new StateMachineFactory<>(config);
     }
 }

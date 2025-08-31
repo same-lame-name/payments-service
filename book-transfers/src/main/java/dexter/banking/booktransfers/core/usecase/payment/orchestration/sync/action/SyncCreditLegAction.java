@@ -2,9 +2,9 @@ package dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.act
 
 import dexter.banking.booktransfers.core.domain.model.results.CreditLegResult;
 import dexter.banking.booktransfers.core.port.CreditCardPort;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessEvent;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.TransactionContext;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessEvent;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessState;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.component.TransactionContext;
 import dexter.banking.statemachine.contract.SagaAction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

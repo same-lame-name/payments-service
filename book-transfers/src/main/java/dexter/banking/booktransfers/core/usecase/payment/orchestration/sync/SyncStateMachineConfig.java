@@ -1,8 +1,8 @@
 package dexter.banking.booktransfers.core.usecase.payment.orchestration.sync;
 
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessEvent;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.TransactionContext;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessEvent;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessState;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.component.TransactionContext;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.action.SyncCreditLegAction;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.action.SyncDebitLegAction;
 import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.action.SyncLimitEarmarkAction;

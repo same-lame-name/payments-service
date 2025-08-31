@@ -1,8 +1,8 @@
 package dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.action;
 
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessEvent;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.TransactionContext;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessEvent;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessState;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.component.TransactionContext;
 import dexter.banking.statemachine.contract.Action;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

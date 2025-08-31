@@ -1,10 +1,12 @@
-package dexter.banking.booktransfers.core.usecase.payment.orchestration.model;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.async.component;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dexter.banking.booktransfers.core.domain.model.ApiVersion;
 import dexter.banking.booktransfers.core.domain.model.ModeOfTransfer;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessState;
 import dexter.banking.statemachine.contract.StateMachineContext;
 import lombok.Getter;
 
@@ -16,10 +18,10 @@ import java.util.UUID;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Getter
-public class AsyncTransactionContext implements StateMachineContext<ProcessState> {
+public class AsyncTransactionContext implements StateMachineContext<AsyncProcessState> {
 
     private final UUID paymentId;
-    private ProcessState currentState;
+    private AsyncProcessState currentState;
 
     // --- Flattened PaymentCommand fields ---
     private final UUID idempotencyKey;
@@ -36,7 +38,7 @@ public class AsyncTransactionContext implements StateMachineContext<ProcessState
     @JsonCreator
     public AsyncTransactionContext(
             @JsonProperty("paymentId") UUID paymentId,
-            @JsonProperty("currentState") ProcessState currentState,
+            @JsonProperty("currentState") AsyncProcessState currentState,
             @JsonProperty("idempotencyKey") UUID idempotencyKey,
             @JsonProperty("transactionReference") String transactionReference,
             @JsonProperty("limitType") String limitType,
@@ -61,12 +63,12 @@ public class AsyncTransactionContext implements StateMachineContext<ProcessState
     }
 
     @Override
-    public ProcessState getCurrentState() {
+    public AsyncProcessState getCurrentState() {
         return this.currentState;
     }
 
     @Override
-    public void setCurrentState(ProcessState newState) {
+    public void setCurrentState(AsyncProcessState newState) {
         this.currentState = newState;
     }
 

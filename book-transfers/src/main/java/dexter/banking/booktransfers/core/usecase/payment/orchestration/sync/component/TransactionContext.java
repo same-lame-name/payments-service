@@ -1,9 +1,10 @@
-package dexter.banking.booktransfers.core.usecase.payment.orchestration.model;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.component;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dexter.banking.booktransfers.core.domain.model.Payment;
 import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessState;
 import dexter.banking.statemachine.contract.StateMachineContext;
 import lombok.Getter;
 

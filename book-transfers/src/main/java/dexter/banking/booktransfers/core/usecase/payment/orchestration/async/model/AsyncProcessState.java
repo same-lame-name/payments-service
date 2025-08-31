@@ -1,11 +1,11 @@
-package dexter.banking.booktransfers.core.usecase.payment.orchestration.model;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.async.model;
 
 /**
  * Defines the possible states a transaction orchestration can be in during its lifecycle.
  * This is an application-level concept, representing workflow steps, and is
  * completely separate from the domain's PaymentState.
  */
-public enum ProcessState {
+public enum AsyncProcessState {
     NEW,
     EARMARKING_LIMIT,
     DEBITING_FUNDS,

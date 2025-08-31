@@ -15,16 +15,17 @@ import dexter.banking.booktransfers.core.port.EventDispatcherPort;
 import dexter.banking.booktransfers.core.port.PaymentPolicyFactory;
 import dexter.banking.booktransfers.core.port.PaymentRepositoryPort;
 import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.mapper.OrchestrationContextMapper;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.AsyncTransactionContext;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessEvent;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.component.OrchestrationContextMapper;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.component.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.model.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessEvent;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessState;
 import dexter.banking.commandbus.CommandHandler;
 import dexter.banking.statemachine.StateMachine;
 import dexter.banking.statemachine.StateMachineFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +38,7 @@ import java.util.function.BiConsumer;
 @Slf4j
 public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentCommand, PaymentResult> {
 
-    private final StateMachineFactory<ProcessState, ProcessEvent, AsyncTransactionContext> stateMachineFactory;
+    private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> stateMachineFactory;
     private final PaymentRepositoryPort paymentRepository;
     private final EventDispatcherPort eventDispatcher;
     private final PaymentPolicyFactory policyFactory;
@@ -62,7 +63,7 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
 
         var context = orchestrationContextMapper.toContext(payment.getId(), command);
         var stateMachine = stateMachineFactory.acquireStateMachine(context);
-        stateMachine.fire(ProcessEvent.SUBMIT);
+        stateMachine.fire(AsyncProcessEvent.SUBMIT);
 
         return PaymentResult.from(payment);
     }
@@ -71,8 +72,8 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     public void processCreditLegResult(CreditLegResult result, UUID transactionId) {
         handleAsyncEvent(transactionId, (payment, sm) -> {
             payment.recordCredit(result, Collections.emptyMap());
-            ProcessEvent event = result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
-                    ProcessEvent.CREDIT_LEG_SUCCEEDED : ProcessEvent.CREDIT_LEG_FAILED;
+            AsyncProcessEvent event = result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
+                    AsyncProcessEvent.CREDIT_LEG_SUCCEEDED : AsyncProcessEvent.CREDIT_LEG_FAILED;
             sm.fire(event);
 
         });
@@ -82,9 +83,9 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     public void processDebitLegResult(DebitLegResult result, UUID transactionId) {
         handleAsyncEvent(transactionId, (payment, sm) -> {
             payment.recordDebit(result, Collections.emptyMap());
-            ProcessEvent event = switch (result.status()) {
-                case SUCCESSFUL -> ProcessEvent.DEBIT_LEG_SUCCEEDED;
-                case FAILED -> ProcessEvent.DEBIT_LEG_FAILED;
+            AsyncProcessEvent event = switch (result.status()) {
+                case SUCCESSFUL -> AsyncProcessEvent.DEBIT_LEG_SUCCEEDED;
+                case FAILED -> AsyncProcessEvent.DEBIT_LEG_FAILED;
                 default -> throw new IllegalStateException("Unexpected status for debit leg result: " + result.status());
             };
             sm.fire(event);
@@ -95,9 +96,9 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     public void processLimitEarmarkResult(LimitEarmarkResult result, UUID transactionId) {
         handleAsyncEvent(transactionId, (payment, sm) -> {
             payment.recordLimitEarmark(result, Collections.emptyMap());
-            ProcessEvent event = switch (result.status()) {
-                case SUCCESSFUL -> ProcessEvent.LIMIT_EARMARK_SUCCEEDED;
-                case FAILED -> ProcessEvent.LIMIT_EARMARK_FAILED;
+            AsyncProcessEvent event = switch (result.status()) {
+                case SUCCESSFUL -> AsyncProcessEvent.LIMIT_EARMARK_SUCCEEDED;
+                case FAILED -> AsyncProcessEvent.LIMIT_EARMARK_FAILED;
 
                 default -> throw new IllegalStateException("Unexpected status for limit earmark result: " + result.status());
             };
@@ -109,9 +110,9 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     public void processDebitReversalResult(DebitLegResult result, UUID transactionId) {
         handleAsyncEvent(transactionId, (payment, sm) -> {
             payment.recordDebitReversal(result, Collections.emptyMap());
-            ProcessEvent event = switch (result.status()) {
-                case REVERSAL_SUCCESSFUL -> ProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED;
-                case REVERSAL_FAILED -> ProcessEvent.DEBIT_LEG_REVERSAL_FAILED;
+            AsyncProcessEvent event = switch (result.status()) {
+                case REVERSAL_SUCCESSFUL -> AsyncProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED;
+                case REVERSAL_FAILED -> AsyncProcessEvent.DEBIT_LEG_REVERSAL_FAILED;
 
                 default -> throw new IllegalStateException("Unexpected status for debit reversal result: " + result.status());
             };
@@ -123,9 +124,9 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     public void processLimitReversalResult(LimitEarmarkResult result, UUID transactionId) {
         handleAsyncEvent(transactionId, (payment, sm) -> {
             payment.recordLimitReversal(result, Collections.emptyMap());
-            ProcessEvent event = switch (result.status()) {
-                case REVERSAL_SUCCESSFUL -> ProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED;
-                case REVERSAL_FAILED -> ProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED;
+            AsyncProcessEvent event = switch (result.status()) {
+                case REVERSAL_SUCCESSFUL -> AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED;
+                case REVERSAL_FAILED -> AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED;
 
                 default -> throw new IllegalStateException("Unexpected status for limit reversal result: " + result.status());
             };
@@ -133,7 +134,7 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
         });
     }
 
-    private void handleAsyncEvent(UUID transactionId, BiConsumer<Payment, StateMachine<ProcessState, ProcessEvent, AsyncTransactionContext>> handler) {
+    private void handleAsyncEvent(UUID transactionId, BiConsumer<Payment, StateMachine<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext>> handler) {
         // 1. Rehydrate Aggregate
         Payment.PaymentMemento memento = paymentRepository.findMementoById(transactionId)
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId));

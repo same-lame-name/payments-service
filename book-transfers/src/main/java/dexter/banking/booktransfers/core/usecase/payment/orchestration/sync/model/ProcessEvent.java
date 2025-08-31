@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.core.usecase.payment.orchestration.model;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model;
 
 /**
  * Defines the events that can trigger state transitions in the orchestration process.

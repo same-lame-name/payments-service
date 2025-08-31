@@ -1,10 +1,8 @@
-package dexter.banking.booktransfers.core.usecase.payment.orchestration.mapper;
+package dexter.banking.booktransfers.core.usecase.payment.orchestration.async.component;
 
-import dexter.banking.booktransfers.core.domain.model.ApiVersion;
-import dexter.banking.booktransfers.core.domain.model.ModeOfTransfer;
 import dexter.banking.booktransfers.core.usecase.payment.PaymentCommand;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.AsyncTransactionContext;
-import dexter.banking.booktransfers.core.usecase.payment.orchestration.model.ProcessState;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.usecase.payment.orchestration.sync.model.ProcessState;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -25,7 +23,7 @@ public class OrchestrationContextMapper {
     public AsyncTransactionContext toContext(UUID paymentId, PaymentCommand command) {
         return new AsyncTransactionContext(
                 paymentId,
-                ProcessState.NEW,
+                AsyncProcessState.NEW,
                 command.getIdempotencyKey(),
                 command.getTransactionReference(),
                 command.getLimitType(),
