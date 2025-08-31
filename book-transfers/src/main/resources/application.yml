@@ -4,6 +4,10 @@ logging.level.dexter.banking.booktransfers.core.usecase: info
 logging.level.org.springframework.transaction.event: warn
 
 spring:
+  jms:
+    listener:
+      concurrency: 5
+      max-concurrency: 10
   jackson:
     # Disable default serialization features that are not needed
     # and might interfere with our custom object mapper configuration.
@@ -21,11 +25,11 @@ spring:
 service-config:
   journeys:
     PAYMENT_SUBMIT_V1:
-      idempotencyEnabled: true
+      idempotencyEnabled: false
       policies:
         - "stateTransitionPolicy"
     PAYMENT_SUBMIT_V2_SYNC:
-      idempotencyEnabled: true
+      idempotencyEnabled: false
       policies:
         - "stateTransitionPolicy"
     PAYMENT_SUBMIT_V2_ASYNC:
