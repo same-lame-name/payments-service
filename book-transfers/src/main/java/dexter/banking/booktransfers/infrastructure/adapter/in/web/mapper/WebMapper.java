@@ -9,13 +9,18 @@ import dexter.banking.booktransfers.infrastructure.adapter.in.web.dto.BookTransf
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.util.UUID;
+
 @Component
 public class WebMapper {
     public PaymentCommand toCommand(BookTransferRequest dto, ApiVersion version) {
         if (dto == null) {
             return null;
         }
+
+        UUID transactionId = UUID.randomUUID(); // Generate a new transaction ID here if needed
         return PaymentCommand.builder()
+                .transactionId(transactionId)
                 .idempotencyKey(dto.getIdempotencyKey())
                 .transactionReference(dto.getTransactionReference())
                 .limitType(dto.getLimitType())

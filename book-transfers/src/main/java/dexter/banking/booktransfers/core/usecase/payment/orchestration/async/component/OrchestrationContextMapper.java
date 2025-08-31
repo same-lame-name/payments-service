@@ -43,6 +43,7 @@ public class OrchestrationContextMapper {
      */
     public PaymentCommand toCommand(AsyncTransactionContext context) {
         return PaymentCommand.builder()
+                .transactionId(context.getPaymentId())
                 .idempotencyKey(context.getIdempotencyKey())
                 .transactionReference(context.getTransactionReference())
                 .limitType(context.getLimitType())

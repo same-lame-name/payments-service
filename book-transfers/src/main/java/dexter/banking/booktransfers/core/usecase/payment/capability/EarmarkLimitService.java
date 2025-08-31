@@ -32,7 +32,7 @@ public class EarmarkLimitService implements EarmarkLimitUseCase, LimitReversalUs
     @Override
     @Transactional
     public void compensate(PaymentCommand command) {
-        UUID transactionId = command.getIdempotencyKey();
+        UUID transactionId = command.getTransactionId();
         Payment.PaymentMemento memento = paymentRepository.findMementoById(transactionId)
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId));
 

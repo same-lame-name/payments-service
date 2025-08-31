@@ -15,6 +15,10 @@ public class PaymentCommand implements IdempotentCommand<PaymentResult> {
 
     @NotNull
     UUID idempotencyKey;
+
+    @NotNull
+    UUID transactionId;
+
     @NotBlank
     String transactionReference;
     @NotBlank

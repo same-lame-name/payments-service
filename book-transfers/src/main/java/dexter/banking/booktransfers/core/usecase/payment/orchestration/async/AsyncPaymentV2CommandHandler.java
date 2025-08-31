@@ -30,8 +30,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 @Component
@@ -74,8 +77,8 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
 
     @Transactional
     public void processCreditLegResult(CreditLegResult result, UUID transactionId) {
-        handleAsyncEvent(transactionId, (payment) -> {
-            payment.recordCredit(result, Collections.emptyMap());
+        handleAsyncEvent(transactionId, (payment, command) -> {
+            payment.recordCredit(result, buildMetadata(payment, command));
 
             return result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
                     AsyncProcessEvent.CREDIT_LEG_SUCCEEDED : AsyncProcessEvent.CREDIT_LEG_FAILED;
@@ -84,8 +87,8 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
 
     @Transactional
     public void processDebitLegResult(DebitLegResult result, UUID transactionId) {
-        handleAsyncEvent(transactionId, (payment) -> {
-            payment.recordDebit(result, Collections.emptyMap());
+        handleAsyncEvent(transactionId, (payment, command) -> {
+            payment.recordDebit(result, buildMetadata(payment, command));
             return switch (result.status()) {
                 case SUCCESSFUL -> AsyncProcessEvent.DEBIT_LEG_SUCCEEDED;
                 case FAILED -> AsyncProcessEvent.DEBIT_LEG_FAILED;
@@ -97,8 +100,8 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
 
     @Transactional
     public void processLimitEarmarkResult(LimitEarmarkResult result, UUID transactionId) {
-        handleAsyncEvent(transactionId, (payment) -> {
-            payment.recordLimitEarmark(result, Collections.emptyMap());
+        handleAsyncEvent(transactionId, (payment, command) -> {
+            payment.recordLimitEarmark(result, buildMetadata(payment, command));
 
             return switch (result.status()) {
                 case SUCCESSFUL -> AsyncProcessEvent.LIMIT_EARMARK_SUCCEEDED;
@@ -112,8 +115,8 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
 
     @Transactional
     public void processDebitReversalResult(DebitLegResult result, UUID transactionId) {
-        handleAsyncEvent(transactionId, (payment) -> {
-            payment.recordDebitReversal(result, Collections.emptyMap());
+        handleAsyncEvent(transactionId, (payment, command) -> {
+            payment.recordDebitReversal(result, buildMetadata(payment, command));
 
             return switch (result.status()) {
                 case REVERSAL_SUCCESSFUL -> AsyncProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED;
@@ -127,8 +130,8 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
 
     @Transactional
     public void processLimitReversalResult(LimitEarmarkResult result, UUID transactionId) {
-        handleAsyncEvent(transactionId, (payment) -> {
-            payment.recordLimitReversal(result, Collections.emptyMap());
+        handleAsyncEvent(transactionId, (payment, command) -> {
+            payment.recordLimitReversal(result, buildMetadata(payment, command));
 
             return switch (result.status()) {
                 case REVERSAL_SUCCESSFUL -> AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED;
@@ -140,22 +143,24 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
         });
     }
 
-    private void handleAsyncEvent(UUID transactionId, Function<Payment, AsyncProcessEvent> handler) {
+    private void handleAsyncEvent(UUID transactionId, BiFunction<Payment, PaymentCommand, AsyncProcessEvent> handler) {
         // 1. Rehydrate Aggregate
         Payment.PaymentMemento memento = paymentRepository.findMementoById(transactionId)
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId));
 
-        JourneySpecification spec = configurationPort.findForJourney(memento.journeyName())
+        BusinessPolicy policy = configurationPort
+                .findForJourney(memento.journeyName())
+                .map(policyFactory::create)
                 .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
-        BusinessPolicy policy = policyFactory.create(spec);
 
         Payment payment = Payment.rehydrate(memento, policy);
 
         // 2. Acquire State Machine
         stateMachineFactory.acquireStateMachine(transactionId.toString()).ifPresentOrElse(
                 stateMachine -> {
+                    var command = orchestrationContextMapper.toCommand(stateMachine.getContext());
                     // 3. Execute logic
-                    AsyncProcessEvent event = handler.apply(payment);
+                    AsyncProcessEvent event = handler.apply(payment, command);
 
                     // 4. Commit Unit of Work
                     paymentRepository.update(payment);
@@ -165,5 +170,13 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
                 },
                 () -> log.error("Could not acquire state machine for transaction id: {}", transactionId)
         );
+    }
+
+    private Map<String, Object> buildMetadata(Payment payment, PaymentCommand command) {
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("webhookUrl", command.getWebhookUrl());
+        metadata.put("realtime", command.getRealtime());
+        metadata.put("transactionReference", payment.getTransactionReference());
+        return metadata;
     }
 }

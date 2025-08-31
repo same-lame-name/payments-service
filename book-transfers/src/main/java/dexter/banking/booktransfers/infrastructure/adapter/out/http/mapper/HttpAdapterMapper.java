@@ -53,21 +53,21 @@ public class HttpAdapterMapper {
 
     public LimitManagementRequest toLimitManagementRequest(PaymentCommand command) {
         return LimitManagementRequest.builder()
-                .transactionId(command.getIdempotencyKey())
+                .transactionId(command.getTransactionId())
                 .limitType(command.getLimitType())
                 .build();
     }
 
     public DepositBankingRequest toDepositBankingRequest(PaymentCommand command) {
         return DepositBankingRequest.builder()
-                .transactionId(command.getIdempotencyKey())
+                .transactionId(command.getTransactionId())
                 .accountNumber(command.getAccountNumber())
                 .build();
     }
 
     public CreditCardBankingRequest toCreditCardBankingRequest(PaymentCommand command) {
         return CreditCardBankingRequest.builder()
-                .transactionId(command.getIdempotencyKey())
+                .transactionId(command.getTransactionId())
                 .cardNumber(command.getCardNumber())
                 .build();
     }

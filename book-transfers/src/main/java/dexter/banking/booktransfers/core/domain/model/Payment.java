@@ -41,7 +41,7 @@ public class Payment extends AggregateRoot<UUID> {
     }
 
     public static Payment startNew(PaymentCommand command, BusinessPolicy policy, String journeyName) {
-        var payment = new Payment(command.getIdempotencyKey(), command.getTransactionReference(), journeyName, policy, PaymentState.NEW);
+        var payment = new Payment(command.getTransactionId(), command.getTransactionReference(), journeyName, policy, PaymentState.NEW);
         PolicyEvaluationContext context = new PolicyEvaluationContext(payment.getMemento(), null);
         policy.evaluate(context, BusinessAction.START_PAYMENT);
         return payment;

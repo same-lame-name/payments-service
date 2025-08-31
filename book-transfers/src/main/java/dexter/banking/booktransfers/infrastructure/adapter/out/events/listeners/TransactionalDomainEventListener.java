@@ -49,7 +49,15 @@ public class TransactionalDomainEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(PaymentInProgressEvent event) {
         log.info("Handling in-progress payment event for transaction {}", event.aggregateId());
-        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+        var eventMetadata = event.metadata();
+        boolean realtimeEnabled = eventMetadata.containsKey("realtime") && "true".equals(eventMetadata.get("realtime"));
+
+        if (realtimeEnabled) {
+            log.info("Realtime flag is set. Notifying webhook immediately for transaction {}", event.aggregateId());
+            notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+        } else {
+            log.info("Realtime flag not set or false. Skipping immediate webhook notification for transaction {}", event.aggregateId());
+        }
     }
 
     private void notifyWebhook(UUID aggregateId, PaymentState paymentState, Map<String, Object> metadata) {

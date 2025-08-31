@@ -24,7 +24,7 @@ public class ConcludePaymentService implements ConcludePaymentSuccessUseCase, Co
 
     @Override
     public void handleFailure(PaymentCommand command) {
-       UUID transactionId = command.getIdempotencyKey();
+       UUID transactionId = command.getTransactionId();
        concludePayment(transactionId, payment -> {
           payment.recordPaymentFailed("Concluded as failed by external process", buildMetadata(payment, command));
        });
@@ -32,7 +32,7 @@ public class ConcludePaymentService implements ConcludePaymentSuccessUseCase, Co
 
     @Override
     public void handleRemediation(PaymentCommand command) {
-        UUID transactionId = command.getIdempotencyKey();
+        UUID transactionId = command.getTransactionId();
         concludePayment(transactionId, payment -> {
             payment.recordPaymentRemediationNeeded("Concluded as needing remediation by external process", buildMetadata(payment, command));
         });
@@ -40,7 +40,7 @@ public class ConcludePaymentService implements ConcludePaymentSuccessUseCase, Co
 
     @Override
     public void handleSuccess(PaymentCommand command) {
-        UUID transactionId = command.getIdempotencyKey();
+        UUID transactionId = command.getTransactionId();
         concludePayment(transactionId, payment -> {
             payment.recordPaymentSettled(buildMetadata(payment, command));
         });
