@@ -42,7 +42,3 @@ spring:
       username: root
       password: mongoUser
       database: trips
-
-paymentusecase:
-  orchestration:
-    strategy: statemachine

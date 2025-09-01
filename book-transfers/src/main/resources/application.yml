@@ -1,38 +1,60 @@
-logging.level.tech: debug
-logging.level.dexter.banking.booktransfers.infrastructure.middleware: debug
-logging.level.dexter.banking.booktransfers.core.usecase: info
-logging.level.org.springframework.transaction.event: warn
-
 spring:
+  application:
+    name: book-transfers-service
+  config:
+    import: "optional:configserver:"
+  cloud:
+    config:
+      discovery:
+        enabled: true
+        service-id: payment-config-server
+      fail-fast: true
+      username: configUser
+      password: configPassword
   jms:
     listener:
       concurrency: 5
       max-concurrency: 10
   jackson:
-    # Disable default serialization features that are not needed
-    # and might interfere with our custom object mapper configuration.
-    # We will rely on our primary ObjectMapper bean.
     default-property-inclusion: non_null
     serialization:
       write-dates-as-timestamps: false
-      # The following are often default, but explicitly setting them ensures consistency
-      fail-on-empty-beans: false
     deserialization:
       fail-on-unknown-properties: false
 
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    logging:
+      enabled: true
 
-# --- Unified Service Configuration for Business Process Journeys ---
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    serviceUrl:
+      defaultZone: http://eurekaUser:eurekaPassword@localhost:8761/eureka/
+
+# Business process configuration is preserved
 service-config:
   journeys:
     PAYMENT_SUBMIT_V1:
-      idempotencyEnabled: false
+      idempotencyEnabled: true
       policies:
         - "stateTransitionPolicy"
     PAYMENT_SUBMIT_V2_SYNC:
-      idempotencyEnabled: false
+      idempotencyEnabled: true
       policies:
         - "stateTransitionPolicy"
     PAYMENT_SUBMIT_V2_ASYNC:
-      idempotencyEnabled: false # Fire-and-forget; idempotency is handled by the initial submission
+      idempotencyEnabled: false
       policies:
         - "stateTransitionPolicy"
+
+logging:
+  level:
+    tech: debug
+    dexter.banking.booktransfers.infrastructure.middleware: debug
+    dexter.banking.booktransfers.core.usecase: info
+    org.springframework.transaction.event: warn

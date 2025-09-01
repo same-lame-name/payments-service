@@ -7,9 +7,8 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.5.12</version>
-        <relativePath /> <!-- lookup parent from repository -->
-    </parent>
+        <version>3.3.3</version>
+        <relativePath /> </parent>
 
     <groupId>dexter.demo.payment</groupId>
     <artifactId>payment-service</artifactId>
@@ -28,27 +27,15 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-
-        <java.version>11</java.version>
-
+        <java.version>21</java.version>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <maven.compiler.target>${java.version}</maven.compiler.target>
 
-
-        <spring-cloud.version>2020.0.5</spring-cloud.version>
-        <spring-cloud-contract.version>3.0.5</spring-cloud-contract.version>
-        <spring-statemachine.version>2.5.0</spring-statemachine.version>
-
-        <javax.validation.api.version>2.0.1.Final</javax.validation.api.version>
-        <hibernate.validator.version>6.1.5.Final</hibernate.validator.version>
-        <logstash-logback-encoder.version>6.6</logstash-logback-encoder.version>
-
-        <!-- Surefire plugin arg line property to suppress Unresolved Maven Property -->
-        <argLine>--illegal-access=permit</argLine>
+        <spring-cloud.version>2023.0.2</spring-cloud.version>
+        <logstash-logback-encoder.version>7.4</logstash-logback-encoder.version>
 
         <docker.image.prefix>ssm</docker.image.prefix>
         <docker.image.name>${project.artifactId}</docker.image.name>
-
     </properties>
 
     <modules>
@@ -64,7 +51,6 @@
 
     <dependencyManagement>
         <dependencies>
-
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
@@ -72,15 +58,6 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-contract-dependencies</artifactId>
-                <version>${spring-cloud-contract.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
         </dependencies>
     </dependencyManagement>
 
@@ -111,8 +88,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.13.0</version>
                 <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
@@ -150,10 +129,10 @@
                         <configuration>
                             <rules>
                                 <requireMavenVersion>
-                                    <version>[3.6.0,)</version>
+                                    <version>[3.8.6,)</version>
                                 </requireMavenVersion>
                                 <requireJavaVersion>
-                                    <version>11</version>
+                                    <version>21</version>
                                 </requireJavaVersion>
                                 <requireReleaseDeps>
                                     <onlyWhenRelease>true</onlyWhenRelease>
@@ -167,7 +146,7 @@
             <plugin>
                 <groupId>io.fabric8</groupId>
                 <artifactId>docker-maven-plugin</artifactId>
-                <version>0.33.0</version>
+                <version>0.44.0</version>
                 <configuration>
                     <verbose>true</verbose>
                     <images>
@@ -175,7 +154,6 @@
                             <name>${docker.image.prefix}/${docker.image.name}</name>
                             <alias>${project.artifactId}</alias>
                             <build>
-                                <!--copies artifact to docker build dir in target-->
                                 <assembly>
                                     <descriptorRef>artifact</descriptorRef>
                                 </assembly>
