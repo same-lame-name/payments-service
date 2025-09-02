@@ -2,7 +2,7 @@ package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.fei
 
 import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
-import dexter.banking.booktransfers.core.domain.payment.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.port.out.LimitPort;
 import dexter.banking.model.ApiConstants;
 import dexter.banking.model.LimitManagementRequest;

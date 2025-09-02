@@ -9,9 +9,9 @@ import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
-import dexter.banking.booktransfers.core.domain.payment.result.CreditLegResult;
-import dexter.banking.booktransfers.core.domain.payment.result.DebitLegResult;
-import dexter.banking.booktransfers.core.domain.payment.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContextHolder;
 import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
@@ -44,7 +44,6 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     private final BusinessPolicyFactory policyFactory;
     private final ConfigurationPort configurationPort;
     private final OrchestrationContextMapper orchestrationContextMapper;
-
     @Override
     public boolean matches(PaymentCommand command) {
         return command.getVersion() == ApiVersion.V2 && command.getModeOfTransfer() == ModeOfTransfer.ASYNC;
@@ -57,7 +56,6 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
         JourneySpecification spec = CommandProcessingContextHolder.getContext()
                 .map(CommandProcessingContext::getJourneySpecification)
                 .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context for async submission"));
-
         BusinessPolicy policy = policyFactory.create(spec);
 
         String journeyIdentifier = command.getIdentifier();
@@ -89,7 +87,8 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
                 case SUCCESSFUL -> AsyncProcessEvent.DEBIT_LEG_SUCCEEDED;
                 case FAILED -> AsyncProcessEvent.DEBIT_LEG_FAILED;
 
-                default -> throw new IllegalStateException("Unexpected status for debit leg result: " + result.status());
+
+                 default -> throw new IllegalStateException("Unexpected status for debit leg result: " + result.status());
             };
         });
     }
@@ -104,7 +103,8 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
                 case FAILED -> AsyncProcessEvent.LIMIT_EARMARK_FAILED;
 
 
-                default -> throw new IllegalStateException("Unexpected status for limit earmark result: " + result.status());
+
+                 default -> throw new IllegalStateException("Unexpected status for limit earmark result: " + result.status());
             };
         });
     }
@@ -119,7 +119,8 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
                 case REVERSAL_FAILED -> AsyncProcessEvent.DEBIT_LEG_REVERSAL_FAILED;
 
 
-                default -> throw new IllegalStateException("Unexpected status for debit reversal result: " + result.status());
+
+                 default -> throw new IllegalStateException("Unexpected status for debit reversal result: " + result.status());
             };
         });
     }
@@ -134,7 +135,8 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
                 case REVERSAL_FAILED -> AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED;
 
 
-                default -> throw new IllegalStateException("Unexpected status for limit reversal result: " + result.status());
+
+                 default -> throw new IllegalStateException("Unexpected status for limit reversal result: " + result.status());
             };
         });
     }
@@ -143,12 +145,10 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
         // 1. Rehydrate Aggregate
         Payment.PaymentMemento memento = paymentRepository.findMementoById(transactionId)
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId));
-
         BusinessPolicy policy = configurationPort
                 .findForJourney(memento.journeyName())
                 .map(policyFactory::create)
                 .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
-
         Payment payment = Payment.rehydrate(memento, policy);
 
         // 2. Acquire State Machine

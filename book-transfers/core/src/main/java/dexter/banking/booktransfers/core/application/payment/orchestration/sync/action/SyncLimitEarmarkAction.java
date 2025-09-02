@@ -4,7 +4,7 @@ package dexter.banking.booktransfers.core.application.payment.orchestration.sync
 import dexter.banking.booktransfers.core.application.payment.orchestration.sync.component.TransactionContext;
 import dexter.banking.booktransfers.core.application.payment.orchestration.sync.model.ProcessEvent;
 import dexter.banking.booktransfers.core.application.payment.orchestration.sync.model.ProcessState;
-import dexter.banking.booktransfers.core.domain.payment.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.port.out.LimitPort;
 import dexter.banking.statemachine.contract.SagaAction;
 import lombok.RequiredArgsConstructor;

@@ -51,6 +51,11 @@ service-config:
       idempotencyEnabled: false
       policies:
         - "stateTransitionPolicy"
+    PAYMENT_SUBMIT_V3:
+      idempotencyEnabled: true
+      policies:
+        - "stateTransitionPolicy"
+      complianceThreshold: 10000.00
 
 logging:
   level:

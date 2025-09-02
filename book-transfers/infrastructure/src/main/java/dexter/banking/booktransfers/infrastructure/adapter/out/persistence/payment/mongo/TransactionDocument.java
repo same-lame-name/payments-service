@@ -2,9 +2,9 @@ package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.paym
 
 import dexter.banking.booktransfers.core.domain.payment.PaymentState;
 import dexter.banking.booktransfers.core.domain.payment.Status;
-import dexter.banking.booktransfers.core.domain.payment.result.CreditLegResult;
-import dexter.banking.booktransfers.core.domain.payment.result.DebitLegResult;
-import dexter.banking.booktransfers.core.domain.payment.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import lombok.Getter;
 import lombok.Setter;
 import org.bson.types.ObjectId;

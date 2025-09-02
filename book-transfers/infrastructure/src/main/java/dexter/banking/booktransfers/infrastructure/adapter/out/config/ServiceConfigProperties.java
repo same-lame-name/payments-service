@@ -7,7 +7,6 @@ import org.springframework.validation.annotation.Validated;
 
 import jakarta.validation.constraints.NotNull;
 import java.util.Map;
-
 @Configuration
 @ConfigurationProperties(prefix = "service-config")
 @Data

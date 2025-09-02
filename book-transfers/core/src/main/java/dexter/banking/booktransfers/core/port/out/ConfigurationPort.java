@@ -4,7 +4,6 @@ package dexter.banking.booktransfers.core.port.out;
 import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
 
 import java.util.Optional;
-
 /**
  * A Driven Port defining the contract for a technology-agnostic configuration provider.
  * The core uses this port to request the configuration it needs, without knowing where

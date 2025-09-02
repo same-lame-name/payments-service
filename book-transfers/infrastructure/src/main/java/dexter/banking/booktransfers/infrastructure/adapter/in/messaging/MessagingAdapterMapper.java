@@ -1,8 +1,8 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.domain.payment.result.CreditLegResult;
-import dexter.banking.booktransfers.core.domain.payment.result.DebitLegResult;
-import dexter.banking.booktransfers.core.domain.payment.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import dexter.banking.model.CreditCardBankingResponse;
 import dexter.banking.model.CreditCardBankingStatus;
 import dexter.banking.model.DepositBankingResponse;

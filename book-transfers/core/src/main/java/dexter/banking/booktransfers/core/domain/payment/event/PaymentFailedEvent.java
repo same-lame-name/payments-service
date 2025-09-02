@@ -2,7 +2,6 @@ package dexter.banking.booktransfers.core.domain.payment.event;
 
 
 import dexter.banking.booktransfers.core.domain.payment.PaymentState;
-import dexter.banking.booktransfers.core.domain.shared.primitives.DomainEvent;
 
 import java.time.Instant;
 import java.util.Map;
@@ -15,7 +14,7 @@ public record PaymentFailedEvent(
     PaymentState aggregateState,
     String reason,
     Map<String, Object> metadata
-) implements DomainEvent<UUID> {
+) implements PaymentEvent {
 
     public PaymentFailedEvent(UUID aggregateId, PaymentState aggregateState, String reason, Map<String, Object> metadata) {
         this(UUID.randomUUID(), aggregateId, Instant.now(), aggregateState, reason, metadata);

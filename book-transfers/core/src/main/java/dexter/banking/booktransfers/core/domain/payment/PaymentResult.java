@@ -1,6 +1,4 @@
 package dexter.banking.booktransfers.core.domain.payment;
-
-
 import dexter.banking.booktransfers.core.domain.shared.primitives.ValueObject;
 
 import java.util.UUID;
@@ -17,6 +15,7 @@ public record PaymentResult(
             payment.getTransactionReference(),
             payment.getStatus(),
             payment.getState()
+
         );
     }
 }

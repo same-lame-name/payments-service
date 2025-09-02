@@ -1,11 +1,10 @@
 package dexter.banking.booktransfers.core.application.payment.command;
-
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
-import dexter.banking.booktransfers.core.domain.payment.result.CreditLegResult;
-import dexter.banking.booktransfers.core.domain.payment.result.DebitLegResult;
-import dexter.banking.booktransfers.core.domain.payment.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContextHolder;
 import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
@@ -20,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-
 /**
  * Command Handler for the V1 procedural flow.
  * This handler is now a self-contained, transactional SAGA.
@@ -39,7 +37,6 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private final PaymentRepositoryPort paymentRepository;
     private final EventDispatcherPort eventDispatcher;
     private final BusinessPolicyFactory policyFactory;
-
     @Override
     public boolean matches(PaymentCommand command) {
         return command.getVersion() == ApiVersion.V1;
@@ -49,11 +46,9 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
         log.info("▶️ [V1] Starting procedural transaction for Command: {}", command.getTransactionReference());
-
         JourneySpecification spec = CommandProcessingContextHolder.getContext()
                 .map(CommandProcessingContext::getJourneySpecification)
                 .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context"));
-
         BusinessPolicy policy = policyFactory.create(spec);
 
         String journeyIdentifier = command.getIdentifier();
@@ -61,14 +56,11 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
 
         Payment payment = Payment.startNew(command, policy, journeyIdentifier);
         paymentRepository.save(payment);
-
         try {
             // Step 1: Limit Earmark
             performLimitEarmark(command, payment);
-
             // Step 2: Debit Leg
             performDebitLeg(command, payment);
-
             // Step 3: Credit Leg
             performCreditLeg(command, payment);
         } catch (Exception e) {

@@ -1,12 +1,17 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.web;
 
+import dexter.banking.booktransfers.core.application.compliance.command.RejectComplianceCaseCommand;
+import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.RelId;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.TransactionAmount;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.util.Currency;
 import java.util.UUID;
 
 @Component
@@ -16,7 +21,8 @@ class WebMapper {
             return null;
         }
 
-        UUID transactionId = UUID.randomUUID(); // Generate a new transaction ID here if needed
+        UUID transactionId = UUID.randomUUID();
+        // Generate a new transaction ID here if needed
         return PaymentCommand.builder()
                 .transactionId(transactionId)
                 .idempotencyKey(dto.getIdempotencyKey())
@@ -29,6 +35,30 @@ class WebMapper {
                 .modeOfTransfer(StringUtils.hasText(dto.getModeOfTransfer()) ? ModeOfTransfer.valueOf(dto.getModeOfTransfer().toUpperCase()) : ModeOfTransfer.ASYNC)
                 .version(version) // Set the version from the controller
                 .build();
+    }
+
+    public HighValuePaymentCommand toCommand(BookTransferRequestV3 dto) {
+        if (dto == null) {
+            return null;
+        }
+
+        return HighValuePaymentCommand.builder()
+                .transactionId(UUID.randomUUID())
+                .idempotencyKey(dto.getIdempotencyKey())
+                .transactionReference(dto.getTransactionReference())
+                .relId(new RelId(dto.getRelId()))
+                .transactionAmount(new TransactionAmount(dto.getAmount(), Currency.getInstance(dto.getCurrency())))
+                .limitType(dto.getLimitType())
+                .accountNumber(dto.getAccountNumber())
+                .cardNumber(dto.getCardNumber())
+                .build();
+    }
+
+    public RejectComplianceCaseCommand toCommand(UUID caseId, RejectComplianceRequest dto) {
+        if (dto == null) {
+            return null;
+        }
+        return new RejectComplianceCaseCommand(caseId, dto.getReason());
     }
 
     public BookTransferResponse toResponse(PaymentResult paymentResult) {

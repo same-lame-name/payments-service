@@ -5,10 +5,11 @@ import dexter.banking.booktransfers.core.application.payment.command.PaymentComm
 import dexter.banking.booktransfers.core.domain.payment.event.ManualInterventionRequiredEvent;
 import dexter.banking.booktransfers.core.domain.payment.event.PaymentFailedEvent;
 import dexter.banking.booktransfers.core.domain.payment.event.PaymentInProgressEvent;
+import dexter.banking.booktransfers.core.domain.payment.event.PaymentRequiresComplianceCheck;
 import dexter.banking.booktransfers.core.domain.payment.event.PaymentSuccessfulEvent;
-import dexter.banking.booktransfers.core.domain.payment.result.CreditLegResult;
-import dexter.banking.booktransfers.core.domain.payment.result.DebitLegResult;
-import dexter.banking.booktransfers.core.domain.payment.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessAction;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.domain.shared.policy.PolicyEvaluationContext;
@@ -23,7 +24,8 @@ public class Payment extends AggregateRoot<UUID> {
 
     private final String transactionReference;
     private final String journeyName; // The identifier for the business process context.
-    private final transient BusinessPolicy policy; // The injected guardian of this aggregate's state.
+    private final transient BusinessPolicy policy;
+    // The injected guardian of this aggregate's state.
 
     // --- State Fields ---
     private DebitLegResult debitLegResult;
@@ -31,8 +33,6 @@ public class Payment extends AggregateRoot<UUID> {
     private CreditLegResult creditLegResult;
     private Status status;
     private PaymentState state;
-
-
     private Payment(UUID id, String transactionReference, String journeyName, BusinessPolicy policy, PaymentState state) {
         super(id);
         this.transactionReference = transactionReference;
@@ -64,23 +64,32 @@ public class Payment extends AggregateRoot<UUID> {
             this.debitLegResult,
             this.limitEarmarkResult,
             this.creditLegResult,
-            this.status,
+
+             this.status,
             this.state
         );
     }
 
     // --- Business Methods ---
 
+    public void flagForComplianceCheck(Map<String, Object> metadata) {
+        var context = new PolicyEvaluationContext(this.getMemento(), metadata);
+        this.policy.evaluate(context, BusinessAction.FLAG_FOR_COMPLIANCE);
+        this.setState(PaymentState.PENDING_COMPLIANCE);
+        this.registerEvent(new PaymentRequiresComplianceCheck(this.id, this.state, metadata));
+    }
+
     public void recordLimitEarmark(LimitEarmarkResult result, Map<String, Object> metadata) {
         BusinessAction action = (result.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL)
-                ? BusinessAction.RECORD_LIMIT_EARMARK_SUCCESS
+                ?
+                BusinessAction.RECORD_LIMIT_EARMARK_SUCCESS
                 : BusinessAction.RECORD_LIMIT_EARMARK_FAILURE;
         var context = new PolicyEvaluationContext(this.getMemento(), metadata);
         this.policy.evaluate(context, action);
         this.limitEarmarkResult = result;
-
         PaymentState paymentState = (action == BusinessAction.RECORD_LIMIT_EARMARK_SUCCESS)
-                ? PaymentState.LIMIT_RESERVED
+                ?
+                PaymentState.LIMIT_RESERVED
                 : PaymentState.LIMIT_COULD_NOT_BE_RESERVED;
 
         this.setState(paymentState);
@@ -89,14 +98,15 @@ public class Payment extends AggregateRoot<UUID> {
 
     public void recordLimitReversal(LimitEarmarkResult result, Map<String, Object> metadata) {
         BusinessAction action = (result.status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL)
-                ? BusinessAction.RECORD_LIMIT_REVERSAL_SUCCESS
+                ?
+                BusinessAction.RECORD_LIMIT_REVERSAL_SUCCESS
                 : BusinessAction.RECORD_LIMIT_REVERSAL_FAILURE;
         var context = new PolicyEvaluationContext(this.getMemento(), metadata);
         this.policy.evaluate(context, action);
         this.limitEarmarkResult = result;
-
         PaymentState paymentState = (action == BusinessAction.RECORD_LIMIT_REVERSAL_SUCCESS)
-                ? PaymentState.LIMIT_REVERSED
+                ?
+                PaymentState.LIMIT_REVERSED
                 : PaymentState.LIMIT_COULD_NOT_BE_REVERSED;
 
         this.setState(paymentState);
@@ -105,15 +115,16 @@ public class Payment extends AggregateRoot<UUID> {
 
     public void recordDebit(DebitLegResult result, Map<String, Object> metadata) {
         BusinessAction action = (result.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL)
-                ? BusinessAction.RECORD_DEBIT_SUCCESS
+                ?
+                BusinessAction.RECORD_DEBIT_SUCCESS
                 : BusinessAction.RECORD_DEBIT_FAILURE;
-
         var context = new PolicyEvaluationContext(this.getMemento(), metadata);
         this.policy.evaluate(context, action);
 
         this.debitLegResult = result;
         PaymentState paymentState = (action == BusinessAction.RECORD_DEBIT_SUCCESS)
-                ? PaymentState.FUNDS_DEBITED
+                ?
+                PaymentState.FUNDS_DEBITED
                 : PaymentState.FUNDS_COULD_NOT_BE_DEBITED;
 
         this.setState(paymentState);
@@ -122,15 +133,16 @@ public class Payment extends AggregateRoot<UUID> {
 
     public void recordDebitReversal(DebitLegResult result, Map<String, Object> metadata) {
         BusinessAction action = (result.status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL)
-                ? BusinessAction.RECORD_DEBIT_REVERSAL_SUCCESS
+                ?
+                BusinessAction.RECORD_DEBIT_REVERSAL_SUCCESS
                 : BusinessAction.RECORD_DEBIT_REVERSAL_FAILURE;
-
         var context = new PolicyEvaluationContext(this.getMemento(), metadata);
         this.policy.evaluate(context, action);
 
         this.debitLegResult = result;
         PaymentState paymentState = (action == BusinessAction.RECORD_DEBIT_REVERSAL_SUCCESS)
-                ? PaymentState.FUNDS_DEBIT_REVERSED
+                ?
+                PaymentState.FUNDS_DEBIT_REVERSED
                 : PaymentState.FUNDS_DEBIT_COULD_NOT_BE_REVERSED;
 
         this.setState(paymentState);
@@ -139,14 +151,15 @@ public class Payment extends AggregateRoot<UUID> {
 
     public void recordCredit(CreditLegResult result, Map<String, Object> metadata) {
         BusinessAction action = (result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL)
-                ? BusinessAction.RECORD_CREDIT_SUCCESS
+                ?
+                BusinessAction.RECORD_CREDIT_SUCCESS
                 : BusinessAction.RECORD_CREDIT_FAILURE;
         var context = new PolicyEvaluationContext(this.getMemento(), metadata);
         this.policy.evaluate(context, action);
         this.creditLegResult = result;
-
         PaymentState paymentState = (action == BusinessAction.RECORD_CREDIT_SUCCESS)
-                ? PaymentState.FUNDS_CREDITED
+                ?
+                PaymentState.FUNDS_CREDITED
                 : PaymentState.FUNDS_COULD_NOT_BE_CREDITED;
 
         this.setState(paymentState);
@@ -197,7 +210,8 @@ public class Payment extends AggregateRoot<UUID> {
             DebitLegResult debitLegResult,
             LimitEarmarkResult limitEarmarkResult,
             CreditLegResult creditLegResult,
-            Status status,
+
+             Status status,
             PaymentState state
     ) {}
 }

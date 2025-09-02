@@ -18,7 +18,6 @@ import java.util.Optional;
 class PropertiesConfigurationAdapter implements ConfigurationPort {
 
     private final ServiceConfigProperties serviceConfigProperties;
-
     @Override
     public Optional<JourneySpecification> findForJourney(String journeyIdentifier) {
         // 1. Get the infrastructure-specific configuration object.
@@ -29,6 +28,10 @@ class PropertiesConfigurationAdapter implements ConfigurationPort {
     }
 
     private JourneySpecification toDomain(JourneyProperties infraConfig) {
-        return new JourneySpecification(infraConfig.isIdempotencyEnabled(), infraConfig.getPolicies());
+        return new JourneySpecification(
+                infraConfig.isIdempotencyEnabled(),
+                infraConfig.getPolicies(),
+                Optional.ofNullable(infraConfig.getComplianceThreshold())
+        );
     }
 }

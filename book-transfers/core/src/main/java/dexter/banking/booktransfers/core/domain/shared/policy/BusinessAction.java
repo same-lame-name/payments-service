@@ -1,11 +1,11 @@
 package dexter.banking.booktransfers.core.domain.shared.policy;
-
 /**
  * A type-safe representation of a business action being attempted on an aggregate.
  * This is used by policies to select the correct set of rules to evaluate.
  */
 public enum BusinessAction {
     START_PAYMENT,
+    FLAG_FOR_COMPLIANCE,
     RECORD_LIMIT_EARMARK_SUCCESS,
     RECORD_LIMIT_EARMARK_FAILURE,
     RECORD_DEBIT_SUCCESS,

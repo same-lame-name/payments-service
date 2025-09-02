@@ -3,7 +3,7 @@ package dexter.banking.booktransfers.core.port.out;
 
 import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
-import dexter.banking.booktransfers.core.domain.payment.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 
 /**
  * Driven Port for interacting with the external Deposit Banking service.
