@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment;
+package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment.mongo;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;

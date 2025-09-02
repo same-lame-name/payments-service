@@ -35,6 +35,7 @@ public class SyncStateMachineConfig {
                 .end(ProcessState.PROCESS_FAILED)
                 .end(ProcessState.PROCESS_COMPLETED)
                 .end(ProcessState.REMEDIATION_REQUIRED)
+
             .from(ProcessState.NEW).on(ProcessEvent.SUBMIT)
                 .to(ProcessState.EARMARKING_LIMIT)
                 .withAction(limitEarmarkAction::apply)

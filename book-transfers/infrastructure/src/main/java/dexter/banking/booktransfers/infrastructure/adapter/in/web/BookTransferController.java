@@ -33,14 +33,14 @@ class BookTransferController {
     @PostMapping("/v1/book-transfers/payment")
     public BookTransferResponse submitTransactionV1(@RequestBody @Valid BookTransferRequest bookTransferRequest) {
         PaymentCommand command = webMapper.toCommand(bookTransferRequest, ApiVersion.V1);
-        PaymentResult initiatedPayment = command.execute(commandBus);
+        PaymentResult initiatedPayment = commandBus.send(command);
         return webMapper.toResponse(initiatedPayment);
     }
 
     @PostMapping("/v2/book-transfers/payment")
     public BookTransferResponse submitTransactionV2(@RequestBody @Valid BookTransferRequest bookTransferRequest) {
         PaymentCommand command = webMapper.toCommand(bookTransferRequest, ApiVersion.V2);
-        PaymentResult initiatedPayment = command.execute(commandBus);
+        PaymentResult initiatedPayment = commandBus.send(command);
         return webMapper.toResponse(initiatedPayment);
     }
 

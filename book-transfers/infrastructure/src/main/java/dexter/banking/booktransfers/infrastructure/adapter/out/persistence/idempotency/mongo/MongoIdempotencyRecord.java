@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.idempotency;
+package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.idempotency.mongo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;

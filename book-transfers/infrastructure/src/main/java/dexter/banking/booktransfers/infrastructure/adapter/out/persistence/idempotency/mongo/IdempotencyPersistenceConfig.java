@@ -1,6 +1,5 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.idempotency;
+package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.idempotency.mongo;
 
-import dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment.PaymentPersistenceConfig;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;

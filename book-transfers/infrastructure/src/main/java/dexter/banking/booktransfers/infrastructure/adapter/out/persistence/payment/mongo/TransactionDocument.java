@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment;
+package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment.mongo;
 
 import dexter.banking.booktransfers.core.domain.payment.PaymentState;
 import dexter.banking.booktransfers.core.domain.payment.Status;

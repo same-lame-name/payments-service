@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.query;
+package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment.mongo;
 
 import dexter.banking.booktransfers.core.application.payment.query.PaymentView;
 import dexter.banking.booktransfers.core.port.in.payment.PaymentQueryUseCase;

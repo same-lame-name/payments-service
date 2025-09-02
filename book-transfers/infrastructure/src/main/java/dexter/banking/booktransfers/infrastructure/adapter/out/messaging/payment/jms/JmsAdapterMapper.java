@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.messaging;
+package dexter.banking.booktransfers.infrastructure.adapter.out.messaging.payment.jms;
 
 import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.Payment;

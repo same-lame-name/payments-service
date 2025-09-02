@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.http;
+package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
 
 import dexter.banking.booktransfers.core.port.out.WebhookPort;
 import lombok.extern.slf4j.Slf4j;
