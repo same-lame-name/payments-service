@@ -10,7 +10,7 @@ import org.springframework.web.context.request.WebRequest;
 import java.time.OffsetDateTime;
 
 @ControllerAdvice
-public class ApiExceptionHandler {
+class ApiExceptionHandler {
 
     @ExceptionHandler(TransactionNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFoundException(TransactionNotFoundException ex, WebRequest request) {

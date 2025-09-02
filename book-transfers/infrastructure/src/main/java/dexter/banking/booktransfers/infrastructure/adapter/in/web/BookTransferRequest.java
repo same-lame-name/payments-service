@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import java.util.UUID;
 
 @Data
-public class BookTransferRequest {
+class BookTransferRequest {
 
     @NotNull(message = "idempotencyKey must not be null")
     private UUID idempotencyKey;

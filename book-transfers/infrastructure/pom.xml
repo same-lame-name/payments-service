@@ -16,7 +16,7 @@
     <dependencies>
         <dependency>
             <groupId>dexter.demo.payment</groupId>
-            <artifactId>core</artifactId>
+            <artifactId>book-transfers-core</artifactId>
             <version>0.1.0-SNAPSHOT</version>
         </dependency>
 

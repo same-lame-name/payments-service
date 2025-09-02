@@ -10,7 +10,7 @@ import java.util.List;
  * loaded from application.yml.
  */
 @Data
-public class JourneyProperties {
+class JourneyProperties {
     private boolean idempotencyEnabled = false;
     @NotEmpty
     private List<String> policies;

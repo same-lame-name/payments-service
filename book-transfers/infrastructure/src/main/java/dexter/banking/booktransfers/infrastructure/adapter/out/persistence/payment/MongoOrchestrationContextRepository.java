@@ -14,7 +14,7 @@ import java.util.UUID;
  */
 @Component
 @RequiredArgsConstructor
-public class MongoOrchestrationContextRepository implements OrchestrationContextRepositoryPort {
+class MongoOrchestrationContextRepository implements OrchestrationContextRepositoryPort {
 
     private final SpringMongoTransactionRepository repository;
 

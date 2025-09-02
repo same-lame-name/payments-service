@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Component("mongodb")
 @RequiredArgsConstructor
-public class MongoPaymentRepository implements PaymentRepositoryPort {
+class MongoPaymentRepository implements PaymentRepositoryPort {
 
     private final SpringMongoTransactionRepository repository;
     private final PersistenceMapper mapper;

@@ -3,7 +3,7 @@ package dexter.banking.booktransfers.core.application.payment.orchestration.sync
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.orchestration.sync.model.ProcessState;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.statemachine.contract.StateMachineContext;

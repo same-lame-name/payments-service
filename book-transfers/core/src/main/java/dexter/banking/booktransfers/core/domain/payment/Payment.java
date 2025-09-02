@@ -1,7 +1,7 @@
 package dexter.banking.booktransfers.core.domain.payment;
 
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.event.ManualInterventionRequiredEvent;
 import dexter.banking.booktransfers.core.domain.payment.event.PaymentFailedEvent;
 import dexter.banking.booktransfers.core.domain.payment.event.PaymentInProgressEvent;

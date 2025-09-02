@@ -18,7 +18,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class BookTransferResponse {
+class BookTransferResponse {
     private UUID transactionId;
     private Status status;
     private PaymentState state;

@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.idempotency;
 
-public enum MongoIdempotencyStatus {
+enum MongoIdempotencyStatus {
     STARTED,
     COMPLETED
 }

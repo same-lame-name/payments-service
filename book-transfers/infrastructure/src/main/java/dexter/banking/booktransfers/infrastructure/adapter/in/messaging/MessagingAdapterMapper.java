@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
  * It translates external DTOs received from JMS queues into pure, internal domain value objects.
  */
 @Component
-public class MessagingAdapterMapper {
+class MessagingAdapterMapper {
 
     public CreditLegResult toDomain(CreditCardBankingResponse dto) {
         CreditLegResult.CreditLegStatus status = (dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL)

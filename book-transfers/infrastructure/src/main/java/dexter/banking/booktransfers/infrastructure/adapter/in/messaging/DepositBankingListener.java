@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class DepositBankingListener {
+class DepositBankingListener {
 
     private final AsyncPaymentV2CommandHandler orchestrator;
     private final MessagingAdapterMapper mapper;

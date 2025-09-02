@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.messaging;
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.port.out.TransactionLegPort;
 import dexter.banking.model.JmsConstants;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-public class JmsTransactionLegAdapter implements TransactionLegPort {
+class JmsTransactionLegAdapter implements TransactionLegPort {
 
     private final JmsTemplate jmsTemplate;
     private final JmsAdapterMapper mapper;

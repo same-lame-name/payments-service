@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class LimitEarmarkReversalListener {
+class LimitEarmarkReversalListener {
 
     private final AsyncPaymentV2CommandHandler orchestrator;
     private final MessagingAdapterMapper mapper;

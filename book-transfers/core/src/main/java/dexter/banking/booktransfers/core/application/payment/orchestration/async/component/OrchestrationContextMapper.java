@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.core.application.payment.orchestration.async.component;
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
 import org.springframework.stereotype.Component;
 

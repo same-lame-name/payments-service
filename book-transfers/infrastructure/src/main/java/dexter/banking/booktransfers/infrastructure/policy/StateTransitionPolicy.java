@@ -19,7 +19,7 @@ import java.util.Collections;
  * making them human-readable, composable, and easier to maintain.
  */
 @Component("stateTransitionPolicy")
-public class StateTransitionPolicy implements BusinessPolicy {
+class StateTransitionPolicy implements BusinessPolicy {
 
     private static final Map<BusinessAction, Set<PaymentState>> ALLOWED_TRANSITIONS = new TransitionRuleBuilder()
         .allow(BusinessAction.START_PAYMENT).from(PaymentState.NEW)

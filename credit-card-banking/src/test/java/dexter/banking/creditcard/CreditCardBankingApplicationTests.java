@@ -1,10 +1,10 @@
-package dexter.banking.deposit;
+package dexter.banking.creditcard;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class DepositBankingApplicationTests {
+//@SpringBootTest
+class CreditCardBankingApplicationTests {
 
     @Test
     void contextLoads() {

@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http;
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.result.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.port.out.LimitPort;
@@ -21,7 +21,7 @@ import java.util.UUID;
 
 @Component
 @Primary
-public class LimitAdapter implements LimitPort {
+class LimitAdapter implements LimitPort {
 
     private final RawLimitClient client;
     private final HttpAdapterMapper mapper;

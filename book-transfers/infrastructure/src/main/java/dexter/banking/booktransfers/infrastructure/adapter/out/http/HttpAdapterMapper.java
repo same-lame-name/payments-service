@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http;
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.result.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.payment.result.DebitLegResult;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * and translates the core's PaymentCommand into external request DTOs.
  */
 @Component
-public class HttpAdapterMapper {
+class HttpAdapterMapper {
 
     public CreditLegResult toDomain(CreditCardBankingResponse dto) {
         CreditLegResult.CreditLegStatus status = (dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL)

@@ -14,7 +14,7 @@ import java.util.List;
  * Evaluation stops at the first policy that throws a PolicyViolationException.
  */
 @RequiredArgsConstructor
-public class CompositeBusinessPolicy implements BusinessPolicy {
+class CompositeBusinessPolicy implements BusinessPolicy {
 
     private final List<BusinessPolicy> policies;
 

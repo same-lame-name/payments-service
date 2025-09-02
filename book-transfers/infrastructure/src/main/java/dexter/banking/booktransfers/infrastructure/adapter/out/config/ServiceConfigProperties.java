@@ -12,7 +12,7 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "service-config")
 @Data
 @Validated
-public class ServiceConfigProperties {
+class ServiceConfigProperties {
     @NotNull
     private Map<String, JourneyProperties> journeys;
 }

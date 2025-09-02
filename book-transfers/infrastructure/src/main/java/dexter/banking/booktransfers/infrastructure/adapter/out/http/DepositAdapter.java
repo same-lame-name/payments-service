@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http;
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.result.DebitLegResult;
 import dexter.banking.booktransfers.core.port.out.DepositPort;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import java.util.UUID;
 @Component
 @Primary
-public class DepositAdapter implements DepositPort {
+class DepositAdapter implements DepositPort {
 
     private final RawDepositClient client;
     private final HttpAdapterMapper mapper;

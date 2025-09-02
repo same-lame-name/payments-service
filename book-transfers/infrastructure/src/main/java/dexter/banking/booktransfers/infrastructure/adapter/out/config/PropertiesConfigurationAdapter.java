@@ -15,7 +15,7 @@ import java.util.Optional;
  */
 @Component
 @RequiredArgsConstructor
-public class PropertiesConfigurationAdapter implements ConfigurationPort {
+class PropertiesConfigurationAdapter implements ConfigurationPort {
 
     private final ServiceConfigProperties serviceConfigProperties;
 

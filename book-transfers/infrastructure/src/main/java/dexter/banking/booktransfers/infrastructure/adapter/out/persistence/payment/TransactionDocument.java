@@ -17,7 +17,7 @@ import java.util.UUID;
 @Setter
 @Getter
 @Document(collection = "transaction_info")
-public class TransactionDocument {
+class TransactionDocument {
 
     @Id
     private ObjectId _id;

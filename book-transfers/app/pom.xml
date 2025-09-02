@@ -68,11 +68,13 @@
 
     <build>
         <plugins>
+            <!-- This activates the spring-boot-maven-plugin for this module -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>dexter.banking.booktransfers.app.BookTransfersApplication</mainClass>
+                    <!-- Overriding the main class to point to the correct location in this module -->
+                    <mainClass>dexter.banking.booktransfers.infrastructure.BookTransfersApplication</mainClass>
                     <layout>JAR</layout>
                 </configuration>
                 <executions>
@@ -82,6 +84,12 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!-- This module also opts-in to the Docker build -->
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

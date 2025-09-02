@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.core.application.payment;
+package dexter.banking.booktransfers.core.application.payment.command;
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;

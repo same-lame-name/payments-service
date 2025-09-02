@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http;
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.result.CreditLegResult;
 import dexter.banking.booktransfers.core.port.out.CreditCardPort;
@@ -26,7 +26,7 @@ import java.util.UUID;
  */
 @Component
 @Primary
-public class CreditCardAdapter implements CreditCardPort {
+class CreditCardAdapter implements CreditCardPort {
 
     private final RawCreditCardClient client;
     private final HttpAdapterMapper mapper;

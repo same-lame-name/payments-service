@@ -14,7 +14,7 @@ import java.util.Optional;
 @Document(collection = "idempotency_records")
 @Data
 @NoArgsConstructor
-public class MongoIdempotencyRecord {
+class MongoIdempotencyRecord {
     @Id
     private String idempotencyKey;
     private MongoIdempotencyStatus status;

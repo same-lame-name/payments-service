@@ -20,7 +20,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class MongoIdempotencyAdapter implements IdempotencyPort {
+class MongoIdempotencyAdapter implements IdempotencyPort {
 
     private final MongoTemplate mongoTemplate;
     private final ObjectMapper objectMapper;

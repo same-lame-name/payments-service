@@ -1,4 +1,4 @@
-package config;
+package dexter.banking.booktransfers.app.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

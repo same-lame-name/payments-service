@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.web;
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
@@ -10,7 +10,7 @@ import org.springframework.util.StringUtils;
 import java.util.UUID;
 
 @Component
-public class WebMapper {
+class WebMapper {
     public PaymentCommand toCommand(BookTransferRequest dto, ApiVersion version) {
         if (dto == null) {
             return null;

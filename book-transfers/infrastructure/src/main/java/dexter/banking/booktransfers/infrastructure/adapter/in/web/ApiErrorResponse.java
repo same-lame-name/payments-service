@@ -14,7 +14,7 @@ import java.time.OffsetDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ApiErrorResponse {
+class ApiErrorResponse {
     private OffsetDateTime timestamp;
     private int status;
     private String error;

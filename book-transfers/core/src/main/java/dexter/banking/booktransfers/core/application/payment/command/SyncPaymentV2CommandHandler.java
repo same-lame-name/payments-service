@@ -1,6 +1,5 @@
 package dexter.banking.booktransfers.core.application.payment.command;
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.orchestration.sync.component.TransactionContext;
 import dexter.banking.booktransfers.core.application.payment.orchestration.sync.model.ProcessEvent;
 import dexter.banking.booktransfers.core.application.payment.orchestration.sync.model.ProcessState;

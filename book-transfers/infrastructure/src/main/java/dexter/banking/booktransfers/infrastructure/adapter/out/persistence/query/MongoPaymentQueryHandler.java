@@ -20,7 +20,7 @@ import java.util.UUID;
  */
 @Component
 @RequiredArgsConstructor
-public class MongoPaymentQueryHandler implements PaymentQueryUseCase {
+class MongoPaymentQueryHandler implements PaymentQueryUseCase {
 
     private final MongoTemplate mongoTemplate;
     private static final String TRANSACTION_COLLECTION = "transaction_info";

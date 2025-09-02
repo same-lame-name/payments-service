@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.messaging;
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.model.CreditCardBankingRequest;
 import dexter.banking.model.DepositBankingRequest;
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * It translates the core's PaymentCommand into external request DTOs for messaging.
  */
 @Component
-public class JmsAdapterMapper {
+class JmsAdapterMapper {
     public LimitManagementRequest toLimitManagementRequest(PaymentCommand command) {
         return LimitManagementRequest.builder()
                 .transactionId(command.getTransactionId())

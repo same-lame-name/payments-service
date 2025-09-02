@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.web;
 
-import dexter.banking.booktransfers.core.application.payment.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.query.PaymentView;
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
@@ -25,7 +25,7 @@ import java.util.UUID;
 @RequestMapping("/api")
 @RequiredArgsConstructor
 @Validated
-public class BookTransferController {
+class BookTransferController {
 
     private final CommandBus commandBus;
     private final PaymentQueryUseCase paymentQueryUseCase;

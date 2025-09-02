@@ -4,7 +4,7 @@ import dexter.banking.booktransfers.core.domain.payment.Payment;
 import org.springframework.stereotype.Component;
 
 @Component
-public class PersistenceMapper {
+class PersistenceMapper {
 
     /**
      * Maps a TransactionDocument to a pure data-only PaymentMemento.

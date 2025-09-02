@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  */
 @Component
 @RequiredArgsConstructor
-public class SpringBeanBusinessPolicyFactory implements BusinessPolicyFactory {
+class SpringBeanBusinessPolicyFactory implements BusinessPolicyFactory {
 
     private final ApplicationContext applicationContext;
 

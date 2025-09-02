@@ -12,7 +12,7 @@ import org.springframework.web.client.RestTemplate;
  */
 @Slf4j
 @Component
-public class WebhookAdapter implements WebhookPort {
+class WebhookAdapter implements WebhookPort {
 
     private final RestTemplate restTemplate = new RestTemplate();
 

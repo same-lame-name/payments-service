@@ -1,4 +1,4 @@
-package config;
+package dexter.banking.booktransfers.app.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;

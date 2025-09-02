@@ -17,7 +17,7 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class SpringEventDispatcherAdapter implements EventDispatcherPort {
+class SpringEventDispatcherAdapter implements EventDispatcherPort {
 
     private final ApplicationEventPublisher eventPublisher;
 

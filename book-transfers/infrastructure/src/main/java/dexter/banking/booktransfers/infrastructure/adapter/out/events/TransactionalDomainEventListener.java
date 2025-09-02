@@ -24,7 +24,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class TransactionalDomainEventListener {
+class TransactionalDomainEventListener {
 
     private final WebhookPort webhookPort;
 
@@ -65,8 +65,8 @@ public class TransactionalDomainEventListener {
         String transactionReference = (String) metadata.get("transactionReference");
         if (webhookUrl != null && !webhookUrl.isBlank()) {
             log.info("Notifying webhook {} for transaction {} with final state {}", webhookUrl, aggregateId, paymentState);
-//            webhookPort.notifyTransactionComplete(webhookUrl, new PaymentNotification(transactionReference, paymentState));
-            webhookPort.notifyTransactionComplete(webhookUrl, paymentState);
+            webhookPort.notifyTransactionComplete(webhookUrl, new PaymentNotification(transactionReference, paymentState));
+//            webhookPort.notifyTransactionComplete(webhookUrl, paymentState);
         } else {
             log.info("No webhook URL configured for transaction {}. Skipping notification.", aggregateId);
         }

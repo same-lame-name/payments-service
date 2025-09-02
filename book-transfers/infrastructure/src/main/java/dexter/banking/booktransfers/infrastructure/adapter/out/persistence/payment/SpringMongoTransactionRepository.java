@@ -12,7 +12,7 @@ import java.util.UUID;
  * to the application core. It works with the TransactionDocument.
  */
 @Repository
-public interface SpringMongoTransactionRepository extends MongoRepository<TransactionDocument, String> {
+interface SpringMongoTransactionRepository extends MongoRepository<TransactionDocument, String> {
     Optional<TransactionDocument> findByTransactionId(UUID transactionId);
 }
 

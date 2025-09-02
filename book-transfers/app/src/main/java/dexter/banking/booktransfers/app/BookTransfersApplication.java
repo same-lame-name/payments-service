@@ -1,3 +1,5 @@
+package dexter.banking.booktransfers.app;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
@@ -8,8 +10,9 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
  * @SpringBootApplication enables component scanning and auto-configuration.
  * @EnableFeignClients explicitly activates the scanning for Feign client interfaces.
  */
-@EnableFeignClients
-@SpringBootApplication
+@EnableFeignClients(basePackages = "dexter.banking.booktransfers")
+@SpringBootApplication(scanBasePackages = "dexter.banking.booktransfers")
+
 public class BookTransfersApplication {
 
     public static void main(String[] args) {
