@@ -2,12 +2,14 @@ package dexter.banking.booktransfers.infrastructure.adapter.in.web;
 
 import dexter.banking.booktransfers.core.application.compliance.command.ApproveComplianceCaseCommand;
 import dexter.banking.booktransfers.core.application.compliance.command.RejectComplianceCaseCommand;
+import dexter.banking.booktransfers.core.application.compliance.query.ComplianceCaseView;
 import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.query.PaymentView;
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.port.in.compliance.ComplianceQueryUseCase;
 import dexter.banking.booktransfers.core.port.in.payment.PaymentQueryUseCase;
 import dexter.banking.commandbus.CommandBus;
 import jakarta.validation.Valid;
@@ -32,6 +34,7 @@ class BookTransferController {
 
     private final CommandBus commandBus;
     private final PaymentQueryUseCase paymentQueryUseCase;
+    private final ComplianceQueryUseCase complianceQueryUseCase;
     private final WebMapper webMapper;
 
     @PostMapping("/v1/book-transfers/payment")
@@ -81,5 +84,12 @@ class BookTransferController {
     public ResponseEntity<List<PaymentView>> findTransactionsByReference(@RequestParam("reference") String reference) {
         List<PaymentView> results = paymentQueryUseCase.findByReference(reference);
         return ResponseEntity.ok(results);
+    }
+
+    @GetMapping("/v3/payments/{paymentId}/compliance-case")
+    public ResponseEntity<ComplianceCaseView> getComplianceCaseByPaymentId(@PathVariable UUID paymentId) {
+        return complianceQueryUseCase.findByPaymentId(paymentId)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new TransactionNotFoundException("Compliance case not found for payment id: " + paymentId));
     }
 }

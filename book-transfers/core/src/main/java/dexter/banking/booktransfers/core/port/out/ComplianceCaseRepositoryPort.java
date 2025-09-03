@@ -7,4 +7,5 @@ import java.util.UUID;
 public interface ComplianceCaseRepositoryPort {
     void save(ComplianceCase complianceCase);
     Optional<ComplianceCase> findById(UUID complianceCaseId);
+    Optional<ComplianceCase> findByPaymentId(UUID paymentId);
 }

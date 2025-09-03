@@ -7,6 +7,7 @@ import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.domain.shared.policy.PolicyEvaluationContext;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
@@ -24,13 +25,16 @@ class StateTransitionPolicy implements BusinessPolicy {
     private static final Map<BusinessAction, Set<PaymentState>> ALLOWED_TRANSITIONS = new TransitionRuleBuilder()
         .allow(BusinessAction.START_PAYMENT).from(PaymentState.NEW)
 
-        // Limit Earmark
-        .allow(BusinessAction.RECORD_LIMIT_EARMARK_SUCCESS).from(PaymentState.NEW, PaymentState.PENDING_COMPLIANCE)
-        .allow(BusinessAction.RECORD_LIMIT_EARMARK_FAILURE).from(PaymentState.NEW, PaymentState.PENDING_COMPLIANCE)
+        // V3 Hybrid Saga: Flag for compliance after a successful limit reservation.
+        .allow(BusinessAction.FLAG_FOR_COMPLIANCE).from(PaymentState.LIMIT_RESERVED)
 
-        // Debit
-        .allow(BusinessAction.RECORD_DEBIT_SUCCESS).from(PaymentState.LIMIT_RESERVED)
-        .allow(BusinessAction.RECORD_DEBIT_FAILURE).from(PaymentState.LIMIT_RESERVED)
+        // Limit Earmark
+        .allow(BusinessAction.RECORD_LIMIT_EARMARK_SUCCESS).from(PaymentState.NEW)
+        .allow(BusinessAction.RECORD_LIMIT_EARMARK_FAILURE).from(PaymentState.NEW)
+
+        // Debit: Can occur after limit is reserved (V1/V2) OR after compliance check (V3).
+        .allow(BusinessAction.RECORD_DEBIT_SUCCESS).from(PaymentState.LIMIT_RESERVED, PaymentState.PENDING_COMPLIANCE)
+        .allow(BusinessAction.RECORD_DEBIT_FAILURE).from(PaymentState.LIMIT_RESERVED, PaymentState.PENDING_COMPLIANCE)
 
         // Credit
         .allow(BusinessAction.RECORD_CREDIT_SUCCESS).from(PaymentState.FUNDS_DEBITED)
@@ -41,13 +45,14 @@ class StateTransitionPolicy implements BusinessPolicy {
         .allow(BusinessAction.RECORD_DEBIT_REVERSAL_FAILURE).from(PaymentState.FUNDS_COULD_NOT_BE_CREDITED)
 
         // Limit Reversal (from Debit Failure or Debit Reversal)
-        .allow(BusinessAction.RECORD_LIMIT_REVERSAL_SUCCESS).from(PaymentState.FUNDS_COULD_NOT_BE_DEBITED, PaymentState.FUNDS_DEBIT_REVERSED)
-        .allow(BusinessAction.RECORD_LIMIT_REVERSAL_FAILURE).from(PaymentState.FUNDS_COULD_NOT_BE_DEBITED, PaymentState.FUNDS_DEBIT_REVERSED)
+        .allow(BusinessAction.RECORD_LIMIT_REVERSAL_SUCCESS).from(PaymentState.FUNDS_COULD_NOT_BE_DEBITED, PaymentState.FUNDS_DEBIT_REVERSED, PaymentState.PENDING_COMPLIANCE)
+        .allow(BusinessAction.RECORD_LIMIT_REVERSAL_FAILURE).from(PaymentState.FUNDS_COULD_NOT_BE_DEBITED, PaymentState.FUNDS_DEBIT_REVERSED, PaymentState.PENDING_COMPLIANCE)
 
         // Finalization
         .allow(BusinessAction.RECORD_PAYMENT_SETTLED).from(PaymentState.FUNDS_CREDITED)
         .allow(BusinessAction.RECORD_PAYMENT_FAILED).from(PaymentState.LIMIT_REVERSED, PaymentState.LIMIT_COULD_NOT_BE_RESERVED)
 
+        // Remediation can be triggered from any state in case of a catastrophic, unrecoverable error.
         .allow(BusinessAction.RECORD_REMEDIATION_NEEDED).from(EnumSet.allOf(PaymentState.class))
 
         .build();
@@ -95,7 +100,7 @@ class StateTransitionPolicy implements BusinessPolicy {
             }
 
             public TransitionRuleBuilder from(PaymentState... allowedStates) {
-                parentBuilder.addRule(EnumSet.of(allowedStates[0], allowedStates));
+                parentBuilder.addRule(EnumSet.copyOf(Arrays.asList(allowedStates)));
                 return parentBuilder;
             }
 

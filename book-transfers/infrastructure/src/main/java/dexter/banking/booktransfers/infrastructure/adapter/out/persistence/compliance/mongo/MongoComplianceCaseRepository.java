@@ -35,4 +35,10 @@ class MongoComplianceCaseRepository implements ComplianceCaseRepositoryPort {
         return repository.findByCaseId(complianceCaseId)
                 .map(mapper::toDomain);
     }
+
+    @Override
+    public Optional<ComplianceCase> findByPaymentId(UUID paymentId) {
+        return repository.findByPaymentId(paymentId)
+                .map(mapper::toDomain);
+    }
 }

@@ -9,6 +9,7 @@ import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecificati
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
 import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
+import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
 import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
 import dexter.banking.statemachine.contract.Action;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -26,6 +28,7 @@ public class ComplianceDecisionAction implements Action<ProcessStateV3, ProcessE
     private final ConfigurationPort configurationPort;
     private final PaymentRepositoryPort paymentRepository;
     private final BusinessPolicyFactory policyFactory;
+    private final EventDispatcherPort eventDispatcher;
 
     @Override
     @Transactional
@@ -42,6 +45,8 @@ public class ComplianceDecisionAction implements Action<ProcessStateV3, ProcessE
         if (amount.compareTo(complianceThreshold) >= 0) {
             payment.flagForComplianceCheck(Collections.emptyMap());
             paymentRepository.update(payment);
+
+            eventDispatcher.dispatch(payment.pullDomainEvents());
             return Optional.of(ProcessEventV3.COMPLIANCE_PENDING);
         } else {
             paymentRepository.update(payment);
@@ -50,9 +55,13 @@ public class ComplianceDecisionAction implements Action<ProcessStateV3, ProcessE
     }
 
     private Payment rehydratePayment(HybridTransactionContext context) {
-        Payment.PaymentMemento memento = paymentRepository.findMementoById(context.getPaymentId())
-                .orElseThrow(() -> new TransactionNotFoundException("Payment not found: " + context.getPaymentId()));
-        BusinessPolicy policy = policyFactory.create(configurationPort.findForJourney(memento.journeyName()).get());
+        UUID transactionId = context.getPaymentId();
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(transactionId)
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId));
+        BusinessPolicy policy = configurationPort
+                .findForJourney(memento.journeyName())
+                .map(policyFactory::create)
+                .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
         return Payment.rehydrate(memento, policy);
     }
 }

@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -30,14 +31,14 @@ public class SyncLimitCheckAction implements SagaAction<ProcessStateV3, ProcessE
     private final LimitPort limitPort;
     private final PaymentRepositoryPort paymentRepository;
     private final HybridContextMapper contextMapper;
+    private final ConfigurationPort configurationPort;
+    private final BusinessPolicyFactory policyFactory;
 
     @Override
     @Transactional
     public Optional<ProcessEventV3> apply(HybridTransactionContext context, ProcessEventV3 event) {
-        Payment payment = paymentRepository.findMementoById(context.getPaymentId())
-                .map(memento -> Payment.rehydrate(memento, null)) // Policy is not needed for this action
-                .orElseThrow(() -> new TransactionNotFoundException("Payment not found: " + context.getPaymentId()));
-
+        // 1. Rehydrate Aggregate
+        Payment payment = rehydratePayment(context);
         try {
             PaymentCommand legacyCommand = contextMapper.mapToLegacyCommand(context);
             LimitEarmarkResult result = limitPort.earmarkLimit(legacyCommand);
@@ -61,9 +62,7 @@ public class SyncLimitCheckAction implements SagaAction<ProcessStateV3, ProcessE
     @Override
     @Transactional
     public Optional<ProcessEventV3> compensate(HybridTransactionContext context, ProcessEventV3 event) {
-        Payment payment = paymentRepository.findMementoById(context.getPaymentId())
-                .map(memento -> Payment.rehydrate(memento, null))
-                .orElseThrow(() -> new TransactionNotFoundException("Payment not found: " + context.getPaymentId()));
+        Payment payment = rehydratePayment(context);
 
         try {
             LimitEarmarkResult result = limitPort.reverseLimitEarmark(payment);
@@ -81,5 +80,16 @@ public class SyncLimitCheckAction implements SagaAction<ProcessStateV3, ProcessE
             paymentRepository.update(payment);
             return Optional.of(ProcessEventV3.LIMIT_EARMARK_REVERSAL_FAILED);
         }
+    }
+
+    private Payment rehydratePayment(HybridTransactionContext context) {
+        UUID transactionId = context.getPaymentId();
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(transactionId)
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId));
+        BusinessPolicy policy = configurationPort
+                .findForJourney(memento.journeyName())
+                .map(policyFactory::create)
+                .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
+        return Payment.rehydrate(memento, policy);
     }
 }

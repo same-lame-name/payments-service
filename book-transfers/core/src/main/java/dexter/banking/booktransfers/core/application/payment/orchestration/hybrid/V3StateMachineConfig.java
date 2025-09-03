@@ -23,7 +23,9 @@ public class V3StateMachineConfig {
     private final ComplianceDecisionAction complianceDecisionAction;
     private final AsyncDebitLegAction asyncDebitLegAction;
     private final AsyncCreditLegAction asyncCreditLegAction;
-    private final TransactionCompleteActionV3 transactionCompleteAction;
+    private final HybridTransactionRemediationAction remediationAction;
+    private final HybridTransactionSuccessAction successAction;
+    private final HybridTransactionFailAction failAction;
     private final HybridStateMachinePersister persister;
 
     @Bean("v3PaymentStateMachineConfig")
@@ -70,13 +72,13 @@ public class V3StateMachineConfig {
                 .add()
                 .from(ProcessStateV3.CREDITING_FUNDS).on(ProcessEventV3.CREDIT_LEG_SUCCEEDED)
                 .to(ProcessStateV3.PROCESS_SETTLED)
-                .withAction(transactionCompleteAction)
+                .withAction(successAction)
                 .add()
 
                 // --- Compensation Path ---
                 .from(ProcessStateV3.EARMARKING_LIMIT).on(ProcessEventV3.LIMIT_REJECTED)
                 .to(ProcessStateV3.PROCESS_FAILED)
-                .withAction(transactionCompleteAction)
+                .withAction(failAction)
                 .add()
                 .from(ProcessStateV3.AWAITING_COMPLIANCE_APPROVAL).on(ProcessEventV3.COMPLIANCE_REJECTED) // New failure path
                 .to(ProcessStateV3.REVERSING_LIMIT_EARMARK)
@@ -96,17 +98,17 @@ public class V3StateMachineConfig {
                 .add()
                 .from(ProcessStateV3.REVERSING_LIMIT_EARMARK).on(ProcessEventV3.LIMIT_EARMARK_REVERSAL_SUCCEEDED)
                 .to(ProcessStateV3.PROCESS_FAILED)
-                .withAction(transactionCompleteAction)
+                .withAction(failAction)
                 .add()
 
                 // --- Remediation Path ---
                 .from(ProcessStateV3.REVERSING_DEBIT).on(ProcessEventV3.DEBIT_LEG_REVERSAL_FAILED)
                 .to(ProcessStateV3.REMEDIATION_REQUIRED)
-                .withAction(transactionCompleteAction)
+                .withAction(remediationAction)
                 .add()
                 .from(ProcessStateV3.REVERSING_LIMIT_EARMARK).on(ProcessEventV3.LIMIT_EARMARK_REVERSAL_FAILED)
                 .to(ProcessStateV3.REMEDIATION_REQUIRED)
-                .withAction(transactionCompleteAction)
+                .withAction(remediationAction)
                 .add()
 
                 .build();
