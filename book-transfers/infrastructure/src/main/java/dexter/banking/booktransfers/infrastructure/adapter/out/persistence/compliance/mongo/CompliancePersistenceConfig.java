@@ -1,5 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.compliance.mongo;
 
+import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
@@ -7,5 +8,5 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @Configuration
 @EnableMongoRepositories(basePackageClasses = CompliancePersistenceConfig.class)
 @ComponentScan(basePackageClasses = CompliancePersistenceConfig.class)
-public class CompliancePersistenceConfig {
+public class CompliancePersistenceConfig implements FacadeConfiguration {
 }

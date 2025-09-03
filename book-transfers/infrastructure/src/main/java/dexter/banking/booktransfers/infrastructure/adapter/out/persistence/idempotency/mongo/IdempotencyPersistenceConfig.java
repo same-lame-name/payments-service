@@ -1,5 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.idempotency.mongo;
 
+import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
@@ -7,5 +8,5 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @Configuration
 @EnableMongoRepositories(basePackageClasses = IdempotencyPersistenceConfig.class)
 @ComponentScan(basePackageClasses = IdempotencyPersistenceConfig.class)
-public class IdempotencyPersistenceConfig {
+public class IdempotencyPersistenceConfig implements FacadeConfiguration {
 }
