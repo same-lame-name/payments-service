@@ -1,9 +1,9 @@
 package dexter.banking.booktransfers.core.port.out;
 
 
-import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
-import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+
+import java.util.UUID;
 
 /**
  * Driven Port for interacting with the external Credit Card Banking service.
@@ -11,6 +11,9 @@ import dexter.banking.booktransfers.core.domain.payment.valueobject.result.Credi
  * the specifics of the external DTOs.
  */
 public interface CreditCardPort {
-    CreditLegResult submitCreditCardPayment(PaymentCommand command);
-    CreditLegResult submitCreditCardReversalPayment(Payment payment);
+    CreditLegResult submitCreditCardPayment(SubmitCreditCardPaymentRequest request);
+    CreditLegResult submitCreditCardReversalPayment(SubmitCreditCardReversalRequest request);
+
+    record SubmitCreditCardPaymentRequest(UUID transactionId, String cardNumber) {}
+    record SubmitCreditCardReversalRequest(UUID transactionId, UUID creditCardRequestId) {}
 }

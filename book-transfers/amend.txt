@@ -1,260 +1,132 @@
 <<--FILE_START-->>
-Path: ./app/src/main/java/dexter/banking/booktransfers/app/BookTransfersApplication.java
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/port/out/WebhookPort.java
 <<--CONTENT_START-->>
-package dexter.banking.booktransfers.app;
+package dexter.banking.booktransfers.core.port.out;
 
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.ComponentScans;
-import org.springframework.context.annotation.FilterType;
+import dexter.banking.booktransfers.core.domain.payment.PaymentState;
 
 /**
- * The main entry point for the Book Transfers application.
- *
- * @SpringBootApplication enables auto-configuration but its default component scan is disabled.
- * We use @ComponentScans to define two precise rules:
- * 1. A standard scan for all components within the 'core' and 'app' modules.
- * 2. A custom, filtered scan for the 'infrastructure' module that ONLY discovers beans
- * that implement the FacadeConfiguration marker interface. This is enforced by
- * useDefaultFilters = false.
+ * Driven Port for sending notifications to external webhooks.
  */
-@SpringBootApplication
-@ComponentScans({
-    @ComponentScan(basePackages = {"dexter.banking.booktransfers.core", "dexter.banking.booktransfers.app"}),
-    @ComponentScan(
-        basePackages = "dexter.banking.booktransfers.infrastructure",
-        includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = FacadeConfiguration.class),
-        useDefaultFilters = false // CRITICAL: This ensures only our filter is used.
-    )
-})
-public class BookTransfersApplication {
+public interface WebhookPort {
+    void notifyTransactionComplete(String webhookUrl, WebhookNotification notification);
 
-    public static void main(String[] args) {
-        SpringApplication.run(BookTransfersApplication.class, args);
-    }
+    /**
+     * A type-safe, explicit contract for the webhook notification payload.
+     * @param transactionReference The business reference for the transaction.
+     * @param status The final state of the payment.
+     */
+    record WebhookNotification(String transactionReference, PaymentState status) {}
 }
 <<--FILE_END-->>
 <<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/FacadeConfiguration.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter;
-
-/**
- * A marker interface for all public infrastructure adapter @Configuration classes.
- *
- * This interface is used by a custom ComponentScan filter in the main application
- * to discover and activate infrastructure "plugins" in a controlled and explicit way.
- * An adapter is only active if its public facade implements this interface.
- */
-public interface FacadeConfiguration {
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/in/cli/CliAdapterConfig.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.in.cli;
-
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-@ComponentScan(basePackageClasses = CliAdapterConfig.class)
-public class CliAdapterConfig implements FacadeConfiguration {
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/in/messaging/MessagingInboundAdapterConfig.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
-
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-@ComponentScan(basePackageClasses = MessagingInboundAdapterConfig.class)
-public class MessagingInboundAdapterConfig implements FacadeConfiguration {
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/in/query/compliance/mongo/ComplianceQueryHandler.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.in.query.compliance.mongo;
-
-import dexter.banking.booktransfers.core.application.compliance.query.ComplianceCaseView;
-import dexter.banking.booktransfers.core.port.in.compliance.ComplianceQueryUseCase;
-import dexter.banking.booktransfers.core.port.out.ComplianceCaseRepositoryPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
-import java.util.Optional;
-import java.util.UUID;
-
-@Component
-@RequiredArgsConstructor
-public class MongoComplianceQueryHandler implements ComplianceQueryUseCase {
-
-    private final ComplianceCaseRepositoryPort complianceCaseRepository;
-
-    @Override
-    public Optional<ComplianceCaseView> findByPaymentId(UUID paymentId) {
-        return complianceCaseRepository.findByPaymentId(paymentId)
-                .map(complianceCase -> new ComplianceCaseView(
-                        complianceCase.getId(),
-                        complianceCase.getPaymentId(),
-                        complianceCase.getStatus()
-                ));
-    }
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/in/web/WebAdapterConfig.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.in.web;
-
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-@ComponentScan(basePackageClasses = WebAdapterConfig.class)
-public class WebAdapterConfig implements FacadeConfiguration {
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/config/ConfigAdapterConfig.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.config;
-
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-@ComponentScan(basePackageClasses = ConfigAdapterConfig.class)
-public class ConfigAdapterConfig implements FacadeConfiguration {
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/events/EventsAdapterConfig.java
+Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/events/TransactionalDomainEventListener.java
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.infrastructure.adapter.out.events;
 
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
+import dexter.banking.booktransfers.core.domain.payment.PaymentState;
+import dexter.banking.booktransfers.core.domain.payment.event.ManualInterventionRequiredEvent;
+import dexter.banking.booktransfers.core.domain.payment.event.PaymentFailedEvent;
+import dexter.banking.booktransfers.core.domain.payment.event.PaymentInProgressEvent;
+import dexter.banking.booktransfers.core.domain.payment.event.PaymentSuccessfulEvent;
+import dexter.banking.booktransfers.core.port.out.WebhookPort;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
-@Configuration
-@ComponentScan(basePackageClasses = EventsAdapterConfig.class)
-public class EventsAdapterConfig implements FacadeConfiguration {
+import java.util.Map;
+import java.util.UUID;
+/**
+ * A single, unified Spring component that listens for all domain events.
+ * It uses the @TransactionalEventListener to ensure that event handling only occurs
+ * AFTER the originating transaction has successfully committed. This is critical for
+ * preventing inconsistent state if a webhook call fails after the DB commit.
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+class TransactionalDomainEventListener {
+
+    private final WebhookPort webhookPort;
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(PaymentSuccessfulEvent event) {
+        log.info("Handling successful payment event for transaction {}", event.aggregateId());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(PaymentFailedEvent event) {
+        log.info("Handling failed payment event for transaction {}", event.aggregateId());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(ManualInterventionRequiredEvent event) {
+        log.info("Handling manual intervention event for transaction {}", event.aggregateId());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(PaymentInProgressEvent event) {
+        log.info("Handling in-progress payment event for transaction {}", event.aggregateId());
+        var eventMetadata = event.metadata();
+        boolean realtimeEnabled = eventMetadata.containsKey("realtime") && "true".equals(eventMetadata.get("realtime"));
+        if (realtimeEnabled) {
+            log.info("Realtime flag is set. Notifying webhook immediately for transaction {}", event.aggregateId());
+            notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+        } else {
+            log.info("Realtime flag not set or false. Skipping immediate webhook notification for transaction {}", event.aggregateId());
+        }
+    }
+
+    private void notifyWebhook(UUID aggregateId, PaymentState paymentState, Map<String, Object> metadata) {
+        String webhookUrl = (String) metadata.get("webhookUrl");
+        String transactionReference = (String) metadata.get("transactionReference");
+        if (webhookUrl != null && !webhookUrl.isBlank()) {
+            log.info("Notifying webhook {} for transaction {} with final state {}", webhookUrl, aggregateId, paymentState);
+            var notification = new WebhookPort.WebhookNotification(transactionReference, paymentState);
+            webhookPort.notifyTransactionComplete(webhookUrl, notification);
+        } else {
+            log.info("No webhook URL configured for transaction {}. Skipping notification.", aggregateId);
+        }
+    }
 }
 <<--FILE_END-->>
 <<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/http/payment/feign/HttpOutboundAdapterConfig.java
+Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/http/payment/feign/WebhookAdapter.java
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
 
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.cloud.openfeign.EnableFeignClients;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
+import dexter.banking.booktransfers.core.port.out.WebhookPort;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+/**
+ * An adapter for the WebhookPort that uses RestTemplate.
+ * This is implemented as a class because it needs to handle dynamic URLs,
+ * which is simpler with RestTemplate than with Feign.
+ */
+@Slf4j
+@Component
+class WebhookAdapter implements WebhookPort {
 
-@Configuration
-@EnableFeignClients(basePackageClasses = HttpOutboundAdapterConfig.class)
-@ComponentScan(basePackageClasses = HttpOutboundAdapterConfig.class)
-public class HttpOutboundAdapterConfig implements FacadeConfiguration {
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/messaging/payment/jms/MessagingOutboundAdapterConfig.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.messaging.payment.jms;
+    private final RestTemplate restTemplate = new RestTemplate();
+    @Override
+    public void notifyTransactionComplete(String webhookUrl, WebhookNotification notification) {
+        if (webhookUrl == null || webhookUrl.trim().isEmpty()) {
+            log.debug("No webhook URL provided, skipping notification.");
+            return;
+        }
 
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-@ComponentScan(basePackageClasses = MessagingOutboundAdapterConfig.class)
-public class MessagingOutboundAdapterConfig implements FacadeConfiguration {
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/persistence/compliance/mongo/CompliancePersistenceConfig.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.compliance.mongo;
-
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
-
-@Configuration
-@EnableMongoRepositories(basePackageClasses = CompliancePersistenceConfig.class)
-@ComponentScan(basePackageClasses = CompliancePersistenceConfig.class)
-public class CompliancePersistenceConfig implements FacadeConfiguration {
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/persistence/idempotency/mongo/IdempotencyPersistenceConfig.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.idempotency.mongo;
-
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
-
-@Configuration
-@EnableMongoRepositories(basePackageClasses = IdempotencyPersistenceConfig.class)
-@ComponentScan(basePackageClasses = IdempotencyPersistenceConfig.class)
-public class IdempotencyPersistenceConfig implements FacadeConfiguration {
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/persistence/payment/mongo/PaymentPersistenceConfig.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment.mongo;
-
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
-
-@Configuration
-@EnableMongoRepositories(basePackageClasses = PaymentPersistenceConfig.class)
-@ComponentScan(basePackageClasses = PaymentPersistenceConfig.class)
-public class PaymentPersistenceConfig implements FacadeConfiguration {
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/stub/customer/CustomerAdapterConfig.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.stub.customer;
-
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-@ComponentScan(basePackageClasses = CustomerAdapterConfig.class)
-public class CustomerAdapterConfig implements FacadeConfiguration {
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/policy/PolicyConfig.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.policy;
-
-import dexter.banking.booktransfers.infrastructure.FacadeConfiguration;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-
-@Configuration
-@ComponentScan(basePackageClasses = PolicyConfig.class)
-public class PolicyConfig implements FacadeConfiguration {
+        try {
+            log.info("Sending webhook notification to {} with payload {}", webhookUrl, notification);
+            restTemplate.postForObject(webhookUrl, notification, String.class);
+        } catch (Exception e) {
+            // In a real application, this should probably go to a retry queue.
+            log.error("Error calling webhook URL: {}", webhookUrl, e);
+        }
+    }
 }
 <<--FILE_END-->>

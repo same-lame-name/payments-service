@@ -4,7 +4,8 @@ import dexter.banking.booktransfers.core.application.payment.orchestration.async
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.OrchestrationContextMapper;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
-import dexter.banking.booktransfers.core.port.in.payment.CreditFundsUseCase;
+import dexter.banking.booktransfers.core.port.out.CreditCardPort;
+import dexter.banking.booktransfers.core.port.out.TransactionLegPort;
 import dexter.banking.statemachine.contract.SagaAction;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -14,13 +15,14 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CreditLegAction implements SagaAction<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> {
 
-    private final CreditFundsUseCase creditFundsUseCase;
+    private final TransactionLegPort transactionLegPort;
     private final OrchestrationContextMapper orchestrationContextMapper;
 
     @Override
     public Optional<AsyncProcessEvent> apply(AsyncTransactionContext context, AsyncProcessEvent event) {
         var command = orchestrationContextMapper.toCommand(context);
-        creditFundsUseCase.apply(command);
+        var request = new CreditCardPort.SubmitCreditCardPaymentRequest(command.getTransactionId(), command.getCardNumber());
+        transactionLegPort.sendCreditCardRequest(request);
         return Optional.empty();
     }
 

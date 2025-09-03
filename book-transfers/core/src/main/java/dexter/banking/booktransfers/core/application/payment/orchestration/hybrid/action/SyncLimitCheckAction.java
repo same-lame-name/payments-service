@@ -33,7 +33,6 @@ public class SyncLimitCheckAction implements SagaAction<ProcessStateV3, ProcessE
     private final HybridContextMapper contextMapper;
     private final ConfigurationPort configurationPort;
     private final BusinessPolicyFactory policyFactory;
-
     @Override
     @Transactional
     public Optional<ProcessEventV3> apply(HybridTransactionContext context, ProcessEventV3 event) {
@@ -41,7 +40,8 @@ public class SyncLimitCheckAction implements SagaAction<ProcessStateV3, ProcessE
         Payment payment = rehydratePayment(context);
         try {
             PaymentCommand legacyCommand = contextMapper.mapToLegacyCommand(context);
-            LimitEarmarkResult result = limitPort.earmarkLimit(legacyCommand);
+            var request = new LimitPort.EarmarkLimitRequest(legacyCommand.getTransactionId(), legacyCommand.getLimitType());
+            LimitEarmarkResult result = limitPort.earmarkLimit(request);
             payment.recordLimitEarmark(result, Collections.emptyMap());
 
             if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL) {
@@ -63,12 +63,11 @@ public class SyncLimitCheckAction implements SagaAction<ProcessStateV3, ProcessE
     @Transactional
     public Optional<ProcessEventV3> compensate(HybridTransactionContext context, ProcessEventV3 event) {
         Payment payment = rehydratePayment(context);
-
         try {
-            LimitEarmarkResult result = limitPort.reverseLimitEarmark(payment);
+            var request = new LimitPort.ReverseLimitEarmarkRequest(payment.getId(), payment.getLimitEarmarkResult().limitId());
+            LimitEarmarkResult result = limitPort.reverseLimitEarmark(request);
             payment.recordLimitReversal(result, Collections.emptyMap());
             paymentRepository.update(payment);
-
             if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL) {
                 return Optional.of(ProcessEventV3.LIMIT_EARMARK_REVERSAL_SUCCEEDED);
             } else {

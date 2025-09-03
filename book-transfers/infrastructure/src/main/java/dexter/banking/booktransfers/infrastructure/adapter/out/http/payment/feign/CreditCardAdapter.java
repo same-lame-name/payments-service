@@ -1,7 +1,5 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
 
-import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
-import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
 import dexter.banking.booktransfers.core.port.out.CreditCardPort;
 import dexter.banking.model.ApiConstants;
@@ -19,6 +17,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.UUID;
+
 /**
  * Feign client adapter that implements the CreditCardPort.
  * This is the concrete implementation that knows how to talk to the external service.
@@ -37,14 +36,14 @@ class CreditCardAdapter implements CreditCardPort {
     }
 
     @Override
-    public CreditLegResult submitCreditCardPayment(PaymentCommand command) {
+    public CreditLegResult submitCreditCardPayment(SubmitCreditCardPaymentRequest command) {
         CreditCardBankingRequest request = mapper.toCreditCardBankingRequest(command);
         CreditCardBankingResponse responseDto = client.submitCreditCardPayment(request);
         return mapper.toDomain(responseDto);
     }
 
     @Override
-    public CreditLegResult submitCreditCardReversalPayment(Payment payment) {
+    public CreditLegResult submitCreditCardReversalPayment(SubmitCreditCardReversalRequest command) {
         // This flow is not implemented in V1/V2, but is shown for architectural consistency.
         // In a real scenario, the mapper would create the reversal request from the payment state.
         throw new UnsupportedOperationException("Credit card reversal not implemented in this service");

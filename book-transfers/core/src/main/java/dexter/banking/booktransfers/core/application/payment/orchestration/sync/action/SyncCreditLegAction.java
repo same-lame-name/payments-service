@@ -20,13 +20,15 @@ import java.util.Optional;
 public class SyncCreditLegAction implements SagaAction<ProcessState, ProcessEvent, TransactionContext> {
 
     private final CreditCardPort creditCardPort;
-
     @Override
     public Optional<ProcessEvent> apply(TransactionContext context, ProcessEvent event) {
         var payment = context.getPayment();
-
         try {
-            CreditLegResult result = creditCardPort.submitCreditCardPayment(context.getRequest());
+            var request = new CreditCardPort.SubmitCreditCardPaymentRequest(
+                    context.getRequest().getTransactionId(),
+                    context.getRequest().getCardNumber()
+            );
+            CreditLegResult result = creditCardPort.submitCreditCardPayment(request);
             payment.recordCredit(result, Collections.emptyMap());
             if (result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL) {
                 return Optional.of(ProcessEvent.CREDIT_LEG_SUCCEEDED);

@@ -20,15 +20,16 @@ import java.util.Optional;
 public class SyncLimitEarmarkAction implements SagaAction<ProcessState, ProcessEvent, TransactionContext> {
 
     private final LimitPort limitPort;
-
     @Override
     public Optional<ProcessEvent> apply(TransactionContext context, ProcessEvent event) {
         var payment = context.getPayment();
-
         try {
-            LimitEarmarkResult result = limitPort.earmarkLimit(context.getRequest());
+            var request = new LimitPort.EarmarkLimitRequest(
+                    context.getRequest().getTransactionId(),
+                    context.getRequest().getLimitType()
+            );
+            LimitEarmarkResult result = limitPort.earmarkLimit(request);
             payment.recordLimitEarmark(result, Collections.emptyMap());
-
             if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL) {
                 return Optional.of(ProcessEvent.LIMIT_EARMARK_SUCCEEDED);
             } else {
@@ -44,9 +45,12 @@ public class SyncLimitEarmarkAction implements SagaAction<ProcessState, ProcessE
     @Override
     public Optional<ProcessEvent> compensate(TransactionContext context, ProcessEvent event) {
         var payment = context.getPayment();
-
         try {
-            LimitEarmarkResult result = limitPort.reverseLimitEarmark(payment);
+            var request = new LimitPort.ReverseLimitEarmarkRequest(
+                    payment.getId(),
+                    payment.getLimitEarmarkResult().limitId()
+            );
+            LimitEarmarkResult result = limitPort.reverseLimitEarmark(request);
             payment.recordLimitReversal(result, Collections.emptyMap());
             if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL) {
                 return Optional.of(ProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED);

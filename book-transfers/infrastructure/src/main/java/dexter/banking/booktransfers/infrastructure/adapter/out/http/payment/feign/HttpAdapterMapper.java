@@ -1,17 +1,18 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
 
-import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
-import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.port.out.CreditCardPort;
+import dexter.banking.booktransfers.core.port.out.DepositPort;
+import dexter.banking.booktransfers.core.port.out.LimitPort;
 import dexter.banking.model.*;
 import org.springframework.stereotype.Component;
 
 /**
  * A dedicated Anti-Corruption Layer (ACL) mapper for the outbound HTTP adapter.
  * It translates external DTOs received from Feign clients into pure, internal domain value objects,
- * and translates the core's PaymentCommand into external request DTOs.
+ * and translates the core's Parameter Objects into external request DTOs.
  */
 @Component
 class HttpAdapterMapper {
@@ -51,38 +52,38 @@ class HttpAdapterMapper {
         return new LimitEarmarkResult(dto.getLimitId(), status);
     }
 
-    public LimitManagementRequest toLimitManagementRequest(PaymentCommand command) {
+    public LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest command) {
         return LimitManagementRequest.builder()
-                .transactionId(command.getTransactionId())
-                .limitType(command.getLimitType())
+                .transactionId(command.transactionId())
+                .limitType(command.limitType())
                 .build();
     }
 
-    public DepositBankingRequest toDepositBankingRequest(PaymentCommand command) {
+    public DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest command) {
         return DepositBankingRequest.builder()
-                .transactionId(command.getTransactionId())
-                .accountNumber(command.getAccountNumber())
+                .transactionId(command.transactionId())
+                .accountNumber(command.accountNumber())
                 .build();
     }
 
-    public CreditCardBankingRequest toCreditCardBankingRequest(PaymentCommand command) {
+    public CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest command) {
         return CreditCardBankingRequest.builder()
-                .transactionId(command.getTransactionId())
-                .cardNumber(command.getCardNumber())
+                .transactionId(command.transactionId())
+                .cardNumber(command.cardNumber())
                 .build();
     }
 
-    public LimitManagementReversalRequest toLimitEarmarkReversalRequest(Payment payment) {
+    public LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest command) {
         return LimitManagementReversalRequest.builder()
-                .transactionId(payment.getId())
-                .limitManagementId(payment.getLimitEarmarkResult().limitId())
+                .transactionId(command.transactionId())
+                .limitManagementId(command.limitManagementId())
                 .build();
     }
 
-    public DepositBankingReversalRequest toDepositReversalRequest(Payment payment) {
+    public DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest command) {
         return DepositBankingReversalRequest.builder()
-                .transactionId(payment.getId())
-                .reservationId(payment.getDebitLegResult().depositId())
+                .transactionId(command.transactionId())
+                .reservationId(command.reservationId())
                 .build();
     }
 }

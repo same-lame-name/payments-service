@@ -20,13 +20,15 @@ import java.util.Optional;
 public class SyncDebitLegAction implements SagaAction<ProcessState, ProcessEvent, TransactionContext> {
 
     private final DepositPort depositPort;
-
     @Override
     public Optional<ProcessEvent> apply(TransactionContext context, ProcessEvent event) {
         var payment = context.getPayment();
-
         try {
-            DebitLegResult result = depositPort.submitDeposit(context.getRequest());
+            var request = new DepositPort.SubmitDepositRequest(
+                    context.getRequest().getTransactionId(),
+                    context.getRequest().getAccountNumber()
+            );
+            DebitLegResult result = depositPort.submitDeposit(request);
             payment.recordDebit(result, Collections.emptyMap());
             if (result.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL) {
                 return Optional.of(ProcessEvent.DEBIT_LEG_SUCCEEDED);
@@ -43,11 +45,13 @@ public class SyncDebitLegAction implements SagaAction<ProcessState, ProcessEvent
     @Override
     public Optional<ProcessEvent> compensate(TransactionContext context, ProcessEvent event) {
         var payment = context.getPayment();
-
         try {
-            DebitLegResult result = depositPort.submitDepositReversal(payment);
+            var request = new DepositPort.SubmitDepositReversalRequest(
+                    payment.getId(),
+                    payment.getDebitLegResult().depositId()
+            );
+            DebitLegResult result = depositPort.submitDepositReversal(request);
             payment.recordDebitReversal(result, Collections.emptyMap());
-
             if (result.status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL) {
                 return Optional.of(ProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED);
             } else {

@@ -1,7 +1,5 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
 
-import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
-import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.booktransfers.core.port.out.DepositPort;
 import dexter.banking.model.ApiConstants;
@@ -19,6 +17,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.UUID;
+
 @Component
 @Primary
 class DepositAdapter implements DepositPort {
@@ -32,16 +31,16 @@ class DepositAdapter implements DepositPort {
     }
 
     @Override
-    public DebitLegResult submitDeposit(PaymentCommand command) {
+    public DebitLegResult submitDeposit(SubmitDepositRequest command) {
         DepositBankingRequest request = mapper.toDepositBankingRequest(command);
         DepositBankingResponse responseDto = client.submitDeposit(request);
         return mapper.toDomain(responseDto);
     }
 
     @Override
-    public DebitLegResult submitDepositReversal(Payment payment) {
-        DepositBankingReversalRequest request = mapper.toDepositReversalRequest(payment);
-        DepositBankingResponse responseDto = client.submitDepositReversal(payment.getDebitLegResult().depositId(), request);
+    public DebitLegResult submitDepositReversal(SubmitDepositReversalRequest command) {
+        DepositBankingReversalRequest request = mapper.toDepositReversalRequest(command);
+        DepositBankingResponse responseDto = client.submitDepositReversal(command.reservationId(), request);
         return mapper.toReversalDomain(responseDto);
     }
 

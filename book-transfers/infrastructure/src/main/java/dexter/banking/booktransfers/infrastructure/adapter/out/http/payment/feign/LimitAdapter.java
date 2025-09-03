@@ -1,7 +1,5 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
 
-import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
-import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.port.out.LimitPort;
 import dexter.banking.model.ApiConstants;
@@ -32,16 +30,16 @@ class LimitAdapter implements LimitPort {
     }
 
     @Override
-    public LimitEarmarkResult earmarkLimit(PaymentCommand command) {
+    public LimitEarmarkResult earmarkLimit(EarmarkLimitRequest command) {
         LimitManagementRequest request = mapper.toLimitManagementRequest(command);
         LimitManagementResponse responseDto = client.earmarkLimit(request);
         return mapper.toDomain(responseDto);
     }
 
     @Override
-    public LimitEarmarkResult reverseLimitEarmark(Payment payment) {
-        LimitManagementReversalRequest request = mapper.toLimitEarmarkReversalRequest(payment);
-        LimitManagementResponse responseDto = client.reverseLimitEarmark(payment.getLimitEarmarkResult().limitId(), request);
+    public LimitEarmarkResult reverseLimitEarmark(ReverseLimitEarmarkRequest command) {
+        LimitManagementReversalRequest request = mapper.toLimitEarmarkReversalRequest(command);
+        LimitManagementResponse responseDto = client.reverseLimitEarmark(command.limitManagementId(), request);
         return mapper.toReversalDomain(responseDto);
     }
 
@@ -54,6 +52,6 @@ class LimitAdapter implements LimitPort {
                 produces = MediaType.APPLICATION_JSON_VALUE,
                 value = ApiConstants.API_LIMIT_MANAGEMENT + "/{limitEarmarkId}/cancelled")
         LimitManagementResponse reverseLimitEarmark(@PathVariable("limitEarmarkId") UUID limitEarmarkId,
-                                                      @RequestBody LimitManagementReversalRequest limitManagementReversalRequest);
+                                                    @RequestBody LimitManagementReversalRequest limitManagementReversalRequest);
     }
 }

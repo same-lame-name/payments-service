@@ -14,7 +14,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.Map;
 import java.util.UUID;
-
 /**
  * A single, unified Spring component that listens for all domain events.
  * It uses the @TransactionalEventListener to ensure that event handling only occurs
@@ -27,7 +26,6 @@ import java.util.UUID;
 class TransactionalDomainEventListener {
 
     private final WebhookPort webhookPort;
-
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void on(PaymentSuccessfulEvent event) {
         log.info("Handling successful payment event for transaction {}", event.aggregateId());
@@ -51,7 +49,6 @@ class TransactionalDomainEventListener {
         log.info("Handling in-progress payment event for transaction {}", event.aggregateId());
         var eventMetadata = event.metadata();
         boolean realtimeEnabled = eventMetadata.containsKey("realtime") && "true".equals(eventMetadata.get("realtime"));
-
         if (realtimeEnabled) {
             log.info("Realtime flag is set. Notifying webhook immediately for transaction {}", event.aggregateId());
             notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
@@ -65,12 +62,10 @@ class TransactionalDomainEventListener {
         String transactionReference = (String) metadata.get("transactionReference");
         if (webhookUrl != null && !webhookUrl.isBlank()) {
             log.info("Notifying webhook {} for transaction {} with final state {}", webhookUrl, aggregateId, paymentState);
-            webhookPort.notifyTransactionComplete(webhookUrl, new PaymentNotification(transactionReference, paymentState));
-//            webhookPort.notifyTransactionComplete(webhookUrl, paymentState);
+            var notification = new WebhookPort.WebhookNotification(transactionReference, paymentState);
+            webhookPort.notifyTransactionStatus(webhookUrl, notification);
         } else {
             log.info("No webhook URL configured for transaction {}. Skipping notification.", aggregateId);
         }
     }
-
-    public record PaymentNotification(String transactionReference, PaymentState status) {}
 }

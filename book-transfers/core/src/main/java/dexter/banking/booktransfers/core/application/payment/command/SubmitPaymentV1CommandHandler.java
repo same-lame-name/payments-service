@@ -86,7 +86,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performCreditLeg(PaymentCommand command, Payment payment) {
-        CreditLegResult creditResult = creditCardPort.submitCreditCardPayment(command);
+        var request = new CreditCardPort.SubmitCreditCardPaymentRequest(command.getTransactionId(), command.getCardNumber());
+        CreditLegResult creditResult = creditCardPort.submitCreditCardPayment(request);
         payment.recordCredit(creditResult, buildMetadata(command, payment));
         paymentRepository.update(payment);
 
@@ -97,7 +98,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performDebitLeg(PaymentCommand command, Payment payment) {
-        DebitLegResult debitResult = depositPort.submitDeposit(command);
+        var request = new DepositPort.SubmitDepositRequest(command.getTransactionId(), command.getAccountNumber());
+        DebitLegResult debitResult = depositPort.submitDeposit(request);
         payment.recordDebit(debitResult, buildMetadata(command, payment));
         paymentRepository.update(payment);
 
@@ -107,7 +109,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performLimitEarmark(PaymentCommand command, Payment payment) {
-        LimitEarmarkResult limitResult = limitPort.earmarkLimit(command);
+        var request = new LimitPort.EarmarkLimitRequest(command.getTransactionId(), command.getLimitType());
+        LimitEarmarkResult limitResult = limitPort.earmarkLimit(request);
         payment.recordLimitEarmark(limitResult, buildMetadata(command, payment));
         paymentRepository.update(payment);
 
@@ -134,7 +137,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private void compensateDebitLeg(Payment payment, PaymentCommand command) {
         log.warn("  [COMPENSATION] Reversing Debit Leg for TXN_ID: {}...", payment.getId());
         try {
-            DebitLegResult reversalResult = depositPort.submitDepositReversal(payment);
+            var request = new DepositPort.SubmitDepositReversalRequest(payment.getId(), payment.getDebitLegResult().depositId());
+            DebitLegResult reversalResult = depositPort.submitDepositReversal(request);
 
             payment.recordDebitReversal(reversalResult, buildMetadata(command, payment));
             paymentRepository.update(payment);
@@ -156,7 +160,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private void compensateLimitEarmark(Payment payment, PaymentCommand command) {
         log.warn("  [COMPENSATION] Reversing Limit Earmark for TXN_ID: {}...", payment.getId());
         try {
-            LimitEarmarkResult reversalResult = limitPort.reverseLimitEarmark(payment);
+            var request = new LimitPort.ReverseLimitEarmarkRequest(payment.getId(), payment.getLimitEarmarkResult().limitId());
+            LimitEarmarkResult reversalResult = limitPort.reverseLimitEarmark(request);
             payment.recordLimitReversal(reversalResult, buildMetadata(command, payment));
         } catch (Exception e) {
             log.error("  [COMPENSATION] FATAL: Reversing Limit Earmark FAILED. Manual intervention required.", e);
