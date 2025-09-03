@@ -1,5 +1,6 @@
 package dexter.banking.booktransfers.core.application.payment.command;
 
+import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentParams;
 import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentUseCase;
 import dexter.banking.commandbus.CommandHandler;
 import lombok.RequiredArgsConstructor;
@@ -10,11 +11,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ResumePaymentCommandHandler implements CommandHandler<ResumePaymentCommand, Void> {
     private final ResumePaymentUseCase resumePaymentUseCase;
-
     @Override
     @Transactional
     public Void handle(ResumePaymentCommand command) {
-        this.resumePaymentUseCase.resume(command);
+        var params = new ResumePaymentParams(command.paymentId());
+        this.resumePaymentUseCase.resume(params);
         return null;
     }
 }
