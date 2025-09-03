@@ -42,17 +42,17 @@ public class SubmitPaymentV3CommandHandler implements CommandHandler<HighValuePa
                 .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context")).getJourneySpecification();
         BusinessPolicy policy = policyFactory.create(spec);
 
-        // Create and persist the aggregate first to establish its ID
-        PaymentCommand legacyCommand = contextMapper.mapToLegacyCommand(command);
-        Payment payment = Payment.startNew(legacyCommand, policy, command.getIdentifier());
+        var creationParams = new Payment.PaymentCreationParams(
+                command.getTransactionId(),
+                command.getTransactionReference()
+        );
+        Payment payment = Payment.startNew(creationParams, policy, command.getIdentifier());
         paymentRepository.save(payment);
 
-        // Create the flat, serializable context for the state machine
         var context = contextMapper.toContext(payment.getId(), command);
         var stateMachine = stateMachineFactory.acquireStateMachine(context);
         stateMachine.fire(ProcessEventV3.SUBMIT);
 
-        // The initial events (if any) from the synchronous part are dispatched
         eventDispatcher.dispatch(payment.pullDomainEvents());
         return PaymentResult.from(payment);
     }

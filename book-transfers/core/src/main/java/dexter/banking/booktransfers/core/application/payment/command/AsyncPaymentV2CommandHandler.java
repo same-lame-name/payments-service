@@ -39,14 +39,17 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     @Override
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
-        // This handler is now only responsible for the initial submission of a V2 Async payment.
         JourneySpecification spec = CommandProcessingContextHolder.getContext()
                 .map(CommandProcessingContext::getJourneySpecification)
                 .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context for async submission"));
         BusinessPolicy policy = policyFactory.create(spec);
 
-        String journeyIdentifier = command.getIdentifier();
-        Payment payment = Payment.startNew(command, policy, journeyIdentifier);
+        var creationParams = new Payment.PaymentCreationParams(
+                command.getTransactionId(),
+                command.getTransactionReference()
+        );
+
+        Payment payment = Payment.startNew(creationParams, policy, command.getIdentifier());
         paymentRepository.save(payment);
 
         var context = orchestrationContextMapper.toContext(payment.getId(), command);

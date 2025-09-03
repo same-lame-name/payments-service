@@ -19,13 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-/**
- * Command Handler for the V1 procedural flow.
- * This handler is now a self-contained, transactional SAGA.
- * It no longer depends
- * on a state machine and directly orchestrates the calls to external services,
- * updating the aggregate's state, and performing its own compensation logic in case of failure.
- */
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -54,14 +48,15 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
         String journeyIdentifier = command.getIdentifier();
         String reasonForFailure = "";
 
-        Payment payment = Payment.startNew(command, policy, journeyIdentifier);
+        var creationParams = new Payment.PaymentCreationParams(
+                command.getTransactionId(),
+                command.getTransactionReference()
+        );
+        Payment payment = Payment.startNew(creationParams, policy, journeyIdentifier);
         paymentRepository.save(payment);
         try {
-            // Step 1: Limit Earmark
             performLimitEarmark(command, payment);
-            // Step 2: Debit Leg
             performDebitLeg(command, payment);
-            // Step 3: Credit Leg
             performCreditLeg(command, payment);
         } catch (Exception e) {
             log.error("❌ [V1] Procedural transaction FAILED for TXN_ID: {}. Initiating SAGA compensation...",
@@ -120,7 +115,6 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void compensate(Payment payment, PaymentCommand command) {
-        // SAGA compensation logic
         switch (payment.getState()) {
             case FUNDS_COULD_NOT_BE_CREDITED:
                 compensateDebitLeg(payment, command);

@@ -1,5 +1,6 @@
 package dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.action;
 
+import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.component.HybridContextMapper;
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
@@ -24,8 +25,9 @@ public class AsyncDebitLegAction implements SagaAction<ProcessStateV3, ProcessEv
 
     @Override
     public Optional<ProcessEventV3> apply(HybridTransactionContext context, ProcessEventV3 event) {
-        PaymentCommand legacyCommand = contextMapper.mapToLegacyCommand(context);
-        var request = new DepositPort.SubmitDepositRequest(legacyCommand.getTransactionId(), legacyCommand.getAccountNumber());
+
+        HighValuePaymentCommand command = contextMapper.toCommand(context);
+        var request = new DepositPort.SubmitDepositRequest(command.getTransactionId(), command.getAccountNumber());
         transactionLegPort.sendDepositRequest(request);
         return Optional.empty();
     }

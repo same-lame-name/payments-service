@@ -29,7 +29,6 @@ public class SyncPaymentV2CommandHandler implements CommandHandler<PaymentComman
     private final PaymentRepositoryPort paymentRepository;
     private final EventDispatcherPort eventDispatcher;
     private final BusinessPolicyFactory policyFactory;
-
     @Override
     public boolean matches(PaymentCommand command) {
         return command.getVersion() == ApiVersion.V2 && command.getModeOfTransfer() == ModeOfTransfer.SYNC;
@@ -41,23 +40,20 @@ public class SyncPaymentV2CommandHandler implements CommandHandler<PaymentComman
         JourneySpecification spec = CommandProcessingContextHolder.getContext()
                 .map(CommandProcessingContext::getJourneySpecification)
                 .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context"));
-
         BusinessPolicy policy = policyFactory.create(spec);
 
         String journeyIdentifier = command.getIdentifier();
-        Payment payment = Payment.startNew(command, policy, journeyIdentifier);
-
-        // For the sync machine, the live aggregate is passed in the context and mutated in memory.
+        var creationParams = new Payment.PaymentCreationParams(
+                command.getTransactionId(),
+                command.getTransactionReference()
+        );
+        Payment payment = Payment.startNew(creationParams, policy, journeyIdentifier);
         var context = new TransactionContext(payment, command);
 
-        // The transaction boundary is this handler method. We save the initial state.
         paymentRepository.save(payment);
-
         var stateMachine = stateMachineFactory.acquireStateMachine(context);
-        stateMachine.fire(ProcessEvent.SUBMIT); // This blocks until the FSM reaches a terminal state
+        stateMachine.fire(ProcessEvent.SUBMIT);
 
-        // The 'payment' object inside the context has been mutated by the FSM actions.
-        // We save the final state of the aggregate at the end of the transaction.
         paymentRepository.update(payment);
         eventDispatcher.dispatch(payment.pullDomainEvents());
 
