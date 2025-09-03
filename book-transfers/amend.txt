@@ -1,132 +1,58 @@
 <<--FILE_START-->>
-Path: ./core/src/main/java/dexter/banking/booktransfers/core/port/out/WebhookPort.java
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/hybrid/action/TransactionCompleteActionV3.java
 <<--CONTENT_START-->>
-package dexter.banking.booktransfers.core.port.out;
+package dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.action;
 
-import dexter.banking.booktransfers.core.domain.payment.PaymentState;
-
-/**
- * Driven Port for sending notifications to external webhooks.
- */
-public interface WebhookPort {
-    void notifyTransactionComplete(String webhookUrl, WebhookNotification notification);
-
-    /**
-     * A type-safe, explicit contract for the webhook notification payload.
-     * @param transactionReference The business reference for the transaction.
-     * @param status The final state of the payment.
-     */
-    record WebhookNotification(String transactionReference, PaymentState status) {}
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/events/TransactionalDomainEventListener.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.events;
-
-import dexter.banking.booktransfers.core.domain.payment.PaymentState;
-import dexter.banking.booktransfers.core.domain.payment.event.ManualInterventionRequiredEvent;
-import dexter.banking.booktransfers.core.domain.payment.event.PaymentFailedEvent;
-import dexter.banking.booktransfers.core.domain.payment.event.PaymentInProgressEvent;
-import dexter.banking.booktransfers.core.domain.payment.event.PaymentSuccessfulEvent;
-import dexter.banking.booktransfers.core.port.out.WebhookPort;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
+import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
+import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
+import dexter.banking.statemachine.contract.Action;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Map;
-import java.util.UUID;
-/**
- * A single, unified Spring component that listens for all domain events.
- * It uses the @TransactionalEventListener to ensure that event handling only occurs
- * AFTER the originating transaction has successfully committed. This is critical for
- * preventing inconsistent state if a webhook call fails after the DB commit.
- */
+import java.util.Collections;
+import java.util.Optional;
+
 @Component
+@Slf4j
 @RequiredArgsConstructor
-@Slf4j
-class TransactionalDomainEventListener {
+public class TransactionCompleteActionV3 implements Action<ProcessStateV3, ProcessEventV3, HybridTransactionContext> {
 
-    private final WebhookPort webhookPort;
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void on(PaymentSuccessfulEvent event) {
-        log.info("Handling successful payment event for transaction {}", event.aggregateId());
-        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
-    }
+    private final PaymentRepositoryPort paymentRepository;
+    private final ConfigurationPort configurationPort;
+    private final BusinessPolicyFactory policyFactory;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void on(PaymentFailedEvent event) {
-        log.info("Handling failed payment event for transaction {}", event.aggregateId());
-        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void on(ManualInterventionRequiredEvent event) {
-        log.info("Handling manual intervention event for transaction {}", event.aggregateId());
-        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void on(PaymentInProgressEvent event) {
-        log.info("Handling in-progress payment event for transaction {}", event.aggregateId());
-        var eventMetadata = event.metadata();
-        boolean realtimeEnabled = eventMetadata.containsKey("realtime") && "true".equals(eventMetadata.get("realtime"));
-        if (realtimeEnabled) {
-            log.info("Realtime flag is set. Notifying webhook immediately for transaction {}", event.aggregateId());
-            notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
-        } else {
-            log.info("Realtime flag not set or false. Skipping immediate webhook notification for transaction {}", event.aggregateId());
-        }
-    }
-
-    private void notifyWebhook(UUID aggregateId, PaymentState paymentState, Map<String, Object> metadata) {
-        String webhookUrl = (String) metadata.get("webhookUrl");
-        String transactionReference = (String) metadata.get("transactionReference");
-        if (webhookUrl != null && !webhookUrl.isBlank()) {
-            log.info("Notifying webhook {} for transaction {} with final state {}", webhookUrl, aggregateId, paymentState);
-            var notification = new WebhookPort.WebhookNotification(transactionReference, paymentState);
-            webhookPort.notifyTransactionComplete(webhookUrl, notification);
-        } else {
-            log.info("No webhook URL configured for transaction {}. Skipping notification.", aggregateId);
-        }
-    }
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/http/payment/feign/WebhookAdapter.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
-
-import dexter.banking.booktransfers.core.port.out.WebhookPort;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
-/**
- * An adapter for the WebhookPort that uses RestTemplate.
- * This is implemented as a class because it needs to handle dynamic URLs,
- * which is simpler with RestTemplate than with Feign.
- */
-@Slf4j
-@Component
-class WebhookAdapter implements WebhookPort {
-
-    private final RestTemplate restTemplate = new RestTemplate();
     @Override
-    public void notifyTransactionComplete(String webhookUrl, WebhookNotification notification) {
-        if (webhookUrl == null || webhookUrl.trim().isEmpty()) {
-            log.debug("No webhook URL provided, skipping notification.");
-            return;
+    @Transactional
+    public Optional<ProcessEventV3> execute(HybridTransactionContext context, ProcessEventV3 event) {
+        log.info("V3 Transaction flow for {} has reached a terminal state: {}", context.getTransactionReference(), context.getCurrentState());
+
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(context.getPaymentId())
+                .orElseThrow(() -> new TransactionNotFoundException("Payment not found: " + context.getPaymentId()));
+
+        BusinessPolicy policy = configurationPort.findForJourney(memento.journeyName())
+                .map(policyFactory::create)
+                .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
+
+        Payment payment = Payment.rehydrate(memento, policy);
+
+        switch(context.getCurrentState()) {
+            case PROCESS_SETTLED -> payment.recordPaymentSettled(Collections.emptyMap());
+            case PROCESS_FAILED -> payment.recordPaymentFailed(event.name(), Collections.emptyMap());
+            case REMEDIATION_REQUIRED -> payment.recordPaymentRemediationNeeded(event.name(), Collections.emptyMap());
+            default -> log.warn("No final action taken for state: {}", context.getCurrentState());
         }
 
-        try {
-            log.info("Sending webhook notification to {} with payload {}", webhookUrl, notification);
-            restTemplate.postForObject(webhookUrl, notification, String.class);
-        } catch (Exception e) {
-            // In a real application, this should probably go to a retry queue.
-            log.error("Error calling webhook URL: {}", webhookUrl, e);
-        }
+        paymentRepository.update(payment);
+        return Optional.empty();
     }
 }
 <<--FILE_END-->>

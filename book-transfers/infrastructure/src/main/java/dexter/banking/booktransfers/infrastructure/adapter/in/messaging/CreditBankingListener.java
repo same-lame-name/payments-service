@@ -1,6 +1,7 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.application.payment.command.AsyncPaymentV2CommandHandler;
+import dexter.banking.booktransfers.core.application.payment.command.callback.ProcessCreditCardResultCommand;
+import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.CreditCardBankingResponse;
 import dexter.banking.model.JmsConstants;
 import lombok.RequiredArgsConstructor;
@@ -13,13 +14,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 class CreditBankingListener {
 
-    private final AsyncPaymentV2CommandHandler orchestrator;
+    private final CommandBus commandBus;
     private final MessagingAdapterMapper mapper;
 
     @JmsListener(destination = JmsConstants.CREDIT_CARD_BANKING_RESPONSE)
     public void completeCreditCardBanking(CreditCardBankingResponse result) {
-        log.debug("Received Credit card banking Result DTO for txnId: {}. Delegating to orchestrator.", result.getTransactionId());
+        log.debug("Received Credit card banking Result DTO for txnId: {}. Sending to CommandBus.", result.getTransactionId());
         var domainResult = mapper.toDomain(result);
-        orchestrator.processCreditLegResult(domainResult, result.getTransactionId());
+        var command = new ProcessCreditCardResultCommand(result.getTransactionId(), domainResult);
+        commandBus.send(command);
     }
 }

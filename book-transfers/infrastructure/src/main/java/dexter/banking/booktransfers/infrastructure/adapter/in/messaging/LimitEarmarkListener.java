@@ -1,6 +1,7 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.application.payment.command.AsyncPaymentV2CommandHandler;
+import dexter.banking.booktransfers.core.application.payment.command.callback.ProcessLimitEarmarkResultCommand;
+import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.JmsConstants;
 import dexter.banking.model.LimitManagementResponse;
 import lombok.RequiredArgsConstructor;
@@ -13,13 +14,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 class LimitEarmarkListener {
 
-    private final AsyncPaymentV2CommandHandler orchestrator;
+    private final CommandBus commandBus;
     private final MessagingAdapterMapper mapper;
 
     @JmsListener(destination = JmsConstants.LIMIT_MANAGEMENT_RESPONSE)
     public void completeLimitEarmark(LimitManagementResponse result) {
-        log.debug("Received Limit earmark Result DTO for txnId: {}. Delegating to orchestrator.", result.getTransactionId());
+        log.debug("Received Limit earmark Result DTO for txnId: {}. Sending to CommandBus.", result.getTransactionId());
         var domainResult = mapper.toDomain(result);
-        orchestrator.processLimitEarmarkResult(domainResult, result.getTransactionId());
+        var command = new ProcessLimitEarmarkResultCommand(result.getTransactionId(), domainResult);
+        commandBus.send(command);
     }
 }

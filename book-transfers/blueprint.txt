@@ -862,16 +862,11 @@ import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
-import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContext;
 import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContextHolder;
 import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
-import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
-import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
 import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
 import dexter.banking.commandbus.CommandHandler;
 import dexter.banking.statemachine.StateMachineFactory;
@@ -880,13 +875,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContext;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.function.BiFunction;
-
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -894,10 +882,9 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
 
     private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> stateMachineFactory;
     private final PaymentRepositoryPort paymentRepository;
-    private final EventDispatcherPort eventDispatcher;
     private final BusinessPolicyFactory policyFactory;
-    private final ConfigurationPort configurationPort;
     private final OrchestrationContextMapper orchestrationContextMapper;
+
     @Override
     public boolean matches(PaymentCommand command) {
         return command.getVersion() == ApiVersion.V2 && command.getModeOfTransfer() == ModeOfTransfer.ASYNC;
@@ -906,7 +893,7 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     @Override
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
-        // For the initial submission, we are in a synchronous context.
+        // This handler is now only responsible for the initial submission of a V2 Async payment.
         JourneySpecification spec = CommandProcessingContextHolder.getContext()
                 .map(CommandProcessingContext::getJourneySpecification)
                 .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context for async submission"));
@@ -922,112 +909,602 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
 
         return PaymentResult.from(payment);
     }
+}
 
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/callback/ProcessCreditCardResultCommand.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command.callback;
+
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.commandbus.Command;
+
+import java.util.UUID;
+
+/**
+ * A dedicated, internal command to process the result of a credit card leg callback.
+ */
+public record ProcessCreditCardResultCommand(
+        UUID transactionId,
+        CreditLegResult result
+) implements Command<Void> {
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/callback/ProcessCreditCardResultCommandHandler.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command.callback;
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
+import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
+import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
+import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
+import dexter.banking.commandbus.CommandHandler;
+import dexter.banking.statemachine.StateMachineFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
+import java.util.UUID;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class ProcessCreditCardResultCommandHandler implements CommandHandler<ProcessCreditCardResultCommand, Void> {
+
+    private final PaymentRepositoryPort paymentRepository;
+    private final ConfigurationPort configurationPort;
+    private final BusinessPolicyFactory policyFactory;
+    private final EventDispatcherPort eventDispatcher;
+
+    @Qualifier("asyncTransactionFsmFactory")
+    private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
+    @Qualifier("v3TransactionFsmFactory")
+    private final StateMachineFactory<ProcessStateV3, ProcessEventV3, HybridTransactionContext> v3StateMachineFactory;
+
+    @Override
     @Transactional
-    public void processCreditLegResult(CreditLegResult result, UUID transactionId) {
-        handleAsyncEvent(transactionId, (payment, command) -> {
-            payment.recordCredit(result, buildMetadata(payment, command));
+    public Void handle(ProcessCreditCardResultCommand command) {
+        log.info("Handling credit card callback for transactionId: {}", command.transactionId());
 
-            return result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
-                    AsyncProcessEvent.CREDIT_LEG_SUCCEEDED : AsyncProcessEvent.CREDIT_LEG_FAILED;
-        });
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.transactionId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.transactionId()));
+
+        Payment payment = rehydratePayment(memento);
+
+        payment.recordCredit(command.result(), Collections.emptyMap());
+
+        paymentRepository.update(payment);
+        eventDispatcher.dispatch(payment.pullDomainEvents());
+
+        // Universal Routing Logic
+        String journeyName = memento.journeyName();
+        if (journeyName.contains("V2_ASYNC")) {
+            resumeV2Orchestration(command, memento);
+        } else if (journeyName.contains("V3")) {
+            resumeV3Orchestration(command, memento);
+        } else {
+            log.error("Unknown journeyName '{}' for callback on transactionId {}", journeyName, command.transactionId());
+        }
+
+        return null;
     }
 
-    @Transactional
-    public void processDebitLegResult(DebitLegResult result, UUID transactionId) {
-        handleAsyncEvent(transactionId, (payment, command) -> {
-            payment.recordDebit(result, buildMetadata(payment, command));
-            return switch (result.status()) {
-                case SUCCESSFUL -> AsyncProcessEvent.DEBIT_LEG_SUCCEEDED;
-                case FAILED -> AsyncProcessEvent.DEBIT_LEG_FAILED;
-
-
-                 default -> throw new IllegalStateException("Unexpected status for debit leg result: " + result.status());
-            };
-        });
+    private void resumeV2Orchestration(ProcessCreditCardResultCommand command, Payment.PaymentMemento memento) {
+        v2StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+                stateMachine -> {
+                    AsyncProcessEvent event = command.result().status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
+                            AsyncProcessEvent.CREDIT_LEG_SUCCEEDED : AsyncProcessEvent.CREDIT_LEG_FAILED;
+                    stateMachine.fire(event);
+                },
+                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.transactionId())
+        );
     }
 
-    @Transactional
-    public void processLimitEarmarkResult(LimitEarmarkResult result, UUID transactionId) {
-        handleAsyncEvent(transactionId, (payment, command) -> {
-            payment.recordLimitEarmark(result, buildMetadata(payment, command));
-
-            return switch (result.status()) {
-                case SUCCESSFUL -> AsyncProcessEvent.LIMIT_EARMARK_SUCCEEDED;
-                case FAILED -> AsyncProcessEvent.LIMIT_EARMARK_FAILED;
-
-
-
-                 default -> throw new IllegalStateException("Unexpected status for limit earmark result: " + result.status());
-            };
-        });
+    private void resumeV3Orchestration(ProcessCreditCardResultCommand command, Payment.PaymentMemento memento) {
+        v3StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+                stateMachine -> {
+                    ProcessEventV3 event = command.result().status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
+                            ProcessEventV3.CREDIT_LEG_SUCCEEDED : ProcessEventV3.CREDIT_LEG_FAILED;
+                    stateMachine.fire(event);
+                },
+                () -> log.error("Could not acquire V3 state machine for transaction id: {}", command.transactionId())
+        );
     }
 
-    @Transactional
-    public void processDebitReversalResult(DebitLegResult result, UUID transactionId) {
-        handleAsyncEvent(transactionId, (payment, command) -> {
-            payment.recordDebitReversal(result, buildMetadata(payment, command));
-
-            return switch (result.status()) {
-                case REVERSAL_SUCCESSFUL -> AsyncProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED;
-                case REVERSAL_FAILED -> AsyncProcessEvent.DEBIT_LEG_REVERSAL_FAILED;
-
-
-
-                 default -> throw new IllegalStateException("Unexpected status for debit reversal result: " + result.status());
-            };
-        });
-    }
-
-    @Transactional
-    public void processLimitReversalResult(LimitEarmarkResult result, UUID transactionId) {
-        handleAsyncEvent(transactionId, (payment, command) -> {
-            payment.recordLimitReversal(result, buildMetadata(payment, command));
-
-            return switch (result.status()) {
-                case REVERSAL_SUCCESSFUL -> AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED;
-                case REVERSAL_FAILED -> AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED;
-
-
-
-                 default -> throw new IllegalStateException("Unexpected status for limit reversal result: " + result.status());
-            };
-        });
-    }
-
-    private void handleAsyncEvent(UUID transactionId, BiFunction<Payment, PaymentCommand, AsyncProcessEvent> handler) {
-        // 1. Rehydrate Aggregate
-        Payment.PaymentMemento memento = paymentRepository.findMementoById(transactionId)
-                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId));
+    private Payment rehydratePayment(Payment.PaymentMemento memento) {
         BusinessPolicy policy = configurationPort
                 .findForJourney(memento.journeyName())
                 .map(policyFactory::create)
                 .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
-        Payment payment = Payment.rehydrate(memento, policy);
+        return Payment.rehydrate(memento, policy);
+    }
+}
 
-        // 2. Acquire State Machine
-        stateMachineFactory.acquireStateMachine(transactionId.toString()).ifPresentOrElse(
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/callback/ProcessDebitResultCommand.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command.callback;
+
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.commandbus.Command;
+
+import java.util.UUID;
+
+/**
+ * A dedicated, internal command to process the result of a debit leg callback.
+ */
+public record ProcessDebitResultCommand(
+        UUID transactionId,
+        DebitLegResult result
+) implements Command<Void> {
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/callback/ProcessDebitResultCommandHandler.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command.callback;
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
+import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
+import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
+import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
+import dexter.banking.commandbus.CommandHandler;
+import dexter.banking.statemachine.StateMachineFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class ProcessDebitResultCommandHandler implements CommandHandler<ProcessDebitResultCommand, Void> {
+
+    private final PaymentRepositoryPort paymentRepository;
+    private final ConfigurationPort configurationPort;
+    private final BusinessPolicyFactory policyFactory;
+    private final EventDispatcherPort eventDispatcher;
+
+    @Qualifier("asyncTransactionFsmFactory")
+    private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
+    @Qualifier("v3TransactionFsmFactory")
+    private final StateMachineFactory<ProcessStateV3, ProcessEventV3, HybridTransactionContext> v3StateMachineFactory;
+
+
+    @Override
+    @Transactional
+    public Void handle(ProcessDebitResultCommand command) {
+        log.info("Handling debit callback for transactionId: {}", command.transactionId());
+
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.transactionId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.transactionId()));
+
+        Payment payment = rehydratePayment(memento);
+
+        payment.recordDebit(command.result(), Collections.emptyMap());
+
+        paymentRepository.update(payment);
+        eventDispatcher.dispatch(payment.pullDomainEvents());
+
+        // Universal Routing Logic
+        String journeyName = memento.journeyName();
+        if (journeyName.contains("V2_ASYNC")) {
+            resumeV2Orchestration(command, memento);
+        } else if (journeyName.contains("V3")) {
+            resumeV3Orchestration(command, memento);
+        } else {
+            log.error("Unknown journeyName '{}' for callback on transactionId {}", journeyName, command.transactionId());
+        }
+
+        return null;
+    }
+
+    private void resumeV2Orchestration(ProcessDebitResultCommand command, Payment.PaymentMemento memento) {
+        v2StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
                 stateMachine -> {
-                    var command = orchestrationContextMapper.toCommand(stateMachine.getContext());
-                    // 3. Execute logic
-                    AsyncProcessEvent event = handler.apply(payment, command);
-
-                    // 4. Commit Unit of Work
-                    paymentRepository.update(payment);
-                    eventDispatcher.dispatch(payment.pullDomainEvents());
-
+                    AsyncProcessEvent event = command.result().status() == DebitLegResult.DebitLegStatus.SUCCESSFUL ?
+                            AsyncProcessEvent.DEBIT_LEG_SUCCEEDED : AsyncProcessEvent.DEBIT_LEG_FAILED;
                     stateMachine.fire(event);
                 },
-                () -> log.error("Could not acquire state machine for transaction id: {}", transactionId)
+                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.transactionId())
         );
     }
 
-    private Map<String, Object> buildMetadata(Payment payment, PaymentCommand command) {
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("webhookUrl", command.getWebhookUrl());
-        metadata.put("realtime", command.getRealtime());
-        metadata.put("transactionReference", payment.getTransactionReference());
-        return metadata;
+    private void resumeV3Orchestration(ProcessDebitResultCommand command, Payment.PaymentMemento memento) {
+        v3StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+                stateMachine -> {
+                    ProcessEventV3 event = command.result().status() == DebitLegResult.DebitLegStatus.SUCCESSFUL ?
+                            ProcessEventV3.DEBIT_LEG_SUCCEEDED : ProcessEventV3.DEBIT_LEG_FAILED;
+                    stateMachine.fire(event);
+                },
+                () -> log.error("Could not acquire V3 state machine for transaction id: {}", command.transactionId())
+        );
+    }
+
+    private Payment rehydratePayment(Payment.PaymentMemento memento) {
+        BusinessPolicy policy = configurationPort
+                .findForJourney(memento.journeyName())
+                .map(policyFactory::create)
+                .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
+        return Payment.rehydrate(memento, policy);
+    }
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/callback/ProcessDebitReversalResultCommand.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command.callback;
+
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.commandbus.Command;
+
+import java.util.UUID;
+
+/**
+ * A dedicated, internal command to process the result of a debit leg reversal callback.
+ */
+public record ProcessDebitReversalResultCommand(
+        UUID transactionId,
+        DebitLegResult result
+) implements Command<Void> {
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/callback/ProcessDebitReversalResultCommandHandler.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command.callback;
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
+import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
+import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
+import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
+import dexter.banking.commandbus.CommandHandler;
+import dexter.banking.statemachine.StateMachineFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class ProcessDebitReversalResultCommandHandler implements CommandHandler<ProcessDebitReversalResultCommand, Void> {
+
+    private final PaymentRepositoryPort paymentRepository;
+    private final ConfigurationPort configurationPort;
+    private final BusinessPolicyFactory policyFactory;
+    private final EventDispatcherPort eventDispatcher;
+
+    @Qualifier("asyncTransactionFsmFactory")
+    private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
+    @Qualifier("v3TransactionFsmFactory")
+    private final StateMachineFactory<ProcessStateV3, ProcessEventV3, HybridTransactionContext> v3StateMachineFactory;
+
+    @Override
+    @Transactional
+    public Void handle(ProcessDebitReversalResultCommand command) {
+        log.info("Handling debit reversal callback for transactionId: {}", command.transactionId());
+
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.transactionId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.transactionId()));
+
+        Payment payment = rehydratePayment(memento);
+
+        payment.recordDebitReversal(command.result(), Collections.emptyMap());
+
+        paymentRepository.update(payment);
+        eventDispatcher.dispatch(payment.pullDomainEvents());
+
+        // Universal Routing Logic
+        String journeyName = memento.journeyName();
+        if (journeyName.contains("V2_ASYNC")) {
+            resumeV2Orchestration(command, memento);
+        } else if (journeyName.contains("V3")) {
+            resumeV3Orchestration(command, memento);
+        } else {
+            log.error("Unknown journeyName '{}' for callback on transactionId {}", journeyName, command.transactionId());
+        }
+
+        return null;
+    }
+
+    private void resumeV2Orchestration(ProcessDebitReversalResultCommand command, Payment.PaymentMemento memento) {
+        v2StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+                stateMachine -> {
+                    AsyncProcessEvent event = command.result().status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL ?
+                            AsyncProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED : AsyncProcessEvent.DEBIT_LEG_REVERSAL_FAILED;
+                    stateMachine.fire(event);
+                },
+                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.transactionId())
+        );
+    }
+
+    private void resumeV3Orchestration(ProcessDebitReversalResultCommand command, Payment.PaymentMemento memento) {
+        v3StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+                stateMachine -> {
+                    ProcessEventV3 event = command.result().status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL ?
+                            ProcessEventV3.DEBIT_LEG_REVERSAL_SUCCEEDED : ProcessEventV3.DEBIT_LEG_REVERSAL_FAILED;
+                    stateMachine.fire(event);
+                },
+                () -> log.error("Could not acquire V3 state machine for transaction id: {}", command.transactionId())
+        );
+    }
+
+    private Payment rehydratePayment(Payment.PaymentMemento memento) {
+        BusinessPolicy policy = configurationPort
+                .findForJourney(memento.journeyName())
+                .map(policyFactory::create)
+                .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
+        return Payment.rehydrate(memento, policy);
+    }
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/callback/ProcessLimitEarmarkResultCommand.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command.callback;
+
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.commandbus.Command;
+
+import java.util.UUID;
+
+/**
+ * A dedicated, internal command to process the result of a limit earmark callback.
+ */
+public record ProcessLimitEarmarkResultCommand(
+        UUID transactionId,
+        LimitEarmarkResult result
+) implements Command<Void> {
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/callback/ProcessLimitEarmarkResultCommandHandler.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command.callback;
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
+import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
+import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
+import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
+import dexter.banking.commandbus.CommandHandler;
+import dexter.banking.statemachine.StateMachineFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class ProcessLimitEarmarkResultCommandHandler implements CommandHandler<ProcessLimitEarmarkResultCommand, Void> {
+
+    private final PaymentRepositoryPort paymentRepository;
+    private final ConfigurationPort configurationPort;
+    private final BusinessPolicyFactory policyFactory;
+    private final EventDispatcherPort eventDispatcher;
+
+    @Qualifier("asyncTransactionFsmFactory")
+    private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
+    @Qualifier("v3TransactionFsmFactory")
+    private final StateMachineFactory<ProcessStateV3, ProcessEventV3, HybridTransactionContext> v3StateMachineFactory;
+
+    @Override
+    @Transactional
+    public Void handle(ProcessLimitEarmarkResultCommand command) {
+        log.info("Handling limit earmark callback for transactionId: {}", command.transactionId());
+
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.transactionId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.transactionId()));
+
+        Payment payment = rehydratePayment(memento);
+
+        payment.recordLimitEarmark(command.result(), Collections.emptyMap());
+
+        paymentRepository.update(payment);
+        eventDispatcher.dispatch(payment.pullDomainEvents());
+
+        // Universal Routing Logic - V3 does not have async limit earmark, so this only applies to V2.
+        String journeyName = memento.journeyName();
+        if (journeyName.contains("V2_ASYNC")) {
+            resumeV2Orchestration(command, memento);
+        } else {
+            log.warn("Received a Limit Earmark callback for a non-V2-Async journey '{}'. Ignoring. TXN_ID: {}", journeyName, command.transactionId());
+        }
+
+        return null;
+    }
+
+    private void resumeV2Orchestration(ProcessLimitEarmarkResultCommand command, Payment.PaymentMemento memento) {
+        v2StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+                stateMachine -> {
+                    AsyncProcessEvent event = command.result().status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL ?
+                            AsyncProcessEvent.LIMIT_EARMARK_SUCCEEDED : AsyncProcessEvent.LIMIT_EARMARK_FAILED;
+                    stateMachine.fire(event);
+                },
+                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.transactionId())
+        );
+    }
+
+    private Payment rehydratePayment(Payment.PaymentMemento memento) {
+        BusinessPolicy policy = configurationPort
+                .findForJourney(memento.journeyName())
+                .map(policyFactory::create)
+                .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
+        return Payment.rehydrate(memento, policy);
+    }
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/callback/ProcessLimitReversalResultCommand.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command.callback;
+
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.commandbus.Command;
+
+import java.util.UUID;
+
+/**
+ * A dedicated, internal command to process the result of a limit earmark reversal callback.
+ */
+public record ProcessLimitReversalResultCommand(
+        UUID transactionId,
+        LimitEarmarkResult result
+) implements Command<Void> {
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/callback/ProcessLimitReversalResultCommandHandler.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command.callback;
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
+import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
+import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
+import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
+import dexter.banking.commandbus.CommandHandler;
+import dexter.banking.statemachine.StateMachineFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
+
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class ProcessLimitReversalResultCommandHandler implements CommandHandler<ProcessLimitReversalResultCommand, Void> {
+
+    private final PaymentRepositoryPort paymentRepository;
+    private final ConfigurationPort configurationPort;
+    private final BusinessPolicyFactory policyFactory;
+    private final EventDispatcherPort eventDispatcher;
+
+    @Qualifier("asyncTransactionFsmFactory")
+    private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
+    @Qualifier("v3TransactionFsmFactory")
+    private final StateMachineFactory<ProcessStateV3, ProcessEventV3, HybridTransactionContext> v3StateMachineFactory;
+
+
+    @Override
+    @Transactional
+    public Void handle(ProcessLimitReversalResultCommand command) {
+        log.info("Handling limit reversal callback for transactionId: {}", command.transactionId());
+
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.transactionId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.transactionId()));
+
+        Payment payment = rehydratePayment(memento);
+
+        payment.recordLimitReversal(command.result(), Collections.emptyMap());
+
+        paymentRepository.update(payment);
+        eventDispatcher.dispatch(payment.pullDomainEvents());
+
+        // Universal Routing Logic - V3 does not have async limit reversal, so this only applies to V2.
+        String journeyName = memento.journeyName();
+        if (journeyName.contains("V2_ASYNC")) {
+            resumeV2Orchestration(command, memento);
+        } else {
+            log.warn("Received a Limit Reversal callback for a non-V2-Async journey '{}'. Ignoring. TXN_ID: {}", journeyName, command.transactionId());
+        }
+
+        return null;
+    }
+
+    private void resumeV2Orchestration(ProcessLimitReversalResultCommand command, Payment.PaymentMemento memento) {
+        v2StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+                stateMachine -> {
+                    AsyncProcessEvent event = command.result().status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL ?
+                            AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED : AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED;
+                    stateMachine.fire(event);
+                },
+                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.transactionId())
+        );
+    }
+
+    private Payment rehydratePayment(Payment.PaymentMemento memento) {
+        BusinessPolicy policy = configurationPort
+                .findForJourney(memento.journeyName())
+                .map(policyFactory::create)
+                .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
+        return Payment.rehydrate(memento, policy);
     }
 }
 
@@ -2545,6 +3022,9 @@ import dexter.banking.booktransfers.core.application.payment.orchestration.hybri
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
+import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
 import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
 import dexter.banking.statemachine.contract.Action;
 import lombok.RequiredArgsConstructor;
@@ -2561,14 +3041,22 @@ import java.util.Optional;
 public class TransactionCompleteActionV3 implements Action<ProcessStateV3, ProcessEventV3, HybridTransactionContext> {
 
     private final PaymentRepositoryPort paymentRepository;
+    private final ConfigurationPort configurationPort;
+    private final BusinessPolicyFactory policyFactory;
 
     @Override
     @Transactional
     public Optional<ProcessEventV3> execute(HybridTransactionContext context, ProcessEventV3 event) {
         log.info("V3 Transaction flow for {} has reached a terminal state: {}", context.getTransactionReference(), context.getCurrentState());
-        Payment payment = paymentRepository.findMementoById(context.getPaymentId())
-                .map(memento -> Payment.rehydrate(memento, null))
+
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(context.getPaymentId())
                 .orElseThrow(() -> new TransactionNotFoundException("Payment not found: " + context.getPaymentId()));
+
+        BusinessPolicy policy = configurationPort.findForJourney(memento.journeyName())
+                .map(policyFactory::create)
+                .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
+
+        Payment payment = Payment.rehydrate(memento, policy);
 
         switch(context.getCurrentState()) {
             case PROCESS_SETTLED -> payment.recordPaymentSettled(Collections.emptyMap());
@@ -5337,7 +5825,8 @@ Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.application.payment.command.AsyncPaymentV2CommandHandler;
+import dexter.banking.booktransfers.core.application.payment.command.callback.ProcessCreditCardResultCommand;
+import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.CreditCardBankingResponse;
 import dexter.banking.model.JmsConstants;
 import lombok.RequiredArgsConstructor;
@@ -5350,14 +5839,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 class CreditBankingListener {
 
-    private final AsyncPaymentV2CommandHandler orchestrator;
+    private final CommandBus commandBus;
     private final MessagingAdapterMapper mapper;
 
     @JmsListener(destination = JmsConstants.CREDIT_CARD_BANKING_RESPONSE)
     public void completeCreditCardBanking(CreditCardBankingResponse result) {
-        log.debug("Received Credit card banking Result DTO for txnId: {}. Delegating to orchestrator.", result.getTransactionId());
+        log.debug("Received Credit card banking Result DTO for txnId: {}. Sending to CommandBus.", result.getTransactionId());
         var domainResult = mapper.toDomain(result);
-        orchestrator.processCreditLegResult(domainResult, result.getTransactionId());
+        var command = new ProcessCreditCardResultCommand(result.getTransactionId(), domainResult);
+        commandBus.send(command);
     }
 }
 
@@ -5367,7 +5857,8 @@ Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.application.payment.command.AsyncPaymentV2CommandHandler;
+import dexter.banking.booktransfers.core.application.payment.command.callback.ProcessDebitResultCommand;
+import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.DepositBankingResponse;
 import dexter.banking.model.JmsConstants;
 import lombok.RequiredArgsConstructor;
@@ -5380,14 +5871,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 class DepositBankingListener {
 
-    private final AsyncPaymentV2CommandHandler orchestrator;
+    private final CommandBus commandBus;
     private final MessagingAdapterMapper mapper;
 
     @JmsListener(destination = JmsConstants.DEPOSIT_BANKING_RESPONSE)
     public void completeDepositBanking(DepositBankingResponse result) {
-        log.debug("Received Deposit banking Result DTO for txnId: {}. Delegating to orchestrator.", result.getTransactionId());
+        log.debug("Received Deposit banking Result DTO for txnId: {}. Sending to CommandBus.", result.getTransactionId());
         var domainResult = mapper.toDomain(result);
-        orchestrator.processDebitLegResult(domainResult, result.getTransactionId());
+        var command = new ProcessDebitResultCommand(result.getTransactionId(), domainResult);
+        commandBus.send(command);
     }
 }
 
@@ -5397,7 +5889,8 @@ Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.application.payment.command.AsyncPaymentV2CommandHandler;
+import dexter.banking.booktransfers.core.application.payment.command.callback.ProcessDebitReversalResultCommand;
+import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.DepositBankingResponse;
 import dexter.banking.model.JmsConstants;
 import lombok.RequiredArgsConstructor;
@@ -5410,14 +5903,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 class DepositBankingReversalListener {
 
-    private final AsyncPaymentV2CommandHandler orchestrator;
+    private final CommandBus commandBus;
     private final MessagingAdapterMapper mapper;
 
     @JmsListener(destination = JmsConstants.DEPOSIT_BANKING_REVERSAL_RESPONSE)
     public void completeDepositBankingReversal(DepositBankingResponse result) {
-        log.debug("Received Deposit banking reversal DTO for txnId: {}. Delegating to orchestrator.", result.getTransactionId());
+        log.debug("Received Deposit banking reversal DTO for txnId: {}. Sending to CommandBus.", result.getTransactionId());
         var domainResult = mapper.toReversalDomain(result);
-        orchestrator.processDebitReversalResult(domainResult, result.getTransactionId());
+        var command = new ProcessDebitReversalResultCommand(result.getTransactionId(), domainResult);
+        commandBus.send(command);
     }
 }
 
@@ -5427,7 +5921,8 @@ Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.application.payment.command.AsyncPaymentV2CommandHandler;
+import dexter.banking.booktransfers.core.application.payment.command.callback.ProcessLimitEarmarkResultCommand;
+import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.JmsConstants;
 import dexter.banking.model.LimitManagementResponse;
 import lombok.RequiredArgsConstructor;
@@ -5440,14 +5935,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 class LimitEarmarkListener {
 
-    private final AsyncPaymentV2CommandHandler orchestrator;
+    private final CommandBus commandBus;
     private final MessagingAdapterMapper mapper;
 
     @JmsListener(destination = JmsConstants.LIMIT_MANAGEMENT_RESPONSE)
     public void completeLimitEarmark(LimitManagementResponse result) {
-        log.debug("Received Limit earmark Result DTO for txnId: {}. Delegating to orchestrator.", result.getTransactionId());
+        log.debug("Received Limit earmark Result DTO for txnId: {}. Sending to CommandBus.", result.getTransactionId());
         var domainResult = mapper.toDomain(result);
-        orchestrator.processLimitEarmarkResult(domainResult, result.getTransactionId());
+        var command = new ProcessLimitEarmarkResultCommand(result.getTransactionId(), domainResult);
+        commandBus.send(command);
     }
 }
 
@@ -5457,7 +5953,8 @@ Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
-import dexter.banking.booktransfers.core.application.payment.command.AsyncPaymentV2CommandHandler;
+import dexter.banking.booktransfers.core.application.payment.command.callback.ProcessLimitReversalResultCommand;
+import dexter.banking.commandbus.CommandBus;
 import dexter.banking.model.JmsConstants;
 import dexter.banking.model.LimitManagementResponse;
 import lombok.RequiredArgsConstructor;
@@ -5470,14 +5967,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 class LimitEarmarkReversalListener {
 
-    private final AsyncPaymentV2CommandHandler orchestrator;
+    private final CommandBus commandBus;
     private final MessagingAdapterMapper mapper;
 
     @JmsListener(destination = JmsConstants.LIMIT_MANAGEMENT_REVERSAL_RESPONSE)
     public void completeLimitEarmarkReversal(LimitManagementResponse result) {
-        log.debug("Received Limit earmark reversal DTO for txnId: {}. Delegating to orchestrator.", result.getTransactionId());
+        log.debug("Received Limit earmark reversal DTO for txnId: {}. Sending to CommandBus.", result.getTransactionId());
         var domainResult = mapper.toReversalDomain(result);
-        orchestrator.processLimitReversalResult(domainResult, result.getTransactionId());
+        var command = new ProcessLimitReversalResultCommand(result.getTransactionId(), domainResult);
+        commandBus.send(command);
     }
 }
 
