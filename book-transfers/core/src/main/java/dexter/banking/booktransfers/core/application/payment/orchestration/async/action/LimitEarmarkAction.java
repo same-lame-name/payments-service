@@ -1,7 +1,6 @@
 package dexter.banking.booktransfers.core.application.payment.orchestration.async.action;
 
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.OrchestrationContextMapper;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
@@ -20,14 +19,12 @@ import java.util.Optional;
 public class LimitEarmarkAction implements SagaAction<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> {
 
     private final TransactionLegPort transactionLegPort;
-    private final OrchestrationContextMapper orchestrationContextMapper;
     private final PaymentRepositoryPort paymentRepository;
 
 
     @Override
     public Optional<AsyncProcessEvent> apply(AsyncTransactionContext context, AsyncProcessEvent event) {
-        var command = orchestrationContextMapper.toCommand(context);
-        var request = new LimitPort.EarmarkLimitRequest(command.getTransactionId(), command.getLimitType());
+        var request = new LimitPort.EarmarkLimitRequest(context.getPaymentId(), context.getLimitType());
         transactionLegPort.sendLimitManagementRequest(request);
         return Optional.empty();
     }

@@ -10,7 +10,7 @@ import java.util.UUID;
 @Component
 public class HybridContextMapper {
 
-    public HybridTransactionContext toContext(UUID paymentId, HighValuePaymentCommand command) {
+    public HybridTransactionContext toNewContext(UUID paymentId, HighValuePaymentCommand command) {
         return new HybridTransactionContext(
                 paymentId,
                 ProcessStateV3.NEW,
@@ -22,18 +22,5 @@ public class HybridContextMapper {
                 command.getAccountNumber(),
                 command.getCardNumber()
         );
-    }
-
-    public HighValuePaymentCommand toCommand(HybridTransactionContext context) {
-        return HighValuePaymentCommand.builder()
-                .transactionId(context.getPaymentId())
-                .idempotencyKey(context.getIdempotencyKey())
-                .transactionReference(context.getTransactionReference())
-                .relId(context.getRelId())
-                .transactionAmount(context.getTransactionAmount())
-                .limitType(context.getLimitType())
-                .accountNumber(context.getAccountNumber())
-                .cardNumber(context.getCardNumber())
-                .build();
     }
 }

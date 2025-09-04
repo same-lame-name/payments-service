@@ -25,7 +25,7 @@ public class SyncDebitLegAction implements SagaAction<ProcessState, ProcessEvent
         var payment = context.getPayment();
         try {
             var request = new DepositPort.SubmitDepositRequest(
-                    context.getRequest().getTransactionId(),
+                    payment.getId(),
                     context.getRequest().getAccountNumber()
             );
             DebitLegResult result = depositPort.submitDeposit(request);

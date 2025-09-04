@@ -1,7 +1,4 @@
 package dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.action;
-import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
-import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
-import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.component.HybridContextMapper;
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
@@ -16,11 +13,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AsyncCreditLegAction implements SagaAction<ProcessStateV3, ProcessEventV3, HybridTransactionContext> {
     private final TransactionLegPort transactionLegPort;
-    private final HybridContextMapper contextMapper;
     @Override
     public Optional<ProcessEventV3> apply(HybridTransactionContext context, ProcessEventV3 event) {
-        HighValuePaymentCommand command = contextMapper.toCommand(context);
-        var request = new CreditCardPort.SubmitCreditCardPaymentRequest(command.getTransactionId(), command.getCardNumber());
+        var request = new CreditCardPort.SubmitCreditCardPaymentRequest(context.getPaymentId(), context.getCardNumber());
         transactionLegPort.sendCreditCardRequest(request);
         return Optional.empty(); // Pause FSM to await JMS callback
     }

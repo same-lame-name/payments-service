@@ -8,7 +8,6 @@ import lombok.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
-
 @Value
 @Builder
 public class PaymentCommand implements IdempotentCommand<PaymentResult> {
@@ -16,14 +15,10 @@ public class PaymentCommand implements IdempotentCommand<PaymentResult> {
     @NotNull
     UUID idempotencyKey;
 
-    @NotNull
-    UUID transactionId;
-
     @NotBlank
     String transactionReference;
     @NotBlank
     String limitType;
-
     @NotBlank
     String accountNumber;
     @NotBlank
@@ -31,7 +26,6 @@ public class PaymentCommand implements IdempotentCommand<PaymentResult> {
 
     String webhookUrl;
     String realtime;
-
     @NotNull
     @Builder.Default
     ModeOfTransfer modeOfTransfer = ModeOfTransfer.ASYNC;

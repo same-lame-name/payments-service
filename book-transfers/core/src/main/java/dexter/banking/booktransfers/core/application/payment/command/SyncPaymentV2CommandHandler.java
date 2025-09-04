@@ -21,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Component
 @RequiredArgsConstructor
 public class SyncPaymentV2CommandHandler implements CommandHandler<PaymentCommand, PaymentResult> {
@@ -42,12 +44,14 @@ public class SyncPaymentV2CommandHandler implements CommandHandler<PaymentComman
                 .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context"));
         BusinessPolicy policy = policyFactory.create(spec);
 
-        String journeyIdentifier = command.getIdentifier();
+        UUID transactionId = UUID.randomUUID();
+        String journeyName = command.getIdentifier();
         var creationParams = new Payment.PaymentCreationParams(
-                command.getTransactionId(),
-                command.getTransactionReference()
+                transactionId,
+                command.getTransactionReference(),
+                journeyName
         );
-        Payment payment = Payment.startNew(creationParams, policy, journeyIdentifier);
+        Payment payment = Payment.startNew(creationParams, policy);
         var context = new TransactionContext(payment, command);
 
         paymentRepository.save(payment);

@@ -1,7 +1,6 @@
 package dexter.banking.booktransfers.core.application.payment.orchestration.async.action;
 
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.OrchestrationContextMapper;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
 import dexter.banking.booktransfers.core.port.out.CreditCardPort;
@@ -16,12 +15,10 @@ import java.util.Optional;
 public class CreditLegAction implements SagaAction<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> {
 
     private final TransactionLegPort transactionLegPort;
-    private final OrchestrationContextMapper orchestrationContextMapper;
 
     @Override
     public Optional<AsyncProcessEvent> apply(AsyncTransactionContext context, AsyncProcessEvent event) {
-        var command = orchestrationContextMapper.toCommand(context);
-        var request = new CreditCardPort.SubmitCreditCardPaymentRequest(command.getTransactionId(), command.getCardNumber());
+        var request = new CreditCardPort.SubmitCreditCardPaymentRequest(context.getPaymentId(), context.getCardNumber());
         transactionLegPort.sendCreditCardRequest(request);
         return Optional.empty();
     }

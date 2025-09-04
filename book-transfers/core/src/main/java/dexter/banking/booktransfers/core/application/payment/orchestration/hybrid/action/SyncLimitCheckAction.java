@@ -1,8 +1,5 @@
 package dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.action;
 
-import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
-import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
-import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.component.HybridContextMapper;
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
@@ -31,18 +28,14 @@ public class SyncLimitCheckAction implements SagaAction<ProcessStateV3, ProcessE
 
     private final LimitPort limitPort;
     private final PaymentRepositoryPort paymentRepository;
-    private final HybridContextMapper contextMapper;
     private final ConfigurationPort configurationPort;
     private final BusinessPolicyFactory policyFactory;
     @Override
     @Transactional
     public Optional<ProcessEventV3> apply(HybridTransactionContext context, ProcessEventV3 event) {
-        // 1. Rehydrate Aggregate
         Payment payment = rehydratePayment(context);
         try {
-
-            HighValuePaymentCommand command = contextMapper.toCommand(context);
-            var request = new LimitPort.EarmarkLimitRequest(command.getTransactionId(), command.getLimitType());
+            var request = new LimitPort.EarmarkLimitRequest(context.getPaymentId(), context.getLimitType());
             LimitEarmarkResult result = limitPort.earmarkLimit(request);
             payment.recordLimitEarmark(result, Collections.emptyMap());
 

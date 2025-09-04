@@ -17,8 +17,6 @@ import java.util.UUID;
 public class HighValuePaymentCommand implements IdempotentCommand<PaymentResult> {
     @NotNull
     UUID idempotencyKey;
-    @NotNull
-    UUID transactionId;
     @NotBlank
     String transactionReference;
     @NotNull

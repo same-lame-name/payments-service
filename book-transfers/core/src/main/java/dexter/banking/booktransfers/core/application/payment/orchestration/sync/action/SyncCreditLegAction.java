@@ -25,7 +25,7 @@ public class SyncCreditLegAction implements SagaAction<ProcessState, ProcessEven
         var payment = context.getPayment();
         try {
             var request = new CreditCardPort.SubmitCreditCardPaymentRequest(
-                    context.getRequest().getTransactionId(),
+                    payment.getId(),
                     context.getRequest().getCardNumber()
             );
             CreditLegResult result = creditCardPort.submitCreditCardPayment(request);

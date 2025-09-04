@@ -5,7 +5,6 @@ import dexter.banking.booktransfers.core.application.payment.orchestration.async
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
-
 /**
  * An Anti-Corruption Layer (ACL) that translates between the application-layer
  * PaymentCommand and the infrastructure-layer, persistable AsyncTransactionContext.
@@ -19,7 +18,7 @@ public class OrchestrationContextMapper {
      * @param command The incoming command.
      * @return A new, self-contained AsyncTransactionContext.
      */
-    public AsyncTransactionContext toContext(UUID paymentId, PaymentCommand command) {
+    public AsyncTransactionContext toNewContext(UUID paymentId, PaymentCommand command) {
         return new AsyncTransactionContext(
                 paymentId,
                 AsyncProcessState.NEW,
@@ -33,25 +32,5 @@ public class OrchestrationContextMapper {
                 command.getModeOfTransfer(),
                 command.getVersion()
         );
-    }
-
-    /**
-     * Rehydrates a PaymentCommand from a persisted AsyncTransactionContext.
-     * @param context The persisted context.
-     * @return A fully re-constituted PaymentCommand.
-     */
-    public PaymentCommand toCommand(AsyncTransactionContext context) {
-        return PaymentCommand.builder()
-                .transactionId(context.getPaymentId())
-                .idempotencyKey(context.getIdempotencyKey())
-                .transactionReference(context.getTransactionReference())
-                .limitType(context.getLimitType())
-                .accountNumber(context.getAccountNumber())
-                .cardNumber(context.getCardNumber())
-                .webhookUrl(context.getWebhookUrl())
-                .realtime(context.getRealtime())
-                .modeOfTransfer(context.getModeOfTransfer())
-                .version(context.getVersion())
-                .build();
     }
 }

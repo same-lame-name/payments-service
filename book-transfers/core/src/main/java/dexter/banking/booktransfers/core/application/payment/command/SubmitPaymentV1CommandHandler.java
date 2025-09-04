@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -45,14 +46,16 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
                 .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context"));
         BusinessPolicy policy = policyFactory.create(spec);
 
-        String journeyIdentifier = command.getIdentifier();
+        UUID transactionId = UUID.randomUUID();
+        String journeyName = command.getIdentifier();
         String reasonForFailure = "";
 
         var creationParams = new Payment.PaymentCreationParams(
-                command.getTransactionId(),
-                command.getTransactionReference()
+                transactionId,
+                command.getTransactionReference(),
+                journeyName
         );
-        Payment payment = Payment.startNew(creationParams, policy, journeyIdentifier);
+        Payment payment = Payment.startNew(creationParams, policy);
         paymentRepository.save(payment);
         try {
             performLimitEarmark(command, payment);
@@ -81,7 +84,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performCreditLeg(PaymentCommand command, Payment payment) {
-        var request = new CreditCardPort.SubmitCreditCardPaymentRequest(command.getTransactionId(), command.getCardNumber());
+        var request = new CreditCardPort.SubmitCreditCardPaymentRequest(payment.getId(), command.getCardNumber());
         CreditLegResult creditResult = creditCardPort.submitCreditCardPayment(request);
         payment.recordCredit(creditResult, buildMetadata(command, payment));
         paymentRepository.update(payment);
@@ -93,7 +96,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performDebitLeg(PaymentCommand command, Payment payment) {
-        var request = new DepositPort.SubmitDepositRequest(command.getTransactionId(), command.getAccountNumber());
+        var request = new DepositPort.SubmitDepositRequest(payment.getId(), command.getAccountNumber());
         DebitLegResult debitResult = depositPort.submitDeposit(request);
         payment.recordDebit(debitResult, buildMetadata(command, payment));
         paymentRepository.update(payment);
@@ -104,7 +107,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performLimitEarmark(PaymentCommand command, Payment payment) {
-        var request = new LimitPort.EarmarkLimitRequest(command.getTransactionId(), command.getLimitType());
+        var request = new LimitPort.EarmarkLimitRequest(payment.getId(), command.getLimitType());
         LimitEarmarkResult limitResult = limitPort.earmarkLimit(request);
         payment.recordLimitEarmark(limitResult, buildMetadata(command, payment));
         paymentRepository.update(payment);

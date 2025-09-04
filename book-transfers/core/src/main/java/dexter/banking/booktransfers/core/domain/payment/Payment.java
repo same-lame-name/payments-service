@@ -37,8 +37,8 @@ public class Payment extends AggregateRoot<UUID> {
         this.setState(state);
     }
 
-    public static Payment startNew(PaymentCreationParams params, BusinessPolicy policy, String journeyName) {
-        var payment = new Payment(params.transactionId(), params.transactionReference(), journeyName, policy, PaymentState.NEW);
+    public static Payment startNew(PaymentCreationParams params, BusinessPolicy policy) {
+        var payment = new Payment(params.transactionId(), params.transactionReference(), params.journeyName(), policy, PaymentState.NEW);
         PolicyEvaluationContext context = new PolicyEvaluationContext(payment.getMemento(), null);
         policy.evaluate(context, BusinessAction.START_PAYMENT);
         return payment;
@@ -188,7 +188,7 @@ public class Payment extends AggregateRoot<UUID> {
         }
     }
 
-    public record PaymentCreationParams(UUID transactionId, String transactionReference) {}
+    public record PaymentCreationParams(UUID transactionId, String transactionReference, String journeyName) {}
 
     public record PaymentMemento(
             UUID id,

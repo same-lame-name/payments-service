@@ -19,6 +19,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Component
 @RequiredArgsConstructor
 public class SubmitPaymentV3CommandHandler implements CommandHandler<HighValuePaymentCommand, PaymentResult> {
@@ -42,14 +44,18 @@ public class SubmitPaymentV3CommandHandler implements CommandHandler<HighValuePa
                 .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context")).getJourneySpecification();
         BusinessPolicy policy = policyFactory.create(spec);
 
+        UUID transactionId = UUID.randomUUID();
+        String journeyName = command.getIdentifier();
+
         var creationParams = new Payment.PaymentCreationParams(
-                command.getTransactionId(),
-                command.getTransactionReference()
+                transactionId,
+                command.getTransactionReference(),
+                journeyName
         );
-        Payment payment = Payment.startNew(creationParams, policy, command.getIdentifier());
+        Payment payment = Payment.startNew(creationParams, policy);
         paymentRepository.save(payment);
 
-        var context = contextMapper.toContext(payment.getId(), command);
+        var context = contextMapper.toNewContext(payment.getId(), command);
         var stateMachine = stateMachineFactory.acquireStateMachine(context);
         stateMachine.fire(ProcessEventV3.SUBMIT);
 

@@ -1,0 +1,934 @@
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/HighValuePaymentCommand.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command;
+
+import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
+import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.RelId;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.TransactionAmount;
+import dexter.banking.commandbus.IdempotentCommand;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
+import lombok.Value;
+
+import java.util.UUID;
+
+@Value
+@Builder
+public class HighValuePaymentCommand implements IdempotentCommand<PaymentResult> {
+    @NotNull
+    UUID idempotencyKey;
+    @NotBlank
+    String transactionReference;
+    @NotNull
+    RelId relId;
+    @NotNull
+    TransactionAmount transactionAmount;
+
+    @NotBlank
+    String limitType;
+    @NotBlank
+    String accountNumber;
+    @NotBlank
+    String cardNumber;
+
+
+    @Override
+    public String getIdentifier() {
+        return "PAYMENT_SUBMIT_" + ApiVersion.V3.name();
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/PaymentCommand.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command;
+import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
+import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
+import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
+import dexter.banking.commandbus.IdempotentCommand;
+import lombok.*;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.util.UUID;
+@Value
+@Builder
+public class PaymentCommand implements IdempotentCommand<PaymentResult> {
+
+    @NotNull
+    UUID idempotencyKey;
+
+    @NotBlank
+    String transactionReference;
+    @NotBlank
+    String limitType;
+    @NotBlank
+    String accountNumber;
+    @NotBlank
+    String cardNumber;
+
+    String webhookUrl;
+    String realtime;
+    @NotNull
+    @Builder.Default
+    ModeOfTransfer modeOfTransfer = ModeOfTransfer.ASYNC;
+
+    // The new version discriminator field.
+    @NotNull
+    private final ApiVersion version;
+
+    /**
+     * The identifier is now dynamic, allowing for version-specific configuration
+     * of middleware behaviors like idempotency or orchestration strategy selection.
+     */
+    @Override
+    public String getIdentifier() {
+        if (this.version == ApiVersion.V2) {
+            // The identifier is now granular for V2, enabling distinct configurations.
+            return "PAYMENT_SUBMIT_V2_" + this.modeOfTransfer.name();
+        }
+        return "PAYMENT_SUBMIT_" + this.version.name();
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/command/SubmitPaymentV3CommandHandler.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.command;
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.component.HybridContextMapper;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
+import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContextHolder;
+import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
+import dexter.banking.booktransfers.core.port.out.CustomerPort;
+import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
+import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
+import dexter.banking.commandbus.CommandHandler;
+import dexter.banking.statemachine.StateMachineFactory;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+@Component
+@RequiredArgsConstructor
+public class SubmitPaymentV3CommandHandler implements CommandHandler<HighValuePaymentCommand, PaymentResult> {
+
+    @Qualifier("v3TransactionFsmFactory")
+    private final StateMachineFactory<ProcessStateV3, ProcessEventV3, HybridTransactionContext> stateMachineFactory;
+    private final PaymentRepositoryPort paymentRepository;
+    private final EventDispatcherPort eventDispatcher;
+    private final BusinessPolicyFactory policyFactory;
+    private final CustomerPort customerPort;
+    private final HybridContextMapper contextMapper;
+
+    @Override
+    @Transactional
+    public PaymentResult handle(HighValuePaymentCommand command) {
+        if (!customerPort.isCustomerValid(command.getRelId())) {
+            throw new IllegalArgumentException("Customer is not valid");
+        }
+
+        var spec = CommandProcessingContextHolder.getContext()
+                .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context")).getJourneySpecification();
+        BusinessPolicy policy = policyFactory.create(spec);
+
+        UUID transactionId = UUID.randomUUID();
+        String journeyName = command.getIdentifier();
+
+        var creationParams = new Payment.PaymentCreationParams(
+                transactionId,
+                command.getTransactionReference(),
+                journeyName
+        );
+        Payment payment = Payment.startNew(creationParams, policy);
+        paymentRepository.save(payment);
+
+        var context = contextMapper.toContext(payment.getId(), command);
+        var stateMachine = stateMachineFactory.acquireStateMachine(context);
+        stateMachine.fire(ProcessEventV3.SUBMIT);
+
+        eventDispatcher.dispatch(payment.pullDomainEvents());
+        return PaymentResult.from(payment);
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/async/action/CreditLegAction.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.async.action;
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.port.out.CreditCardPort;
+import dexter.banking.booktransfers.core.port.out.TransactionLegPort;
+import dexter.banking.statemachine.contract.SagaAction;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import java.util.Optional;
+
+@Component("creditLegAction")
+@RequiredArgsConstructor
+public class CreditLegAction implements SagaAction<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> {
+
+    private final TransactionLegPort transactionLegPort;
+
+    @Override
+    public Optional<AsyncProcessEvent> apply(AsyncTransactionContext context, AsyncProcessEvent event) {
+        var request = new CreditCardPort.SubmitCreditCardPaymentRequest(context.getPaymentId(), context.getCardNumber());
+        transactionLegPort.sendCreditCardRequest(request);
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<AsyncProcessEvent> compensate(AsyncTransactionContext context, AsyncProcessEvent event) {
+        // No compensation for the final leg in this SAGA model.
+        return Optional.empty();
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/async/action/DebitLegAction.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.async.action;
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.port.out.DepositPort;
+import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
+import dexter.banking.booktransfers.core.port.out.TransactionLegPort;
+import dexter.banking.statemachine.contract.SagaAction;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+
+@Component("debitLegAction")
+@RequiredArgsConstructor
+public class DebitLegAction implements SagaAction<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> {
+
+    private final TransactionLegPort transactionLegPort;
+    private final PaymentRepositoryPort paymentRepository;
+
+    @Override
+    public Optional<AsyncProcessEvent> apply(AsyncTransactionContext context, AsyncProcessEvent event) {
+        var request = new DepositPort.SubmitDepositRequest(context.getPaymentId(), context.getAccountNumber());
+        transactionLegPort.sendDepositRequest(request);
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<AsyncProcessEvent> compensate(AsyncTransactionContext context, AsyncProcessEvent event) {
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(context.getPaymentId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + context.getPaymentId()));
+
+        var request = new DepositPort.SubmitDepositReversalRequest(
+                memento.id(),
+                memento.debitLegResult().depositId()
+        );
+        transactionLegPort.sendDepositReversalRequest(request);
+        return Optional.empty();
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/async/action/LimitEarmarkAction.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.async.action;
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.port.out.LimitPort;
+import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
+import dexter.banking.booktransfers.core.port.out.TransactionLegPort;
+import dexter.banking.statemachine.contract.SagaAction;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+
+@Component("limitEarmarkAction")
+@RequiredArgsConstructor
+public class LimitEarmarkAction implements SagaAction<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> {
+
+    private final TransactionLegPort transactionLegPort;
+    private final PaymentRepositoryPort paymentRepository;
+
+
+    @Override
+    public Optional<AsyncProcessEvent> apply(AsyncTransactionContext context, AsyncProcessEvent event) {
+        var request = new LimitPort.EarmarkLimitRequest(context.getPaymentId(), context.getLimitType());
+        transactionLegPort.sendLimitManagementRequest(request);
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<AsyncProcessEvent> compensate(AsyncTransactionContext context, AsyncProcessEvent event) {
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(context.getPaymentId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + context.getPaymentId()));
+
+        var request = new LimitPort.ReverseLimitEarmarkRequest(
+                memento.id(),
+                memento.limitEarmarkResult().limitId()
+        );
+        transactionLegPort.sendLimitReversalRequest(request);
+        return Optional.empty();
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/async/component/OrchestrationContextMapper.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.async.component;
+
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import org.springframework.stereotype.Component;
+
+import java.util.UUID;
+/**
+ * An Anti-Corruption Layer (ACL) that translates between the application-layer
+ * PaymentCommand and the infrastructure-layer, persistable AsyncTransactionContext.
+ */
+@Component
+public class OrchestrationContextMapper {
+
+    /**
+     * Flattens a PaymentCommand into a new AsyncTransactionContext for persistence.
+     * @param paymentId The ID of the payment aggregate.
+     * @param command The incoming command.
+     * @return A new, self-contained AsyncTransactionContext.
+     */
+    public AsyncTransactionContext toContext(UUID paymentId, PaymentCommand command) {
+        return new AsyncTransactionContext(
+                paymentId,
+                AsyncProcessState.NEW,
+                command.getIdempotencyKey(),
+                command.getTransactionReference(),
+                command.getLimitType(),
+                command.getAccountNumber(),
+                command.getCardNumber(),
+                command.getWebhookUrl(),
+                command.getRealtime(),
+                command.getModeOfTransfer(),
+                command.getVersion()
+        );
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/hybrid/action/AsyncCreditLegAction.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.action;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import dexter.banking.booktransfers.core.port.out.CreditCardPort;
+import dexter.banking.booktransfers.core.port.out.TransactionLegPort;
+import dexter.banking.statemachine.contract.SagaAction;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+@Component
+@RequiredArgsConstructor
+public class AsyncCreditLegAction implements SagaAction<ProcessStateV3, ProcessEventV3, HybridTransactionContext> {
+    private final TransactionLegPort transactionLegPort;
+    @Override
+    public Optional<ProcessEventV3> apply(HybridTransactionContext context, ProcessEventV3 event) {
+        var request = new CreditCardPort.SubmitCreditCardPaymentRequest(context.getPaymentId(), context.getCardNumber());
+        transactionLegPort.sendCreditCardRequest(request);
+        return Optional.empty(); // Pause FSM to await JMS callback
+    }
+
+    @Override
+    public Optional<ProcessEventV3> compensate(HybridTransactionContext context, ProcessEventV3 event) {
+        return Optional.empty(); // No compensation for the final leg
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/hybrid/action/AsyncDebitLegAction.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.action;
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.port.out.DepositPort;
+import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
+import dexter.banking.booktransfers.core.port.out.TransactionLegPort;
+import dexter.banking.statemachine.contract.SagaAction;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+@Component
+@RequiredArgsConstructor
+public class AsyncDebitLegAction implements SagaAction<ProcessStateV3, ProcessEventV3, HybridTransactionContext> {
+    private final TransactionLegPort transactionLegPort;
+    private final PaymentRepositoryPort paymentRepository;
+
+    @Override
+    public Optional<ProcessEventV3> apply(HybridTransactionContext context, ProcessEventV3 event) {
+        var request = new DepositPort.SubmitDepositRequest(context.getPaymentId(), context.getAccountNumber());
+        transactionLegPort.sendDepositRequest(request);
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<ProcessEventV3> compensate(HybridTransactionContext context, ProcessEventV3 event) {
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(context.getPaymentId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + context.getPaymentId()));
+
+        var request = new DepositPort.SubmitDepositReversalRequest(
+                memento.id(),
+                memento.debitLegResult().depositId()
+        );
+        transactionLegPort.sendDepositReversalRequest(request);
+        return Optional.empty();
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/hybrid/action/SyncLimitCheckAction.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.action;
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
+import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
+import dexter.banking.booktransfers.core.port.out.LimitPort;
+import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
+import dexter.banking.statemachine.contract.SagaAction;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
+import java.util.Optional;
+import java.util.UUID;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class SyncLimitCheckAction implements SagaAction<ProcessStateV3, ProcessEventV3, HybridTransactionContext> {
+
+    private final LimitPort limitPort;
+    private final PaymentRepositoryPort paymentRepository;
+    private final ConfigurationPort configurationPort;
+    private final BusinessPolicyFactory policyFactory;
+    @Override
+    @Transactional
+    public Optional<ProcessEventV3> apply(HybridTransactionContext context, ProcessEventV3 event) {
+        Payment payment = rehydratePayment(context);
+        try {
+            var request = new LimitPort.EarmarkLimitRequest(context.getPaymentId(), context.getLimitType());
+            LimitEarmarkResult result = limitPort.earmarkLimit(request);
+            payment.recordLimitEarmark(result, Collections.emptyMap());
+
+            if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL) {
+                paymentRepository.update(payment);
+                return Optional.of(ProcessEventV3.LIMIT_APPROVED);
+            } else {
+                paymentRepository.update(payment);
+                return Optional.of(ProcessEventV3.LIMIT_REJECTED);
+            }
+        } catch (Exception e) {
+            log.error("V3 Sync Limit Check failed with exception", e);
+            payment.recordLimitEarmark(new LimitEarmarkResult(null, LimitEarmarkResult.LimitEarmarkStatus.FAILED), Collections.emptyMap());
+            paymentRepository.update(payment);
+            return Optional.of(ProcessEventV3.LIMIT_REJECTED);
+        }
+    }
+
+    @Override
+    @Transactional
+    public Optional<ProcessEventV3> compensate(HybridTransactionContext context, ProcessEventV3 event) {
+        Payment payment = rehydratePayment(context);
+        try {
+            var request = new LimitPort.ReverseLimitEarmarkRequest(payment.getId(), payment.getLimitEarmarkResult().limitId());
+            LimitEarmarkResult result = limitPort.reverseLimitEarmark(request);
+            payment.recordLimitReversal(result, Collections.emptyMap());
+            paymentRepository.update(payment);
+            if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL) {
+                return Optional.of(ProcessEventV3.LIMIT_EARMARK_REVERSAL_SUCCEEDED);
+            } else {
+                return Optional.of(ProcessEventV3.LIMIT_EARMARK_REVERSAL_FAILED);
+            }
+        } catch (Exception e) {
+            log.error("V3 Sync Limit Earmark compensation failed with exception", e);
+            payment.recordLimitReversal(new LimitEarmarkResult(payment.getLimitEarmarkResult().limitId(), LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED), Collections.emptyMap());
+            paymentRepository.update(payment);
+            return Optional.of(ProcessEventV3.LIMIT_EARMARK_REVERSAL_FAILED);
+        }
+    }
+
+    private Payment rehydratePayment(HybridTransactionContext context) {
+        UUID transactionId = context.getPaymentId();
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(transactionId)
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId));
+        BusinessPolicy policy = configurationPort
+                .findForJourney(memento.journeyName())
+                .map(policyFactory::create)
+                .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
+        return Payment.rehydrate(memento, policy);
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/hybrid/component/HybridContextMapper.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.component;
+
+import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import org.springframework.stereotype.Component;
+
+import java.util.UUID;
+
+@Component
+public class HybridContextMapper {
+
+    public HybridTransactionContext toContext(UUID paymentId, HighValuePaymentCommand command) {
+        return new HybridTransactionContext(
+                paymentId,
+                ProcessStateV3.NEW,
+                command.getIdempotencyKey(),
+                command.getTransactionReference(),
+                command.getRelId(),
+                command.getTransactionAmount(),
+                command.getLimitType(),
+                command.getAccountNumber(),
+                command.getCardNumber()
+        );
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/sync/action/SyncCreditLegAction.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.sync.action;
+
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.sync.component.TransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.sync.model.ProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.sync.model.ProcessState;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.port.out.CreditCardPort;
+import dexter.banking.statemachine.contract.SagaAction;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.Optional;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class SyncCreditLegAction implements SagaAction<ProcessState, ProcessEvent, TransactionContext> {
+
+    private final CreditCardPort creditCardPort;
+    @Override
+    public Optional<ProcessEvent> apply(TransactionContext context, ProcessEvent event) {
+        var payment = context.getPayment();
+        try {
+            var request = new CreditCardPort.SubmitCreditCardPaymentRequest(
+                    payment.getId(),
+                    context.getRequest().getCardNumber()
+            );
+            CreditLegResult result = creditCardPort.submitCreditCardPayment(request);
+            payment.recordCredit(result, Collections.emptyMap());
+            if (result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL) {
+                return Optional.of(ProcessEvent.CREDIT_LEG_SUCCEEDED);
+            } else {
+                return Optional.of(ProcessEvent.CREDIT_LEG_FAILED);
+            }
+        } catch (Exception e) {
+            log.error("Sync Credit Leg failed with exception", e);
+            payment.recordCredit(new CreditLegResult(null, CreditLegResult.CreditLegStatus.FAILED), Collections.emptyMap());
+            return Optional.of(ProcessEvent.CREDIT_LEG_FAILED);
+        }
+    }
+
+    @Override
+    public Optional<ProcessEvent> compensate(TransactionContext context, ProcessEvent event) {
+        return Optional.empty();
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/sync/action/SyncDebitLegAction.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.sync.action;
+
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.sync.component.TransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.sync.model.ProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.sync.model.ProcessState;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.port.out.DepositPort;
+import dexter.banking.statemachine.contract.SagaAction;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.Optional;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class SyncDebitLegAction implements SagaAction<ProcessState, ProcessEvent, TransactionContext> {
+
+    private final DepositPort depositPort;
+    @Override
+    public Optional<ProcessEvent> apply(TransactionContext context, ProcessEvent event) {
+        var payment = context.getPayment();
+        try {
+            var request = new DepositPort.SubmitDepositRequest(
+                    payment.getId(),
+                    context.getRequest().getAccountNumber()
+            );
+            DebitLegResult result = depositPort.submitDeposit(request);
+            payment.recordDebit(result, Collections.emptyMap());
+            if (result.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL) {
+                return Optional.of(ProcessEvent.DEBIT_LEG_SUCCEEDED);
+            } else {
+                return Optional.of(ProcessEvent.DEBIT_LEG_FAILED);
+            }
+        } catch (Exception e) {
+            log.error("Sync Debit Leg failed with exception", e);
+            payment.recordDebit(new DebitLegResult(null, DebitLegResult.DebitLegStatus.FAILED), Collections.emptyMap());
+            return Optional.of(ProcessEvent.DEBIT_LEG_FAILED);
+        }
+    }
+
+    @Override
+    public Optional<ProcessEvent> compensate(TransactionContext context, ProcessEvent event) {
+        var payment = context.getPayment();
+        try {
+            var request = new DepositPort.SubmitDepositReversalRequest(
+                    payment.getId(),
+                    payment.getDebitLegResult().depositId()
+            );
+            DebitLegResult result = depositPort.submitDepositReversal(request);
+            payment.recordDebitReversal(result, Collections.emptyMap());
+            if (result.status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL) {
+                return Optional.of(ProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED);
+            } else {
+                return Optional.of(ProcessEvent.DEBIT_LEG_REVERSAL_FAILED);
+            }
+        } catch (Exception e) {
+            log.error("Sync Debit Leg compensation failed with exception", e);
+            payment.recordDebitReversal(new DebitLegResult(payment.getDebitLegResult().depositId(), DebitLegResult.DebitLegStatus.REVERSAL_FAILED), Collections.emptyMap());
+            return Optional.of(ProcessEvent.DEBIT_LEG_REVERSAL_FAILED);
+        }
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/sync/action/SyncLimitEarmarkAction.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.sync.action;
+
+
+import dexter.banking.booktransfers.core.application.payment.orchestration.sync.component.TransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.sync.model.ProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.sync.model.ProcessState;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.port.out.LimitPort;
+import dexter.banking.statemachine.contract.SagaAction;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.util.Collections;
+import java.util.Optional;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class SyncLimitEarmarkAction implements SagaAction<ProcessState, ProcessEvent, TransactionContext> {
+
+    private final LimitPort limitPort;
+    @Override
+    public Optional<ProcessEvent> apply(TransactionContext context, ProcessEvent event) {
+        var payment = context.getPayment();
+        try {
+            var request = new LimitPort.EarmarkLimitRequest(
+                    payment.getId(),
+                    context.getRequest().getLimitType()
+            );
+            LimitEarmarkResult result = limitPort.earmarkLimit(request);
+            payment.recordLimitEarmark(result, Collections.emptyMap());
+            if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL) {
+                return Optional.of(ProcessEvent.LIMIT_EARMARK_SUCCEEDED);
+            } else {
+                return Optional.of(ProcessEvent.LIMIT_EARMARK_FAILED);
+            }
+        } catch (Exception e) {
+            log.error("Sync Limit Earmark failed with exception", e);
+            payment.recordLimitEarmark(new LimitEarmarkResult(null, LimitEarmarkResult.LimitEarmarkStatus.FAILED), Collections.emptyMap());
+            return Optional.of(ProcessEvent.LIMIT_EARMARK_FAILED);
+        }
+    }
+
+    @Override
+    public Optional<ProcessEvent> compensate(TransactionContext context, ProcessEvent event) {
+        var payment = context.getPayment();
+        try {
+            var request = new LimitPort.ReverseLimitEarmarkRequest(
+                    payment.getId(),
+                    payment.getLimitEarmarkResult().limitId()
+            );
+            LimitEarmarkResult result = limitPort.reverseLimitEarmark(request);
+            payment.recordLimitReversal(result, Collections.emptyMap());
+            if (result.status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL) {
+                return Optional.of(ProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED);
+            } else {
+                return Optional.of(ProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED);
+            }
+        } catch (Exception e) {
+            log.error("Sync Limit Earmark compensation failed with exception", e);
+            payment.recordLimitReversal(new LimitEarmarkResult(payment.getLimitEarmarkResult().limitId(), LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED), Collections.emptyMap());
+            return Optional.of(ProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED);
+        }
+    }
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/domain/payment/Payment.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.domain.payment;
+
+
+import dexter.banking.booktransfers.core.domain.payment.event.ManualInterventionRequiredEvent;
+import dexter.banking.booktransfers.core.domain.payment.event.PaymentFailedEvent;
+import dexter.banking.booktransfers.core.domain.payment.event.PaymentInProgressEvent;
+import dexter.banking.booktransfers.core.domain.payment.event.PaymentRequiresComplianceCheck;
+import dexter.banking.booktransfers.core.domain.payment.event.PaymentSuccessfulEvent;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.shared.policy.BusinessAction;
+import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.domain.shared.policy.PolicyEvaluationContext;
+import dexter.banking.booktransfers.core.domain.shared.primitives.AggregateRoot;
+import lombok.Getter;
+
+import java.util.Map;
+import java.util.UUID;
+@Getter
+public class Payment extends AggregateRoot<UUID> {
+
+    private final String transactionReference;
+    private final String journeyName;
+    private final transient BusinessPolicy policy;
+
+    private DebitLegResult debitLegResult;
+    private LimitEarmarkResult limitEarmarkResult;
+    private CreditLegResult creditLegResult;
+    private Status status;
+    private PaymentState state;
+    private Payment(UUID id, String transactionReference, String journeyName, BusinessPolicy policy, PaymentState state) {
+        super(id);
+        this.transactionReference = transactionReference;
+        this.journeyName = journeyName;
+        this.policy = policy;
+        this.setState(state);
+    }
+
+    public static Payment startNew(PaymentCreationParams params, BusinessPolicy policy) {
+        var payment = new Payment(params.transactionId(), params.transactionReference(), params.journeyName(), policy, PaymentState.NEW);
+        PolicyEvaluationContext context = new PolicyEvaluationContext(payment.getMemento(), null);
+        policy.evaluate(context, BusinessAction.START_PAYMENT);
+        return payment;
+    }
+
+    public static Payment rehydrate(PaymentMemento memento, BusinessPolicy policy) {
+        var payment = new Payment(memento.id(), memento.transactionReference(), memento.journeyName(), policy, memento.state());
+        payment.debitLegResult = memento.debitLegResult();
+        payment.limitEarmarkResult = memento.limitEarmarkResult();
+        payment.creditLegResult = memento.creditLegResult();
+        return payment;
+    }
+
+    public PaymentMemento getMemento() {
+        return new PaymentMemento(
+            this.id,
+            this.transactionReference,
+            this.journeyName,
+            this.debitLegResult,
+            this.limitEarmarkResult,
+            this.creditLegResult,
+            this.status,
+            this.state
+        );
+    }
+
+    // --- Business Methods ---
+
+    public void flagForComplianceCheck(Map<String, Object> metadata) {
+        var context = new PolicyEvaluationContext(this.getMemento(), metadata);
+        this.policy.evaluate(context, BusinessAction.FLAG_FOR_COMPLIANCE);
+        this.setState(PaymentState.PENDING_COMPLIANCE);
+        this.registerEvent(new PaymentRequiresComplianceCheck(this.id, this.state, metadata));
+    }
+
+    public void recordLimitEarmark(LimitEarmarkResult result, Map<String, Object> metadata) {
+        BusinessAction action = (result.status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL)
+                ? BusinessAction.RECORD_LIMIT_EARMARK_SUCCESS
+                : BusinessAction.RECORD_LIMIT_EARMARK_FAILURE;
+        var context = new PolicyEvaluationContext(this.getMemento(), metadata);
+        this.policy.evaluate(context, action);
+        this.limitEarmarkResult = result;
+        PaymentState paymentState = (action == BusinessAction.RECORD_LIMIT_EARMARK_SUCCESS)
+                ? PaymentState.LIMIT_RESERVED
+                : PaymentState.LIMIT_COULD_NOT_BE_RESERVED;
+
+        this.setState(paymentState);
+        this.registerEvent(new PaymentInProgressEvent(this.id, this.state, metadata));
+    }
+
+    public void recordLimitReversal(LimitEarmarkResult result, Map<String, Object> metadata) {
+        BusinessAction action = (result.status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL)
+                ? BusinessAction.RECORD_LIMIT_REVERSAL_SUCCESS
+                : BusinessAction.RECORD_LIMIT_REVERSAL_FAILURE;
+        var context = new PolicyEvaluationContext(this.getMemento(), metadata);
+        this.policy.evaluate(context, action);
+        this.limitEarmarkResult = result;
+        PaymentState paymentState = (action == BusinessAction.RECORD_LIMIT_REVERSAL_SUCCESS)
+                ? PaymentState.LIMIT_REVERSED
+                : PaymentState.LIMIT_COULD_NOT_BE_REVERSED;
+
+        this.setState(paymentState);
+        this.registerEvent(new PaymentInProgressEvent(this.id, this.state, metadata));
+    }
+
+    public void recordDebit(DebitLegResult result, Map<String, Object> metadata) {
+        BusinessAction action = (result.status() == DebitLegResult.DebitLegStatus.SUCCESSFUL)
+                ? BusinessAction.RECORD_DEBIT_SUCCESS
+                : BusinessAction.RECORD_DEBIT_FAILURE;
+        var context = new PolicyEvaluationContext(this.getMemento(), metadata);
+        this.policy.evaluate(context, action);
+
+        this.debitLegResult = result;
+        PaymentState paymentState = (action == BusinessAction.RECORD_DEBIT_SUCCESS)
+                ? PaymentState.FUNDS_DEBITED
+                : PaymentState.FUNDS_COULD_NOT_BE_DEBITED;
+
+        this.setState(paymentState);
+        this.registerEvent(new PaymentInProgressEvent(this.id, this.state, metadata));
+    }
+
+    public void recordDebitReversal(DebitLegResult result, Map<String, Object> metadata) {
+        BusinessAction action = (result.status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL)
+                ? BusinessAction.RECORD_DEBIT_REVERSAL_SUCCESS
+                : BusinessAction.RECORD_DEBIT_REVERSAL_FAILURE;
+        var context = new PolicyEvaluationContext(this.getMemento(), metadata);
+        this.policy.evaluate(context, action);
+
+        this.debitLegResult = result;
+        PaymentState paymentState = (action == BusinessAction.RECORD_DEBIT_REVERSAL_SUCCESS)
+                ? PaymentState.FUNDS_DEBIT_REVERSED
+                : PaymentState.FUNDS_DEBIT_COULD_NOT_BE_REVERSED;
+
+        this.setState(paymentState);
+        this.registerEvent(new PaymentInProgressEvent(this.id, this.state, metadata));
+    }
+
+    public void recordCredit(CreditLegResult result, Map<String, Object> metadata) {
+        BusinessAction action = (result.status() == CreditLegResult.CreditLegStatus.SUCCESSFUL)
+                ? BusinessAction.RECORD_CREDIT_SUCCESS
+                : BusinessAction.RECORD_CREDIT_FAILURE;
+        var context = new PolicyEvaluationContext(this.getMemento(), metadata);
+        this.policy.evaluate(context, action);
+        this.creditLegResult = result;
+        PaymentState paymentState = (action == BusinessAction.RECORD_CREDIT_SUCCESS)
+                ? PaymentState.FUNDS_CREDITED
+                : PaymentState.FUNDS_COULD_NOT_BE_CREDITED;
+
+        this.setState(paymentState);
+        this.registerEvent(new PaymentInProgressEvent(this.id, this.state, metadata));
+    }
+
+    public void recordPaymentSettled(Map<String, Object> metadata) {
+        var context = new PolicyEvaluationContext(this.getMemento(), metadata);
+        this.policy.evaluate(context, BusinessAction.RECORD_PAYMENT_SETTLED);
+        this.setState(PaymentState.SETTLED);
+        this.registerEvent(new PaymentSuccessfulEvent(this.id, this.state, metadata));
+    }
+
+    public void recordPaymentFailed(String reason, Map<String, Object> metadata) {
+        var context = new PolicyEvaluationContext(this.getMemento(), metadata);
+        this.policy.evaluate(context, BusinessAction.RECORD_PAYMENT_FAILED);
+        this.setState(PaymentState.FAILED);
+        this.registerEvent(new PaymentFailedEvent(this.id, this.state, reason, metadata));
+    }
+
+    public void recordPaymentRemediationNeeded(String reason, Map<String, Object> metadata) {
+        var context = new PolicyEvaluationContext(this.getMemento(), metadata);
+        this.policy.evaluate(context, BusinessAction.RECORD_REMEDIATION_NEEDED);
+
+        this.setState(PaymentState.REMEDIATION_NEEDED);
+        this.registerEvent(new ManualInterventionRequiredEvent(this.id, this.state, reason, metadata));
+    }
+
+    void setState(PaymentState newState) {
+        this.state = newState;
+        this.updateStatusFromState();
+    }
+
+    private void updateStatusFromState() {
+        switch (this.state) {
+            case NEW -> this.status = Status.NEW;
+            case SETTLED -> this.status = Status.SUCCESSFUL;
+            case FAILED -> this.status = Status.FAILED;
+            case REMEDIATION_NEEDED -> this.status = Status.REMEDIATION_REQUIRED;
+            default -> this.status = Status.IN_PROGRESS;
+        }
+    }
+
+    public record PaymentCreationParams(UUID transactionId, String transactionReference, String journeyName) {}
+
+    public record PaymentMemento(
+            UUID id,
+            String transactionReference,
+            String journeyName,
+            DebitLegResult debitLegResult,
+            LimitEarmarkResult limitEarmarkResult,
+            CreditLegResult creditLegResult,
+            Status status,
+            PaymentState state
+    ) {}
+}
+<<--FILE_END-->>

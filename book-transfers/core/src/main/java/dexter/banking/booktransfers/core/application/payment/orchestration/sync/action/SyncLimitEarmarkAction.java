@@ -25,7 +25,7 @@ public class SyncLimitEarmarkAction implements SagaAction<ProcessState, ProcessE
         var payment = context.getPayment();
         try {
             var request = new LimitPort.EarmarkLimitRequest(
-                    context.getRequest().getTransactionId(),
+                    payment.getId(),
                     context.getRequest().getLimitType()
             );
             LimitEarmarkResult result = limitPort.earmarkLimit(request);

@@ -21,6 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -44,15 +46,19 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
                 .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context for async submission"));
         BusinessPolicy policy = policyFactory.create(spec);
 
+        UUID transactionId = UUID.randomUUID();
+        String journeyName = command.getIdentifier();
+
         var creationParams = new Payment.PaymentCreationParams(
-                command.getTransactionId(),
-                command.getTransactionReference()
+                transactionId,
+                command.getTransactionReference(),
+                journeyName
         );
 
-        Payment payment = Payment.startNew(creationParams, policy, command.getIdentifier());
+        Payment payment = Payment.startNew(creationParams, policy);
         paymentRepository.save(payment);
 
-        var context = orchestrationContextMapper.toContext(payment.getId(), command);
+        var context = orchestrationContextMapper.toNewContext(payment.getId(), command);
         var stateMachine = stateMachineFactory.acquireStateMachine(context);
         stateMachine.fire(AsyncProcessEvent.SUBMIT);
 

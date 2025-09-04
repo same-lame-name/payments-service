@@ -1,5 +1,4 @@
 package dexter.banking.booktransfers.infrastructure.adapter.in.web;
-
 import dexter.banking.booktransfers.core.application.compliance.command.RejectComplianceCaseCommand;
 import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
@@ -21,10 +20,7 @@ class WebMapper {
             return null;
         }
 
-        UUID transactionId = UUID.randomUUID();
-        // Generate a new transaction ID here if needed
         return PaymentCommand.builder()
-                .transactionId(transactionId)
                 .idempotencyKey(dto.getIdempotencyKey())
                 .transactionReference(dto.getTransactionReference())
                 .limitType(dto.getLimitType())
@@ -33,7 +29,7 @@ class WebMapper {
                 .webhookUrl(dto.getWebhookUrl())
                 .realtime(dto.getRealtime())
                 .modeOfTransfer(StringUtils.hasText(dto.getModeOfTransfer()) ? ModeOfTransfer.valueOf(dto.getModeOfTransfer().toUpperCase()) : ModeOfTransfer.ASYNC)
-                .version(version) // Set the version from the controller
+                .version(version)
                 .build();
     }
 
@@ -43,7 +39,6 @@ class WebMapper {
         }
 
         return HighValuePaymentCommand.builder()
-                .transactionId(UUID.randomUUID())
                 .idempotencyKey(dto.getIdempotencyKey())
                 .transactionReference(dto.getTransactionReference())
                 .relId(new RelId(dto.getRelId()))
