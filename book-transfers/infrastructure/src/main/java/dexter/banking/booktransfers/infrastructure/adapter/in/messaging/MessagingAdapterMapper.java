@@ -3,53 +3,34 @@ package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
-import dexter.banking.model.CreditCardBankingResponse;
-import dexter.banking.model.CreditCardBankingStatus;
-import dexter.banking.model.DepositBankingResponse;
-import dexter.banking.model.DepositBankingStatus;
-import dexter.banking.model.LimitEarmarkStatus;
-import dexter.banking.model.LimitManagementResponse;
-import org.springframework.stereotype.Component;
+import dexter.banking.model.*;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 /**
  * A dedicated Anti-Corruption Layer (ACL) mapper for the inbound messaging adapter.
  * It translates external DTOs received from JMS queues into pure, internal domain value objects.
  */
-@Component
-class MessagingAdapterMapper {
+@Mapper(componentModel = "spring", imports = {LimitEarmarkStatus.class, DepositBankingStatus.class, CreditCardBankingStatus.class})
+interface MessagingAdapterMapper {
 
-    public CreditLegResult toDomain(CreditCardBankingResponse dto) {
-        CreditLegResult.CreditLegStatus status = (dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL)
-                ? CreditLegResult.CreditLegStatus.SUCCESSFUL
-                : CreditLegResult.CreditLegStatus.FAILED;
-        return new CreditLegResult(dto.getCreditCardBankingId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL ? CreditLegResult.CreditLegStatus.SUCCESSFUL : CreditLegResult.CreditLegStatus.FAILED)")
+    @Mapping(target = "creditCardRequestId", source = "creditCardBankingId")
+    CreditLegResult toDomain(CreditCardBankingResponse dto);
 
-    public DebitLegResult toDomain(DepositBankingResponse dto) {
-        DebitLegResult.DebitLegStatus status = (dto.getStatus() == DepositBankingStatus.SUCCESSFUL)
-                ? DebitLegResult.DebitLegStatus.SUCCESSFUL
-                : DebitLegResult.DebitLegStatus.FAILED;
-        return new DebitLegResult(dto.getDepositId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == DepositBankingStatus.SUCCESSFUL ? DebitLegResult.DebitLegStatus.SUCCESSFUL : DebitLegResult.DebitLegStatus.FAILED)")
+    @Mapping(target = "depositId", source = "depositId")
+    DebitLegResult toDomain(DepositBankingResponse dto);
 
-    public DebitLegResult toReversalDomain(DepositBankingResponse dto) {
-        DebitLegResult.DebitLegStatus status = (dto.getStatus() == DepositBankingStatus.REVERSAL_SUCCESSFUL)
-                ? DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL
-                : DebitLegResult.DebitLegStatus.REVERSAL_FAILED;
-        return new DebitLegResult(dto.getDepositId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == DepositBankingStatus.REVERSAL_SUCCESSFUL ? DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL : DebitLegResult.DebitLegStatus.REVERSAL_FAILED)")
+    @Mapping(target = "depositId", source = "depositId")
+    DebitLegResult toReversalDomain(DepositBankingResponse dto);
 
-    public LimitEarmarkResult toDomain(LimitManagementResponse dto) {
-        LimitEarmarkResult.LimitEarmarkStatus status = (dto.getStatus() == LimitEarmarkStatus.SUCCESSFUL)
-                ? LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL
-                : LimitEarmarkResult.LimitEarmarkStatus.FAILED;
-        return new LimitEarmarkResult(dto.getLimitId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == LimitEarmarkStatus.SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.FAILED)")
+    @Mapping(target = "limitId", source = "limitId")
+    LimitEarmarkResult toDomain(LimitManagementResponse dto);
 
-    public LimitEarmarkResult toReversalDomain(LimitManagementResponse dto) {
-        LimitEarmarkResult.LimitEarmarkStatus status = (dto.getStatus() == LimitEarmarkStatus.REVERSAL_SUCCESSFUL)
-                ? LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL
-                : LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED;
-        return new LimitEarmarkResult(dto.getLimitId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == LimitEarmarkStatus.REVERSAL_SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED)")
+    @Mapping(target = "limitId", source = "limitId")
+    LimitEarmarkResult toReversalDomain(LimitManagementResponse dto);
 }

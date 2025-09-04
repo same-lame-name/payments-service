@@ -2,15 +2,17 @@ package dexter.banking.booktransfers.core.application.payment.orchestration.asyn
 
 import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import java.util.UUID;
+
 /**
  * An Anti-Corruption Layer (ACL) that translates between the application-layer
  * PaymentCommand and the infrastructure-layer, persistable AsyncTransactionContext.
  */
-@Component
-public class OrchestrationContextMapper {
+@Mapper(componentModel = "spring")
+public interface OrchestrationContextMapper {
 
     /**
      * Flattens a PaymentCommand into a new AsyncTransactionContext for persistence.
@@ -18,19 +20,6 @@ public class OrchestrationContextMapper {
      * @param command The incoming command.
      * @return A new, self-contained AsyncTransactionContext.
      */
-    public AsyncTransactionContext toNewContext(UUID paymentId, PaymentCommand command) {
-        return new AsyncTransactionContext(
-                paymentId,
-                AsyncProcessState.NEW,
-                command.getIdempotencyKey(),
-                command.getTransactionReference(),
-                command.getLimitType(),
-                command.getAccountNumber(),
-                command.getCardNumber(),
-                command.getWebhookUrl(),
-                command.getRealtime(),
-                command.getModeOfTransfer(),
-                command.getVersion()
-        );
-    }
+    @Mapping(target = "currentState", constant = "NEW")
+    AsyncTransactionContext toNewContext(UUID paymentId, PaymentCommand command);
 }

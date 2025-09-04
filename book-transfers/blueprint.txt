@@ -2387,15 +2387,17 @@ package dexter.banking.booktransfers.core.application.payment.orchestration.asyn
 
 import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import java.util.UUID;
+
 /**
  * An Anti-Corruption Layer (ACL) that translates between the application-layer
  * PaymentCommand and the infrastructure-layer, persistable AsyncTransactionContext.
  */
-@Component
-public class OrchestrationContextMapper {
+@Mapper(componentModel = "spring")
+public interface OrchestrationContextMapper {
 
     /**
      * Flattens a PaymentCommand into a new AsyncTransactionContext for persistence.
@@ -2403,21 +2405,8 @@ public class OrchestrationContextMapper {
      * @param command The incoming command.
      * @return A new, self-contained AsyncTransactionContext.
      */
-    public AsyncTransactionContext toNewContext(UUID paymentId, PaymentCommand command) {
-        return new AsyncTransactionContext(
-                paymentId,
-                AsyncProcessState.NEW,
-                command.getIdempotencyKey(),
-                command.getTransactionReference(),
-                command.getLimitType(),
-                command.getAccountNumber(),
-                command.getCardNumber(),
-                command.getWebhookUrl(),
-                command.getRealtime(),
-                command.getModeOfTransfer(),
-                command.getVersion()
-        );
-    }
+    @Mapping(target = "currentState", constant = "NEW")
+    AsyncTransactionContext toNewContext(UUID paymentId, PaymentCommand command);
 }
 
 <<--FILE_END-->>
@@ -2948,26 +2937,16 @@ package dexter.banking.booktransfers.core.application.payment.orchestration.hybr
 import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 import java.util.UUID;
 
-@Component
-public class HybridContextMapper {
+@Mapper(componentModel = "spring")
+public interface HybridContextMapper {
 
-    public HybridTransactionContext toNewContext(UUID paymentId, HighValuePaymentCommand command) {
-        return new HybridTransactionContext(
-                paymentId,
-                ProcessStateV3.NEW,
-                command.getIdempotencyKey(),
-                command.getTransactionReference(),
-                command.getRelId(),
-                command.getTransactionAmount(),
-                command.getLimitType(),
-                command.getAccountNumber(),
-                command.getCardNumber()
-        );
-    }
+    @Mapping(target = "currentState", constant = "NEW")
+    HybridTransactionContext toNewContext(UUID paymentId, HighValuePaymentCommand command);
 }
 
 <<--FILE_END-->>
@@ -5444,6 +5423,121 @@ public interface WebhookPort {
 
 <<--FILE_END-->>
 <<--FILE_START-->>
+Path: ./core/target/generated-sources/annotations/dexter/banking/booktransfers/core/application/payment/orchestration/async/component/OrchestrationContextMapperImpl.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.async.component;
+
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
+import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
+import java.util.UUID;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
+
+@Generated(
+    value = "org.mapstruct.ap.MappingProcessor",
+    date = "2025-09-04T20:44:01+0530",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
+)
+@Component
+public class OrchestrationContextMapperImpl implements OrchestrationContextMapper {
+
+    @Override
+    public AsyncTransactionContext toNewContext(UUID paymentId, PaymentCommand command) {
+        if ( paymentId == null && command == null ) {
+            return null;
+        }
+
+        UUID idempotencyKey = null;
+        String transactionReference = null;
+        String limitType = null;
+        String accountNumber = null;
+        String cardNumber = null;
+        String webhookUrl = null;
+        String realtime = null;
+        ModeOfTransfer modeOfTransfer = null;
+        ApiVersion version = null;
+        if ( command != null ) {
+            idempotencyKey = command.getIdempotencyKey();
+            transactionReference = command.getTransactionReference();
+            limitType = command.getLimitType();
+            accountNumber = command.getAccountNumber();
+            cardNumber = command.getCardNumber();
+            webhookUrl = command.getWebhookUrl();
+            realtime = command.getRealtime();
+            modeOfTransfer = command.getModeOfTransfer();
+            version = command.getVersion();
+        }
+        UUID paymentId1 = null;
+        paymentId1 = paymentId;
+
+        AsyncProcessState currentState = AsyncProcessState.NEW;
+
+        AsyncTransactionContext asyncTransactionContext = new AsyncTransactionContext( paymentId1, currentState, idempotencyKey, transactionReference, limitType, accountNumber, cardNumber, webhookUrl, realtime, modeOfTransfer, version );
+
+        return asyncTransactionContext;
+    }
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/target/generated-sources/annotations/dexter/banking/booktransfers/core/application/payment/orchestration/hybrid/component/HybridContextMapperImpl.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.component;
+
+import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.RelId;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.TransactionAmount;
+import java.util.UUID;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
+
+@Generated(
+    value = "org.mapstruct.ap.MappingProcessor",
+    date = "2025-09-04T20:44:01+0530",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
+)
+@Component
+public class HybridContextMapperImpl implements HybridContextMapper {
+
+    @Override
+    public HybridTransactionContext toNewContext(UUID paymentId, HighValuePaymentCommand command) {
+        if ( paymentId == null && command == null ) {
+            return null;
+        }
+
+        UUID idempotencyKey = null;
+        String transactionReference = null;
+        RelId relId = null;
+        TransactionAmount transactionAmount = null;
+        String limitType = null;
+        String accountNumber = null;
+        String cardNumber = null;
+        if ( command != null ) {
+            idempotencyKey = command.getIdempotencyKey();
+            transactionReference = command.getTransactionReference();
+            relId = command.getRelId();
+            transactionAmount = command.getTransactionAmount();
+            limitType = command.getLimitType();
+            accountNumber = command.getAccountNumber();
+            cardNumber = command.getCardNumber();
+        }
+        UUID paymentId1 = null;
+        paymentId1 = paymentId;
+
+        ProcessStateV3 currentState = ProcessStateV3.NEW;
+
+        HybridTransactionContext hybridTransactionContext = new HybridTransactionContext( paymentId1, currentState, idempotencyKey, transactionReference, relId, transactionAmount, limitType, accountNumber, cardNumber );
+
+        return hybridTransactionContext;
+    }
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
 Path: ./infrastructure/pom.xml
 <<--CONTENT_START-->>
 <?xml version="1.0" encoding="UTF-8"?>
@@ -5694,55 +5788,36 @@ package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
-import dexter.banking.model.CreditCardBankingResponse;
-import dexter.banking.model.CreditCardBankingStatus;
-import dexter.banking.model.DepositBankingResponse;
-import dexter.banking.model.DepositBankingStatus;
-import dexter.banking.model.LimitEarmarkStatus;
-import dexter.banking.model.LimitManagementResponse;
-import org.springframework.stereotype.Component;
+import dexter.banking.model.*;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 /**
  * A dedicated Anti-Corruption Layer (ACL) mapper for the inbound messaging adapter.
  * It translates external DTOs received from JMS queues into pure, internal domain value objects.
  */
-@Component
-class MessagingAdapterMapper {
+@Mapper(componentModel = "spring", imports = {LimitEarmarkStatus.class, DepositBankingStatus.class, CreditCardBankingStatus.class})
+interface MessagingAdapterMapper {
 
-    public CreditLegResult toDomain(CreditCardBankingResponse dto) {
-        CreditLegResult.CreditLegStatus status = (dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL)
-                ? CreditLegResult.CreditLegStatus.SUCCESSFUL
-                : CreditLegResult.CreditLegStatus.FAILED;
-        return new CreditLegResult(dto.getCreditCardBankingId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL ? CreditLegResult.CreditLegStatus.SUCCESSFUL : CreditLegResult.CreditLegStatus.FAILED)")
+    @Mapping(target = "creditCardRequestId", source = "creditCardBankingId")
+    CreditLegResult toDomain(CreditCardBankingResponse dto);
 
-    public DebitLegResult toDomain(DepositBankingResponse dto) {
-        DebitLegResult.DebitLegStatus status = (dto.getStatus() == DepositBankingStatus.SUCCESSFUL)
-                ? DebitLegResult.DebitLegStatus.SUCCESSFUL
-                : DebitLegResult.DebitLegStatus.FAILED;
-        return new DebitLegResult(dto.getDepositId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == DepositBankingStatus.SUCCESSFUL ? DebitLegResult.DebitLegStatus.SUCCESSFUL : DebitLegResult.DebitLegStatus.FAILED)")
+    @Mapping(target = "depositId", source = "depositId")
+    DebitLegResult toDomain(DepositBankingResponse dto);
 
-    public DebitLegResult toReversalDomain(DepositBankingResponse dto) {
-        DebitLegResult.DebitLegStatus status = (dto.getStatus() == DepositBankingStatus.REVERSAL_SUCCESSFUL)
-                ? DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL
-                : DebitLegResult.DebitLegStatus.REVERSAL_FAILED;
-        return new DebitLegResult(dto.getDepositId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == DepositBankingStatus.REVERSAL_SUCCESSFUL ? DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL : DebitLegResult.DebitLegStatus.REVERSAL_FAILED)")
+    @Mapping(target = "depositId", source = "depositId")
+    DebitLegResult toReversalDomain(DepositBankingResponse dto);
 
-    public LimitEarmarkResult toDomain(LimitManagementResponse dto) {
-        LimitEarmarkResult.LimitEarmarkStatus status = (dto.getStatus() == LimitEarmarkStatus.SUCCESSFUL)
-                ? LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL
-                : LimitEarmarkResult.LimitEarmarkStatus.FAILED;
-        return new LimitEarmarkResult(dto.getLimitId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == LimitEarmarkStatus.SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.FAILED)")
+    @Mapping(target = "limitId", source = "limitId")
+    LimitEarmarkResult toDomain(LimitManagementResponse dto);
 
-    public LimitEarmarkResult toReversalDomain(LimitManagementResponse dto) {
-        LimitEarmarkResult.LimitEarmarkStatus status = (dto.getStatus() == LimitEarmarkStatus.REVERSAL_SUCCESSFUL)
-                ? LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL
-                : LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED;
-        return new LimitEarmarkResult(dto.getLimitId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == LimitEarmarkStatus.REVERSAL_SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED)")
+    @Mapping(target = "limitId", source = "limitId")
+    LimitEarmarkResult toReversalDomain(LimitManagementResponse dto);
 }
 
 <<--FILE_END-->>
@@ -7691,6 +7766,119 @@ class StateTransitionPolicy implements BusinessPolicy {
 }
 <<--FILE_END-->>
 <<--FILE_START-->>
+Path: ./infrastructure/target/generated-sources/annotations/dexter/banking/booktransfers/infrastructure/adapter/in/messaging/MessagingAdapterMapperImpl.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
+
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.model.CreditCardBankingResponse;
+import dexter.banking.model.CreditCardBankingStatus;
+import dexter.banking.model.DepositBankingResponse;
+import dexter.banking.model.DepositBankingStatus;
+import dexter.banking.model.LimitEarmarkStatus;
+import dexter.banking.model.LimitManagementResponse;
+import java.util.UUID;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
+
+@Generated(
+    value = "org.mapstruct.ap.MappingProcessor",
+    date = "2025-09-04T20:44:03+0530",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
+)
+@Component
+class MessagingAdapterMapperImpl implements MessagingAdapterMapper {
+
+    @Override
+    public CreditLegResult toDomain(CreditCardBankingResponse dto) {
+        if ( dto == null ) {
+            return null;
+        }
+
+        UUID creditCardRequestId = null;
+
+        creditCardRequestId = dto.getCreditCardBankingId();
+
+        CreditLegResult.CreditLegStatus status = dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL ? CreditLegResult.CreditLegStatus.SUCCESSFUL : CreditLegResult.CreditLegStatus.FAILED;
+
+        CreditLegResult creditLegResult = new CreditLegResult( creditCardRequestId, status );
+
+        return creditLegResult;
+    }
+
+    @Override
+    public DebitLegResult toDomain(DepositBankingResponse dto) {
+        if ( dto == null ) {
+            return null;
+        }
+
+        UUID depositId = null;
+
+        depositId = dto.getDepositId();
+
+        DebitLegResult.DebitLegStatus status = dto.getStatus() == DepositBankingStatus.SUCCESSFUL ? DebitLegResult.DebitLegStatus.SUCCESSFUL : DebitLegResult.DebitLegStatus.FAILED;
+
+        DebitLegResult debitLegResult = new DebitLegResult( depositId, status );
+
+        return debitLegResult;
+    }
+
+    @Override
+    public DebitLegResult toReversalDomain(DepositBankingResponse dto) {
+        if ( dto == null ) {
+            return null;
+        }
+
+        UUID depositId = null;
+
+        depositId = dto.getDepositId();
+
+        DebitLegResult.DebitLegStatus status = dto.getStatus() == DepositBankingStatus.REVERSAL_SUCCESSFUL ? DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL : DebitLegResult.DebitLegStatus.REVERSAL_FAILED;
+
+        DebitLegResult debitLegResult = new DebitLegResult( depositId, status );
+
+        return debitLegResult;
+    }
+
+    @Override
+    public LimitEarmarkResult toDomain(LimitManagementResponse dto) {
+        if ( dto == null ) {
+            return null;
+        }
+
+        UUID limitId = null;
+
+        limitId = dto.getLimitId();
+
+        LimitEarmarkResult.LimitEarmarkStatus status = dto.getStatus() == LimitEarmarkStatus.SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.FAILED;
+
+        LimitEarmarkResult limitEarmarkResult = new LimitEarmarkResult( limitId, status );
+
+        return limitEarmarkResult;
+    }
+
+    @Override
+    public LimitEarmarkResult toReversalDomain(LimitManagementResponse dto) {
+        if ( dto == null ) {
+            return null;
+        }
+
+        UUID limitId = null;
+
+        limitId = dto.getLimitId();
+
+        LimitEarmarkResult.LimitEarmarkStatus status = dto.getStatus() == LimitEarmarkStatus.REVERSAL_SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED;
+
+        LimitEarmarkResult limitEarmarkResult = new LimitEarmarkResult( limitId, status );
+
+        return limitEarmarkResult;
+    }
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
 Path: ./infrastructure/target/generated-sources/annotations/dexter/banking/booktransfers/infrastructure/adapter/in/web/WebMapperImpl.java
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.infrastructure.adapter.in.web;
@@ -7711,7 +7899,7 @@ import org.springframework.util.StringUtils;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-04T20:37:30+0530",
+    date = "2025-09-04T20:43:45+0530",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
 )
 @Component
@@ -7823,7 +8011,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-04T20:37:41+0530",
+    date = "2025-09-04T20:43:45+0530",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
 )
 @Component
@@ -8004,7 +8192,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-04T20:37:41+0530",
+    date = "2025-09-04T20:43:45+0530",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
 )
 @Component
@@ -8093,7 +8281,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-04T20:37:30+0530",
+    date = "2025-09-04T20:43:45+0530",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
 )
 @Component
@@ -8144,7 +8332,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-04T20:37:30+0530",
+    date = "2025-09-04T20:43:45+0530",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
 )
 @Component

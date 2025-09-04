@@ -1,25 +1,70 @@
 <<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/http/payment/feign/HttpAdapterMapper.java
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/async/component/OrchestrationContextMapper.java
 <<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
+package dexter.banking.booktransfers.core.application.payment.orchestration.async.component;
+
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+import java.util.UUID;
+
+/**
+ * An Anti-Corruption Layer (ACL) that translates between the application-layer
+ * PaymentCommand and the infrastructure-layer, persistable AsyncTransactionContext.
+ */
+@Mapper(componentModel = "spring")
+public interface OrchestrationContextMapper {
+
+    /**
+     * Flattens a PaymentCommand into a new AsyncTransactionContext for persistence.
+     * @param paymentId The ID of the payment aggregate.
+     * @param command The incoming command.
+     * @return A new, self-contained AsyncTransactionContext.
+     */
+    @Mapping(target = "currentState", constant = "NEW")
+    AsyncTransactionContext toNewContext(UUID paymentId, PaymentCommand command);
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/payment/orchestration/hybrid/component/HybridContextMapper.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.component;
+
+import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
+import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+import java.util.UUID;
+
+@Mapper(componentModel = "spring")
+public interface HybridContextMapper {
+
+    @Mapping(target = "currentState", constant = "NEW")
+    HybridTransactionContext toNewContext(UUID paymentId, HighValuePaymentCommand command);
+}
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/in/messaging/MessagingAdapterMapper.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.infrastructure.adapter.in.messaging;
 
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
-import dexter.banking.booktransfers.core.port.out.CreditCardPort;
-import dexter.banking.booktransfers.core.port.out.DepositPort;
-import dexter.banking.booktransfers.core.port.out.LimitPort;
 import dexter.banking.model.*;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 /**
- * A dedicated Anti-Corruption Layer (ACL) mapper for the outbound HTTP adapter.
- * It translates external DTOs received from Feign clients into pure, internal domain value objects,
- * and translates the core's Parameter Objects into external request DTOs.
+ * A dedicated Anti-Corruption Layer (ACL) mapper for the inbound messaging adapter.
+ * It translates external DTOs received from JMS queues into pure, internal domain value objects.
  */
-@Mapper(componentModel = "spring")
-interface HttpAdapterMapper {
+@Mapper(componentModel = "spring", imports = {LimitEarmarkStatus.class, DepositBankingStatus.class, CreditCardBankingStatus.class})
+interface MessagingAdapterMapper {
 
     @Mapping(target = "status", expression = "java(dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL ? CreditLegResult.CreditLegStatus.SUCCESSFUL : CreditLegResult.CreditLegStatus.FAILED)")
     @Mapping(target = "creditCardRequestId", source = "creditCardBankingId")
@@ -40,47 +85,5 @@ interface HttpAdapterMapper {
     @Mapping(target = "status", expression = "java(dto.getStatus() == LimitEarmarkStatus.REVERSAL_SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED)")
     @Mapping(target = "limitId", source = "limitId")
     LimitEarmarkResult toReversalDomain(LimitManagementResponse dto);
-
-    LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest command);
-
-    DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest command);
-
-    CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest command);
-
-    LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest command);
-
-    DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest command);
-}
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/messaging/payment/jms/JmsAdapterMapper.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.messaging.payment.jms;
-
-import dexter.banking.booktransfers.core.port.out.CreditCardPort;
-import dexter.banking.booktransfers.core.port.out.DepositPort;
-import dexter.banking.booktransfers.core.port.out.LimitPort;
-import dexter.banking.model.CreditCardBankingRequest;
-import dexter.banking.model.DepositBankingRequest;
-import dexter.banking.model.DepositBankingReversalRequest;
-import dexter.banking.model.LimitManagementRequest;
-import dexter.banking.model.LimitManagementReversalRequest;
-import org.mapstruct.Mapper;
-
-/**
- * A dedicated Anti-Corruption Layer (ACL) mapper for the outbound JMS adapter.
- * It translates the core's lean Parameter Objects into external request DTOs for messaging.
- */
-@Mapper(componentModel = "spring")
-interface JmsAdapterMapper {
-    LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest request);
-
-    DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest request);
-
-    CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest request);
-
-    LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest request);
-
-    DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest request);
 }
 <<--FILE_END-->>
