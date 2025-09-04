@@ -354,76 +354,6 @@ class BookTransfersApplicationTests {
 
 <<--FILE_END-->>
 <<--FILE_START-->>
-Path: ./app/target/classes/application.yml
-<<--CONTENT_START-->>
-spring:
-  application:
-    name: book-transfers-service
-  config:
-    import: "optional:configserver:"
-  cloud:
-    config:
-      discovery:
-        enabled: true
-        service-id: payment-config-server
-      fail-fast: true
-      username: configUser
-      password: configPassword
-  jms:
-    listener:
-      concurrency: 5
-      max-concurrency: 10
-  jackson:
-    default-property-inclusion: non_null
-    serialization:
-      write-dates-as-timestamps: false
-    deserialization:
-      fail-on-unknown-properties: false
-
-management:
-  tracing:
-    sampling:
-      probability: 1.0
-    logging:
-      enabled: true
-
-eureka:
-  instance:
-    prefer-ip-address: true
-  client:
-    serviceUrl:
-      defaultZone: http://eurekaUser:eurekaPassword@localhost:8761/eureka/
-
-# Business process configuration is preserved
-service-config:
-  journeys:
-    PAYMENT_SUBMIT_V1:
-      idempotencyEnabled: true
-      policies:
-        - "stateTransitionPolicy"
-    PAYMENT_SUBMIT_V2_SYNC:
-      idempotencyEnabled: true
-      policies:
-        - "stateTransitionPolicy"
-    PAYMENT_SUBMIT_V2_ASYNC:
-      idempotencyEnabled: false
-      policies:
-        - "stateTransitionPolicy"
-    PAYMENT_SUBMIT_V3:
-      idempotencyEnabled: true
-      policies:
-        - "stateTransitionPolicy"
-      complianceThreshold: 10000.00
-
-logging:
-  level:
-    tech: debug
-    dexter.banking.booktransfers.infrastructure.middleware: debug
-    dexter.banking.booktransfers.core.usecase: info
-    org.springframework.transaction.event: warn
-
-<<--FILE_END-->>
-<<--FILE_START-->>
 Path: ./core/pom.xml
 <<--CONTENT_START-->>
 <?xml version="1.0" encoding="UTF-8"?>
@@ -474,47 +404,13 @@ Path: ./core/pom.xml
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+        </dependency>
     </dependencies>
 
 </project>
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/compliance/ApproveComplianceCaseService.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.core.application.compliance;
-
-import dexter.banking.booktransfers.core.application.compliance.command.ApproveComplianceCaseCommand;
-import dexter.banking.booktransfers.core.domain.compliance.ComplianceCase;
-import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
-import dexter.banking.booktransfers.core.port.in.compliance.ApproveComplianceCaseUseCase;
-import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentParams;
-import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentUseCase;
-import dexter.banking.booktransfers.core.port.out.ComplianceCaseRepositoryPort;
-import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-@Service
-@RequiredArgsConstructor
-public class ApproveComplianceCaseService implements ApproveComplianceCaseUseCase {
-    private final ComplianceCaseRepositoryPort complianceCaseRepository;
-    private final EventDispatcherPort eventDispatcher;
-    private final ResumePaymentUseCase resumePaymentUseCase;
-
-    @Override
-    @Transactional
-    public void approve(ApproveComplianceCaseCommand command) {
-        ComplianceCase complianceCase = complianceCaseRepository.findById(command.complianceCaseId())
-           .orElseThrow(() -> new TransactionNotFoundException("ComplianceCase not found: " + command.complianceCaseId()));
-        complianceCase.approve();
-
-        complianceCaseRepository.save(complianceCase);
-        eventDispatcher.dispatch(complianceCase.pullDomainEvents());
-
-        resumePaymentUseCase.resume(new ResumePaymentParams(complianceCase.getPaymentId()));
-    }
-}
 
 <<--FILE_END-->>
 <<--FILE_START-->>
@@ -537,7 +433,11 @@ Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/complia
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.core.application.compliance.command;
 
+import dexter.banking.booktransfers.core.domain.compliance.ComplianceCase;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
 import dexter.banking.booktransfers.core.port.in.compliance.ApproveComplianceCaseUseCase;
+import dexter.banking.booktransfers.core.port.out.ComplianceCaseRepositoryPort;
+import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
 import dexter.banking.commandbus.CommandHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -546,12 +446,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 public class ApproveComplianceCaseCommandHandler implements CommandHandler<ApproveComplianceCaseCommand, Void> {
-    private final ApproveComplianceCaseUseCase approveComplianceCaseUseCase;
-
+    private final ComplianceCaseRepositoryPort complianceCaseRepository;
+    private final EventDispatcherPort eventDispatcher;
     @Override
     @Transactional
     public Void handle(ApproveComplianceCaseCommand command) {
-        this.approveComplianceCaseUseCase.approve(command);
+        ComplianceCase complianceCase = complianceCaseRepository.findById(command.complianceCaseId())
+                .orElseThrow(() -> new TransactionNotFoundException("ComplianceCase not found: " + command.complianceCaseId()));
+        complianceCase.approve();
+
+        complianceCaseRepository.save(complianceCase);
+        eventDispatcher.dispatch(complianceCase.pullDomainEvents());
         return null;
     }
 }
@@ -578,7 +483,12 @@ Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/complia
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.core.application.compliance.command;
 
+import dexter.banking.booktransfers.core.domain.compliance.ComplianceCase;
+import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
 import dexter.banking.booktransfers.core.port.in.compliance.RejectComplianceCaseUseCase;
+import dexter.banking.booktransfers.core.port.in.payment.FailPaymentUseCase;
+import dexter.banking.booktransfers.core.port.out.ComplianceCaseRepositoryPort;
+import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
 import dexter.banking.commandbus.CommandHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -587,41 +497,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RequiredArgsConstructor
 public class RejectComplianceCaseCommandHandler implements CommandHandler<RejectComplianceCaseCommand, Void> {
-    private final RejectComplianceCaseUseCase rejectComplianceCaseUseCase;
+    private final ComplianceCaseRepositoryPort complianceCaseRepository;
+    private final EventDispatcherPort eventDispatcher;
 
     @Override
     @Transactional
     public Void handle(RejectComplianceCaseCommand command) {
-        this.rejectComplianceCaseUseCase.reject(command);
+        ComplianceCase complianceCase = complianceCaseRepository.findById(command.complianceCaseId())
+                .orElseThrow(() -> new TransactionNotFoundException("ComplianceCase not found: " + command.complianceCaseId()));
+        complianceCase.reject(command.reason());
+
+        complianceCaseRepository.save(complianceCase);
+        eventDispatcher.dispatch(complianceCase.pullDomainEvents());
         return null;
-    }
-}
-
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/compliance/ComplianceSaga.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.core.application.compliance;
-
-import dexter.banking.booktransfers.core.domain.payment.event.PaymentRequiresComplianceCheck;
-import dexter.banking.booktransfers.core.port.in.compliance.CreateComplianceCaseUseCase;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
-
-@Service
-@RequiredArgsConstructor
-@Slf4j
-public class ComplianceSaga {
-    private final CreateComplianceCaseUseCase createComplianceCaseUseCase;
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void on(PaymentRequiresComplianceCheck event) {
-        log.info("SAGA: Received PaymentRequiresComplianceCheck for paymentId {}. Invoking CreateComplianceCaseUseCase.", event.aggregateId());
-        // No command object is needed for this internal-only use case.
-        createComplianceCaseUseCase.create(event.aggregateId());
     }
 }
 
@@ -673,45 +561,6 @@ public record ComplianceCaseView(
     UUID paymentId,
     ComplianceStatus status
 ) {}
-
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./core/src/main/java/dexter/banking/booktransfers/core/application/compliance/RejectComplianceCaseService.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.core.application.compliance;
-
-import dexter.banking.booktransfers.core.application.compliance.command.RejectComplianceCaseCommand;
-import dexter.banking.booktransfers.core.domain.compliance.ComplianceCase;
-import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
-import dexter.banking.booktransfers.core.port.in.compliance.RejectComplianceCaseUseCase;
-import dexter.banking.booktransfers.core.port.in.payment.FailPaymentParams;
-import dexter.banking.booktransfers.core.port.in.payment.FailPaymentUseCase;
-import dexter.banking.booktransfers.core.port.out.ComplianceCaseRepositoryPort;
-import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-@Service
-@RequiredArgsConstructor
-public class RejectComplianceCaseService implements RejectComplianceCaseUseCase {
-    private final ComplianceCaseRepositoryPort complianceCaseRepository;
-    private final EventDispatcherPort eventDispatcher;
-    private final FailPaymentUseCase failPaymentUseCase;
-
-    @Override
-    @Transactional
-    public void reject(RejectComplianceCaseCommand command) {
-        ComplianceCase complianceCase = complianceCaseRepository.findById(command.complianceCaseId())
-                .orElseThrow(() -> new TransactionNotFoundException("ComplianceCase not found: " + command.complianceCaseId()));
-        complianceCase.reject(command.reason());
-
-        complianceCaseRepository.save(complianceCase);
-        eventDispatcher.dispatch(complianceCase.pullDomainEvents());
-
-        failPaymentUseCase.fail(new FailPaymentParams(complianceCase.getPaymentId(), "Compliance rejected: " + command.reason()));
-    }
-}
 
 <<--FILE_END-->>
 <<--FILE_START-->>
@@ -5598,9 +5447,14 @@ Path: ./infrastructure/pom.xml
             <groupId>dexter.demo.payment</groupId>
             <artifactId>common-domain</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+        </dependency>
     </dependencies>
 
 </project>
+
 <<--FILE_END-->>
 <<--FILE_START-->>
 Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/in/messaging/CreditBankingListener.java
@@ -6161,66 +6015,25 @@ import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.RelId;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.TransactionAmount;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.springframework.util.StringUtils;
 
 import java.util.Currency;
 import java.util.UUID;
 
-@Component
-class WebMapper {
-    public PaymentCommand toCommand(BookTransferRequest dto, ApiVersion version) {
-        if (dto == null) {
-            return null;
-        }
+@Mapper(componentModel = "spring", imports = {ModeOfTransfer.class, StringUtils.class, RelId.class, TransactionAmount.class, Currency.class})
+interface WebMapper {
+    @Mapping(target = "modeOfTransfer", expression = "java(StringUtils.hasText(dto.getModeOfTransfer()) ? ModeOfTransfer.valueOf(dto.getModeOfTransfer().toUpperCase()) : ModeOfTransfer.ASYNC)")
+    PaymentCommand toCommand(BookTransferRequest dto, ApiVersion version);
 
-        return PaymentCommand.builder()
-                .idempotencyKey(dto.getIdempotencyKey())
-                .transactionReference(dto.getTransactionReference())
-                .limitType(dto.getLimitType())
-                .accountNumber(dto.getAccountNumber())
-                .cardNumber(dto.getCardNumber())
-                .webhookUrl(dto.getWebhookUrl())
-                .realtime(dto.getRealtime())
-                .modeOfTransfer(StringUtils.hasText(dto.getModeOfTransfer()) ? ModeOfTransfer.valueOf(dto.getModeOfTransfer().toUpperCase()) : ModeOfTransfer.ASYNC)
-                .version(version)
-                .build();
-    }
+    @Mapping(target = "relId", expression = "java(new RelId(dto.getRelId()))")
+    @Mapping(target = "transactionAmount", expression = "java(new TransactionAmount(dto.getAmount(), Currency.getInstance(dto.getCurrency())))")
+    HighValuePaymentCommand toCommand(BookTransferRequestV3 dto);
 
-    public HighValuePaymentCommand toCommand(BookTransferRequestV3 dto) {
-        if (dto == null) {
-            return null;
-        }
+    RejectComplianceCaseCommand toCommand(UUID complianceCaseId, RejectComplianceRequest dto);
 
-        return HighValuePaymentCommand.builder()
-                .idempotencyKey(dto.getIdempotencyKey())
-                .transactionReference(dto.getTransactionReference())
-                .relId(new RelId(dto.getRelId()))
-                .transactionAmount(new TransactionAmount(dto.getAmount(), Currency.getInstance(dto.getCurrency())))
-                .limitType(dto.getLimitType())
-                .accountNumber(dto.getAccountNumber())
-                .cardNumber(dto.getCardNumber())
-                .build();
-    }
-
-    public RejectComplianceCaseCommand toCommand(UUID caseId, RejectComplianceRequest dto) {
-        if (dto == null) {
-            return null;
-        }
-        return new RejectComplianceCaseCommand(caseId, dto.getReason());
-    }
-
-    public BookTransferResponse toResponse(PaymentResult paymentResult) {
-        if (paymentResult == null) {
-            return null;
-        }
-
-        return BookTransferResponse.builder()
-                .transactionId(paymentResult.transactionId())
-                .status(paymentResult.status())
-                .state(paymentResult.state())
-                .build();
-    }
+    BookTransferResponse toResponse(PaymentResult paymentResult);
 }
 
 <<--FILE_END-->>
@@ -6328,6 +6141,59 @@ class ServiceConfigProperties {
 
 <<--FILE_END-->>
 <<--FILE_START-->>
+Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/events/compliance/TransactionalComplianceDomainEventListener.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.infrastructure.adapter.out.events.compliance;
+
+import dexter.banking.booktransfers.core.domain.compliance.event.ComplianceCaseApproved;
+import dexter.banking.booktransfers.core.domain.compliance.event.ComplianceCaseRejected;
+import dexter.banking.booktransfers.core.domain.payment.PaymentState;
+import dexter.banking.booktransfers.core.domain.payment.event.*;
+import dexter.banking.booktransfers.core.port.in.compliance.CreateComplianceCaseUseCase;
+import dexter.banking.booktransfers.core.port.in.payment.FailPaymentParams;
+import dexter.banking.booktransfers.core.port.in.payment.FailPaymentUseCase;
+import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentParams;
+import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentUseCase;
+import dexter.banking.booktransfers.core.port.out.WebhookPort;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * A single, unified Spring component that listens for all domain events.
+ * It uses the @TransactionalEventListener to ensure that event handling only occurs
+ * AFTER the originating transaction has successfully committed. This is critical for
+ * preventing inconsistent state if a webhook call fails after the DB commit.
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+class TransactionalComplianceDomainEventListener {
+    private final ResumePaymentUseCase resumePaymentUseCase;
+    private final FailPaymentUseCase failPaymentUseCase;
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(ComplianceCaseApproved event) {
+        log.info("SAGA: Received PaymentRequiresComplianceCheck for paymentId {}. Invoking CreateComplianceCaseUseCase.", event.aggregateId());
+
+        resumePaymentUseCase.resume(new ResumePaymentParams(event.paymentId()));
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(ComplianceCaseRejected event) {
+        log.info("SAGA: Received PaymentRequiresComplianceCheck for paymentId {}. Invoking CreateComplianceCaseUseCase.", event.aggregateId());
+
+        failPaymentUseCase.fail(new FailPaymentParams(event.paymentId(), event.reason()));
+    }
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
 Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/events/EventsAdapterConfig.java
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.infrastructure.adapter.out.events;
@@ -6339,6 +6205,91 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ComponentScan(basePackageClasses = EventsAdapterConfig.class)
 public class EventsAdapterConfig implements FacadeConfiguration {
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/events/payment/TransactionalPaymentEventListener.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.infrastructure.adapter.out.events.payment;
+
+import dexter.banking.booktransfers.core.domain.compliance.event.ComplianceCaseApproved;
+import dexter.banking.booktransfers.core.domain.payment.PaymentState;
+import dexter.banking.booktransfers.core.domain.payment.event.*;
+import dexter.banking.booktransfers.core.port.in.compliance.CreateComplianceCaseUseCase;
+import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentParams;
+import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentUseCase;
+import dexter.banking.booktransfers.core.port.out.WebhookPort;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.util.Map;
+import java.util.UUID;
+/**
+ * A single, unified Spring component that listens for all domain events.
+ * It uses the @TransactionalEventListener to ensure that event handling only occurs
+ * AFTER the originating transaction has successfully committed. This is critical for
+ * preventing inconsistent state if a webhook call fails after the DB commit.
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+class TransactionalPaymentEventListener {
+    private final CreateComplianceCaseUseCase createComplianceCaseUseCase;
+    private final WebhookPort webhookPort;
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(PaymentSuccessfulEvent event) {
+        log.info("Handling successful payment event for transaction {}", event.aggregateId());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(PaymentFailedEvent event) {
+        log.info("Handling failed payment event for transaction {}", event.aggregateId());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(ManualInterventionRequiredEvent event) {
+        log.info("Handling manual intervention event for transaction {}", event.aggregateId());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(PaymentInProgressEvent event) {
+        log.info("Handling in-progress payment event for transaction {}", event.aggregateId());
+        var eventMetadata = event.metadata();
+        boolean realtimeEnabled = eventMetadata.containsKey("realtime") && "true".equals(eventMetadata.get("realtime"));
+        if (realtimeEnabled) {
+            log.info("Realtime flag is set. Notifying webhook immediately for transaction {}", event.aggregateId());
+            notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+        } else {
+            log.info("Realtime flag not set or false. Skipping immediate webhook notification for transaction {}", event.aggregateId());
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(PaymentRequiresComplianceCheck event) {
+        log.info("SAGA: Received PaymentRequiresComplianceCheck for paymentId {}. Invoking CreateComplianceCaseUseCase.", event.aggregateId());
+        // No command object is needed for this internal-only use case.
+        createComplianceCaseUseCase.create(event.aggregateId());
+    }
+
+    private void notifyWebhook(UUID aggregateId, PaymentState paymentState, Map<String, Object> metadata) {
+        String webhookUrl = (String) metadata.get("webhookUrl");
+        String transactionReference = (String) metadata.get("transactionReference");
+        if (webhookUrl != null && !webhookUrl.isBlank()) {
+            log.info("Notifying webhook {} for transaction {} with final state {}", webhookUrl, aggregateId, paymentState);
+            var notification = new WebhookPort.WebhookNotification(transactionReference, paymentState);
+            webhookPort.notifyTransactionStatus(webhookUrl, notification);
+        } else {
+            log.info("No webhook URL configured for transaction {}. Skipping notification.", aggregateId);
+        }
+    }
 }
 
 <<--FILE_END-->>
@@ -6375,82 +6326,6 @@ class SpringEventDispatcherAdapter implements EventDispatcherPort {
         }
         log.info("Publishing {} domain event(s) to the application context...", events.size());
         events.forEach(eventPublisher::publishEvent);
-    }
-}
-
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/events/TransactionalDomainEventListener.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.events;
-
-import dexter.banking.booktransfers.core.domain.payment.PaymentState;
-import dexter.banking.booktransfers.core.domain.payment.event.ManualInterventionRequiredEvent;
-import dexter.banking.booktransfers.core.domain.payment.event.PaymentFailedEvent;
-import dexter.banking.booktransfers.core.domain.payment.event.PaymentInProgressEvent;
-import dexter.banking.booktransfers.core.domain.payment.event.PaymentSuccessfulEvent;
-import dexter.banking.booktransfers.core.port.out.WebhookPort;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.util.Map;
-import java.util.UUID;
-/**
- * A single, unified Spring component that listens for all domain events.
- * It uses the @TransactionalEventListener to ensure that event handling only occurs
- * AFTER the originating transaction has successfully committed. This is critical for
- * preventing inconsistent state if a webhook call fails after the DB commit.
- */
-@Component
-@RequiredArgsConstructor
-@Slf4j
-class TransactionalDomainEventListener {
-
-    private final WebhookPort webhookPort;
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void on(PaymentSuccessfulEvent event) {
-        log.info("Handling successful payment event for transaction {}", event.aggregateId());
-        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void on(PaymentFailedEvent event) {
-        log.info("Handling failed payment event for transaction {}", event.aggregateId());
-        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void on(ManualInterventionRequiredEvent event) {
-        log.info("Handling manual intervention event for transaction {}", event.aggregateId());
-        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void on(PaymentInProgressEvent event) {
-        log.info("Handling in-progress payment event for transaction {}", event.aggregateId());
-        var eventMetadata = event.metadata();
-        boolean realtimeEnabled = eventMetadata.containsKey("realtime") && "true".equals(eventMetadata.get("realtime"));
-        if (realtimeEnabled) {
-            log.info("Realtime flag is set. Notifying webhook immediately for transaction {}", event.aggregateId());
-            notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
-        } else {
-            log.info("Realtime flag not set or false. Skipping immediate webhook notification for transaction {}", event.aggregateId());
-        }
-    }
-
-    private void notifyWebhook(UUID aggregateId, PaymentState paymentState, Map<String, Object> metadata) {
-        String webhookUrl = (String) metadata.get("webhookUrl");
-        String transactionReference = (String) metadata.get("transactionReference");
-        if (webhookUrl != null && !webhookUrl.isBlank()) {
-            log.info("Notifying webhook {} for transaction {} with final state {}", webhookUrl, aggregateId, paymentState);
-            var notification = new WebhookPort.WebhookNotification(transactionReference, paymentState);
-            webhookPort.notifyTransactionStatus(webhookUrl, notification);
-        } else {
-            log.info("No webhook URL configured for transaction {}. Skipping notification.", aggregateId);
-        }
     }
 }
 
@@ -7856,6 +7731,8 @@ Path: ./pom.xml
     <properties>
         <java.version>21</java.version>
         <spring-shell.version>3.3.1</spring-shell.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
     </properties>
 
     <dependencyManagement>
@@ -7881,8 +7758,48 @@ Path: ./pom.xml
                 <artifactId>spring-shell-starter</artifactId>
                 <version>${spring-shell.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct</artifactId>
+                <version>${mapstruct.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven-compiler-plugin.version}</version>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${mapstruct.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok-mapstruct-binding</artifactId>
+                                <version>${lombok-mapstruct-binding.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
 </project>
+
 <<--FILE_END-->>
