@@ -8,45 +8,21 @@ import dexter.banking.model.DepositBankingRequest;
 import dexter.banking.model.DepositBankingReversalRequest;
 import dexter.banking.model.LimitManagementRequest;
 import dexter.banking.model.LimitManagementReversalRequest;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+
 /**
  * A dedicated Anti-Corruption Layer (ACL) mapper for the outbound JMS adapter.
  * It translates the core's lean Parameter Objects into external request DTOs for messaging.
  */
-@Component
-class JmsAdapterMapper {
-    public LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest request) {
-        return LimitManagementRequest.builder()
-                .transactionId(request.transactionId())
-                .limitType(request.limitType())
-                .build();
-    }
+@Mapper(componentModel = "spring")
+interface JmsAdapterMapper {
+    LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest request);
 
-    public DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest request) {
-        return DepositBankingRequest.builder()
-                .transactionId(request.transactionId())
-                .accountNumber(request.accountNumber())
-                .build();
-    }
+    DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest request);
 
-    public CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest request) {
-        return CreditCardBankingRequest.builder()
-                .transactionId(request.transactionId())
-                .cardNumber(request.cardNumber())
-                .build();
-    }
+    CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest request);
 
-    public LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest request) {
-        return LimitManagementReversalRequest.builder()
-                .transactionId(request.transactionId())
-                .limitManagementId(request.limitManagementId())
-                .build();
-    }
+    LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest request);
 
-    public DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest request) {
-        return DepositBankingReversalRequest.builder()
-                .transactionId(request.transactionId())
-                .reservationId(request.reservationId())
-                .build();
-    }
+    DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest request);
 }

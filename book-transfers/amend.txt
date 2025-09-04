@@ -1,77 +1,86 @@
 <<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/persistence/compliance/mongo/CompliancePersistenceMapper.java
+Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/http/payment/feign/HttpAdapterMapper.java
 <<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.compliance.mongo;
+package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
 
-import dexter.banking.booktransfers.core.domain.compliance.ComplianceCase;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.port.out.CreditCardPort;
+import dexter.banking.booktransfers.core.port.out.DepositPort;
+import dexter.banking.booktransfers.core.port.out.LimitPort;
+import dexter.banking.model.*;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
 
+/**
+ * A dedicated Anti-Corruption Layer (ACL) mapper for the outbound HTTP adapter.
+ * It translates external DTOs received from Feign clients into pure, internal domain value objects,
+ * and translates the core's Parameter Objects into external request DTOs.
+ */
 @Mapper(componentModel = "spring")
-interface CompliancePersistenceMapper {
+interface HttpAdapterMapper {
 
-    @Mapping(target = "caseId", source = "id")
-    @Mapping(target = "_id", ignore = true)
-    ComplianceCaseDocument toDocument(ComplianceCase aggregate);
+    @Mapping(target = "status", expression = "java(dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL ? CreditLegResult.CreditLegStatus.SUCCESSFUL : CreditLegResult.CreditLegStatus.FAILED)")
+    @Mapping(target = "creditCardRequestId", source = "creditCardBankingId")
+    CreditLegResult toDomain(CreditCardBankingResponse dto);
 
-    default ComplianceCase toDomain(ComplianceCaseDocument document) {
-        if (document == null) {
-            return null;
-        }
-        // This default implementation is required to correctly use the aggregate's static factory method.
-        return ComplianceCase.rehydrate(
-                document.getCaseId(),
-                document.getPaymentId(),
-                document.getStatus(),
-                document.getReason()
-        );
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == DepositBankingStatus.SUCCESSFUL ? DebitLegResult.DebitLegStatus.SUCCESSFUL : DebitLegResult.DebitLegStatus.FAILED)")
+    @Mapping(target = "depositId", source = "depositId")
+    DebitLegResult toDomain(DepositBankingResponse dto);
 
-    @Mapping(target = "caseId", ignore = true)
-    @Mapping(target = "paymentId", ignore = true)
-    @Mapping(target = "_id", ignore = true)
-    void updateDocument(@MappingTarget ComplianceCaseDocument doc, ComplianceCase aggregate);
+    @Mapping(target = "status", expression = "java(dto.getStatus() == DepositBankingStatus.REVERSAL_SUCCESSFUL ? DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL : DebitLegResult.DebitLegStatus.REVERSAL_FAILED)")
+    @Mapping(target = "depositId", source = "depositId")
+    DebitLegResult toReversalDomain(DepositBankingResponse dto);
+
+    @Mapping(target = "status", expression = "java(dto.getStatus() == LimitEarmarkStatus.SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.FAILED)")
+    @Mapping(target = "limitId", source = "limitId")
+    LimitEarmarkResult toDomain(LimitManagementResponse dto);
+
+    @Mapping(target = "status", expression = "java(dto.getStatus() == LimitEarmarkStatus.REVERSAL_SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED)")
+    @Mapping(target = "limitId", source = "limitId")
+    LimitEarmarkResult toReversalDomain(LimitManagementResponse dto);
+
+    LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest command);
+
+    DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest command);
+
+    CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest command);
+
+    LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest command);
+
+    DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest command);
 }
 <<--FILE_END-->>
 <<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/persistence/payment/mongo/PersistenceMapper.java
+Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/messaging/payment/jms/JmsAdapterMapper.java
 <<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment.mongo;
+package dexter.banking.booktransfers.infrastructure.adapter.out.messaging.payment.jms;
 
-import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.port.out.CreditCardPort;
+import dexter.banking.booktransfers.core.port.out.DepositPort;
+import dexter.banking.booktransfers.core.port.out.LimitPort;
+import dexter.banking.model.CreditCardBankingRequest;
+import dexter.banking.model.DepositBankingRequest;
+import dexter.banking.model.DepositBankingReversalRequest;
+import dexter.banking.model.LimitManagementRequest;
+import dexter.banking.model.LimitManagementReversalRequest;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
 
+/**
+ * A dedicated Anti-Corruption Layer (ACL) mapper for the outbound JMS adapter.
+ * It translates the core's lean Parameter Objects into external request DTOs for messaging.
+ */
 @Mapper(componentModel = "spring")
-interface PersistenceMapper {
+interface JmsAdapterMapper {
+    LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest request);
 
-    @Mapping(target = "id", source = "transactionId")
-    Payment.PaymentMemento toMemento(TransactionDocument document);
+    DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest request);
 
-    @Mapping(target = "transactionId", source = "memento.id")
-    @Mapping(target = "transactionReference", source = "memento.transactionReference")
-    @Mapping(target = "journeyName", source = "memento.journeyName")
-    @Mapping(target = "status", source = "memento.status")
-    @Mapping(target = "state", source = "memento.state")
-    @Mapping(target = "debitLegResult", source = "memento.debitLegResult")
-    @Mapping(target = "limitEarmarkResult", source = "memento.limitEarmarkResult")
-    @Mapping(target = "creditLegResult", source = "memento.creditLegResult")
-    @Mapping(target = "_id", ignore = true)
-    @Mapping(target = "orchestrationContext", ignore = true)
-    TransactionDocument toDocument(Payment payment);
+    CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest request);
 
-    @Mapping(target = "transactionId", source = "memento.id")
-    @Mapping(target = "transactionReference", source = "memento.transactionReference")
-    @Mapping(target = "journeyName", source = "memento.journeyName")
-    @Mapping(target = "status", source = "memento.status")
-    @Mapping(target = "state", source = "memento.state")
-    @Mapping(target = "debitLegResult", source = "memento.debitLegResult")
-    @Mapping(target = "limitEarmarkResult", source = "memento.limitEarmarkResult")
-    @Mapping(target = "creditLegResult", source = "memento.creditLegResult")
-    @Mapping(target = "_id", ignore = true)
-    @Mapping(target = "orchestrationContext", ignore = true)
-    void updateDocumentFromDomain(@MappingTarget TransactionDocument doc, Payment payment);
+    LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest request);
+
+    DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest request);
 }
 <<--FILE_END-->>

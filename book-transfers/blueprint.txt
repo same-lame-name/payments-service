@@ -354,6 +354,76 @@ class BookTransfersApplicationTests {
 
 <<--FILE_END-->>
 <<--FILE_START-->>
+Path: ./app/target/classes/application.yml
+<<--CONTENT_START-->>
+spring:
+  application:
+    name: book-transfers-service
+  config:
+    import: "optional:configserver:"
+  cloud:
+    config:
+      discovery:
+        enabled: true
+        service-id: payment-config-server
+      fail-fast: true
+      username: configUser
+      password: configPassword
+  jms:
+    listener:
+      concurrency: 5
+      max-concurrency: 10
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    logging:
+      enabled: true
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    serviceUrl:
+      defaultZone: http://eurekaUser:eurekaPassword@localhost:8761/eureka/
+
+# Business process configuration is preserved
+service-config:
+  journeys:
+    PAYMENT_SUBMIT_V1:
+      idempotencyEnabled: true
+      policies:
+        - "stateTransitionPolicy"
+    PAYMENT_SUBMIT_V2_SYNC:
+      idempotencyEnabled: true
+      policies:
+        - "stateTransitionPolicy"
+    PAYMENT_SUBMIT_V2_ASYNC:
+      idempotencyEnabled: false
+      policies:
+        - "stateTransitionPolicy"
+    PAYMENT_SUBMIT_V3:
+      idempotencyEnabled: true
+      policies:
+        - "stateTransitionPolicy"
+      complianceThreshold: 10000.00
+
+logging:
+  level:
+    tech: debug
+    dexter.banking.booktransfers.infrastructure.middleware: debug
+    dexter.banking.booktransfers.core.usecase: info
+    org.springframework.transaction.event: warn
+
+<<--FILE_END-->>
+<<--FILE_START-->>
 Path: ./core/pom.xml
 <<--CONTENT_START-->>
 <?xml version="1.0" encoding="UTF-8"?>
@@ -6473,85 +6543,46 @@ import dexter.banking.booktransfers.core.port.out.CreditCardPort;
 import dexter.banking.booktransfers.core.port.out.DepositPort;
 import dexter.banking.booktransfers.core.port.out.LimitPort;
 import dexter.banking.model.*;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
 /**
  * A dedicated Anti-Corruption Layer (ACL) mapper for the outbound HTTP adapter.
  * It translates external DTOs received from Feign clients into pure, internal domain value objects,
  * and translates the core's Parameter Objects into external request DTOs.
  */
-@Component
-class HttpAdapterMapper {
+@Mapper(componentModel = "spring", imports = {LimitEarmarkStatus.class, DepositBankingStatus.class, CreditCardBankingStatus.class})
+interface HttpAdapterMapper {
 
-    public CreditLegResult toDomain(CreditCardBankingResponse dto) {
-        CreditLegResult.CreditLegStatus status = (dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL)
-                ? CreditLegResult.CreditLegStatus.SUCCESSFUL
-                : CreditLegResult.CreditLegStatus.FAILED;
-        return new CreditLegResult(dto.getCreditCardBankingId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL ? CreditLegResult.CreditLegStatus.SUCCESSFUL : CreditLegResult.CreditLegStatus.FAILED)")
+    @Mapping(target = "creditCardRequestId", source = "creditCardBankingId")
+    CreditLegResult toDomain(CreditCardBankingResponse dto);
 
-    public DebitLegResult toDomain(DepositBankingResponse dto) {
-        DebitLegResult.DebitLegStatus status = (dto.getStatus() == DepositBankingStatus.SUCCESSFUL)
-                ? DebitLegResult.DebitLegStatus.SUCCESSFUL
-                : DebitLegResult.DebitLegStatus.FAILED;
-        return new DebitLegResult(dto.getDepositId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == DepositBankingStatus.SUCCESSFUL ? DebitLegResult.DebitLegStatus.SUCCESSFUL : DebitLegResult.DebitLegStatus.FAILED)")
+    @Mapping(target = "depositId", source = "depositId")
+    DebitLegResult toDomain(DepositBankingResponse dto);
 
-    public DebitLegResult toReversalDomain(DepositBankingResponse dto) {
-        DebitLegResult.DebitLegStatus status = (dto.getStatus() == DepositBankingStatus.REVERSAL_SUCCESSFUL)
-                ? DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL
-                : DebitLegResult.DebitLegStatus.REVERSAL_FAILED;
-        return new DebitLegResult(dto.getDepositId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == DepositBankingStatus.REVERSAL_SUCCESSFUL ? DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL : DebitLegResult.DebitLegStatus.REVERSAL_FAILED)")
+    @Mapping(target = "depositId", source = "depositId")
+    DebitLegResult toReversalDomain(DepositBankingResponse dto);
 
-    public LimitEarmarkResult toDomain(LimitManagementResponse dto) {
-        LimitEarmarkResult.LimitEarmarkStatus status = (dto.getStatus() == LimitEarmarkStatus.SUCCESSFUL)
-                ? LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL
-                : LimitEarmarkResult.LimitEarmarkStatus.FAILED;
-        return new LimitEarmarkResult(dto.getLimitId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == LimitEarmarkStatus.SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.FAILED)")
+    @Mapping(target = "limitId", source = "limitId")
+    LimitEarmarkResult toDomain(LimitManagementResponse dto);
 
-    public LimitEarmarkResult toReversalDomain(LimitManagementResponse dto) {
-        LimitEarmarkResult.LimitEarmarkStatus status = (dto.getStatus() == LimitEarmarkStatus.REVERSAL_SUCCESSFUL)
-                ? LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL
-                : LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED;
-        return new LimitEarmarkResult(dto.getLimitId(), status);
-    }
+    @Mapping(target = "status", expression = "java(dto.getStatus() == LimitEarmarkStatus.REVERSAL_SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED)")
+    @Mapping(target = "limitId", source = "limitId")
+    LimitEarmarkResult toReversalDomain(LimitManagementResponse dto);
 
-    public LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest command) {
-        return LimitManagementRequest.builder()
-                .transactionId(command.transactionId())
-                .limitType(command.limitType())
-                .build();
-    }
+    LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest command);
 
-    public DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest command) {
-        return DepositBankingRequest.builder()
-                .transactionId(command.transactionId())
-                .accountNumber(command.accountNumber())
-                .build();
-    }
+    DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest command);
 
-    public CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest command) {
-        return CreditCardBankingRequest.builder()
-                .transactionId(command.transactionId())
-                .cardNumber(command.cardNumber())
-                .build();
-    }
+    CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest command);
 
-    public LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest command) {
-        return LimitManagementReversalRequest.builder()
-                .transactionId(command.transactionId())
-                .limitManagementId(command.limitManagementId())
-                .build();
-    }
+    LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest command);
 
-    public DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest command) {
-        return DepositBankingReversalRequest.builder()
-                .transactionId(command.transactionId())
-                .reservationId(command.reservationId())
-                .build();
-    }
+    DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest command);
 }
 
 <<--FILE_END-->>
@@ -6684,47 +6715,23 @@ import dexter.banking.model.DepositBankingRequest;
 import dexter.banking.model.DepositBankingReversalRequest;
 import dexter.banking.model.LimitManagementRequest;
 import dexter.banking.model.LimitManagementReversalRequest;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+
 /**
  * A dedicated Anti-Corruption Layer (ACL) mapper for the outbound JMS adapter.
  * It translates the core's lean Parameter Objects into external request DTOs for messaging.
  */
-@Component
-class JmsAdapterMapper {
-    public LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest request) {
-        return LimitManagementRequest.builder()
-                .transactionId(request.transactionId())
-                .limitType(request.limitType())
-                .build();
-    }
+@Mapper(componentModel = "spring")
+interface JmsAdapterMapper {
+    LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest request);
 
-    public DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest request) {
-        return DepositBankingRequest.builder()
-                .transactionId(request.transactionId())
-                .accountNumber(request.accountNumber())
-                .build();
-    }
+    DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest request);
 
-    public CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest request) {
-        return CreditCardBankingRequest.builder()
-                .transactionId(request.transactionId())
-                .cardNumber(request.cardNumber())
-                .build();
-    }
+    CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest request);
 
-    public LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest request) {
-        return LimitManagementReversalRequest.builder()
-                .transactionId(request.transactionId())
-                .limitManagementId(request.limitManagementId())
-                .build();
-    }
+    LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest request);
 
-    public DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest request) {
-        return DepositBankingReversalRequest.builder()
-                .transactionId(request.transactionId())
-                .reservationId(request.reservationId())
-                .build();
-    }
+    DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest request);
 }
 
 <<--FILE_END-->>
@@ -7704,7 +7711,7 @@ import org.springframework.util.StringUtils;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-04T20:01:14+0530",
+    date = "2025-09-04T20:37:30+0530",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
 )
 @Component
@@ -7793,24 +7800,119 @@ Path: ./infrastructure/target/generated-sources/annotations/dexter/banking/bookt
 <<--CONTENT_START-->>
 package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
 
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.port.out.CreditCardPort;
 import dexter.banking.booktransfers.core.port.out.DepositPort;
 import dexter.banking.booktransfers.core.port.out.LimitPort;
 import dexter.banking.model.CreditCardBankingRequest;
+import dexter.banking.model.CreditCardBankingResponse;
+import dexter.banking.model.CreditCardBankingStatus;
 import dexter.banking.model.DepositBankingRequest;
+import dexter.banking.model.DepositBankingResponse;
 import dexter.banking.model.DepositBankingReversalRequest;
+import dexter.banking.model.DepositBankingStatus;
+import dexter.banking.model.LimitEarmarkStatus;
 import dexter.banking.model.LimitManagementRequest;
+import dexter.banking.model.LimitManagementResponse;
 import dexter.banking.model.LimitManagementReversalRequest;
+import java.util.UUID;
 import javax.annotation.processing.Generated;
 import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-04T20:01:14+0530",
+    date = "2025-09-04T20:37:41+0530",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
 )
 @Component
 class HttpAdapterMapperImpl implements HttpAdapterMapper {
+
+    @Override
+    public CreditLegResult toDomain(CreditCardBankingResponse dto) {
+        if ( dto == null ) {
+            return null;
+        }
+
+        UUID creditCardRequestId = null;
+
+        creditCardRequestId = dto.getCreditCardBankingId();
+
+        CreditLegResult.CreditLegStatus status = dto.getStatus() == CreditCardBankingStatus.SUCCESSFUL ? CreditLegResult.CreditLegStatus.SUCCESSFUL : CreditLegResult.CreditLegStatus.FAILED;
+
+        CreditLegResult creditLegResult = new CreditLegResult( creditCardRequestId, status );
+
+        return creditLegResult;
+    }
+
+    @Override
+    public DebitLegResult toDomain(DepositBankingResponse dto) {
+        if ( dto == null ) {
+            return null;
+        }
+
+        UUID depositId = null;
+
+        depositId = dto.getDepositId();
+
+        DebitLegResult.DebitLegStatus status = dto.getStatus() == DepositBankingStatus.SUCCESSFUL ? DebitLegResult.DebitLegStatus.SUCCESSFUL : DebitLegResult.DebitLegStatus.FAILED;
+
+        DebitLegResult debitLegResult = new DebitLegResult( depositId, status );
+
+        return debitLegResult;
+    }
+
+    @Override
+    public DebitLegResult toReversalDomain(DepositBankingResponse dto) {
+        if ( dto == null ) {
+            return null;
+        }
+
+        UUID depositId = null;
+
+        depositId = dto.getDepositId();
+
+        DebitLegResult.DebitLegStatus status = dto.getStatus() == DepositBankingStatus.REVERSAL_SUCCESSFUL ? DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL : DebitLegResult.DebitLegStatus.REVERSAL_FAILED;
+
+        DebitLegResult debitLegResult = new DebitLegResult( depositId, status );
+
+        return debitLegResult;
+    }
+
+    @Override
+    public LimitEarmarkResult toDomain(LimitManagementResponse dto) {
+        if ( dto == null ) {
+            return null;
+        }
+
+        UUID limitId = null;
+
+        limitId = dto.getLimitId();
+
+        LimitEarmarkResult.LimitEarmarkStatus status = dto.getStatus() == LimitEarmarkStatus.SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.FAILED;
+
+        LimitEarmarkResult limitEarmarkResult = new LimitEarmarkResult( limitId, status );
+
+        return limitEarmarkResult;
+    }
+
+    @Override
+    public LimitEarmarkResult toReversalDomain(LimitManagementResponse dto) {
+        if ( dto == null ) {
+            return null;
+        }
+
+        UUID limitId = null;
+
+        limitId = dto.getLimitId();
+
+        LimitEarmarkResult.LimitEarmarkStatus status = dto.getStatus() == LimitEarmarkStatus.REVERSAL_SUCCESSFUL ? LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL : LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_FAILED;
+
+        LimitEarmarkResult limitEarmarkResult = new LimitEarmarkResult( limitId, status );
+
+        return limitEarmarkResult;
+    }
 
     @Override
     public LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest command) {
@@ -7902,7 +8004,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-04T20:01:14+0530",
+    date = "2025-09-04T20:37:41+0530",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
 )
 @Component
@@ -7991,7 +8093,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-04T20:01:14+0530",
+    date = "2025-09-04T20:37:30+0530",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
 )
 @Component
@@ -8042,7 +8144,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-09-04T20:01:14+0530",
+    date = "2025-09-04T20:37:30+0530",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
 )
 @Component
