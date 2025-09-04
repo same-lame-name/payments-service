@@ -6851,27 +6851,22 @@ Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure
 package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.compliance.mongo;
 
 import dexter.banking.booktransfers.core.domain.compliance.ComplianceCase;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
-@Component
-class CompliancePersistenceMapper {
+@Mapper(componentModel = "spring")
+interface CompliancePersistenceMapper {
 
-    public ComplianceCaseDocument toDocument(ComplianceCase aggregate) {
-        if (aggregate == null) {
-            return null;
-        }
-        ComplianceCaseDocument document = new ComplianceCaseDocument();
-        document.setCaseId(aggregate.getId());
-        document.setPaymentId(aggregate.getPaymentId());
-        document.setStatus(aggregate.getStatus());
-        document.setReason(aggregate.getReason());
-        return document;
-    }
+    @Mapping(target = "caseId", source = "id")
+    @Mapping(target = "_id", ignore = true)
+    ComplianceCaseDocument toDocument(ComplianceCase aggregate);
 
-    public ComplianceCase toDomain(ComplianceCaseDocument document) {
+    default ComplianceCase toDomain(ComplianceCaseDocument document) {
         if (document == null) {
             return null;
         }
+        // This default implementation is required to correctly use the aggregate's static factory method.
         return ComplianceCase.rehydrate(
                 document.getCaseId(),
                 document.getPaymentId(),
@@ -6880,10 +6875,10 @@ class CompliancePersistenceMapper {
         );
     }
 
-    public void updateDocument(ComplianceCaseDocument doc, ComplianceCase aggregate) {
-        doc.setStatus(aggregate.getStatus());
-        doc.setReason(aggregate.getReason());
-    }
+    @Mapping(target = "caseId", ignore = true)
+    @Mapping(target = "paymentId", ignore = true)
+    @Mapping(target = "_id", ignore = true)
+    void updateDocument(@MappingTarget ComplianceCaseDocument doc, ComplianceCase aggregate);
 }
 
 <<--FILE_END-->>
@@ -7325,52 +7320,39 @@ Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure
 package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment.mongo;
 
 import dexter.banking.booktransfers.core.domain.payment.Payment;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
-@Component
-class PersistenceMapper {
+@Mapper(componentModel = "spring")
+interface PersistenceMapper {
 
-    /**
-     * Maps a TransactionDocument to a pure data-only PaymentMemento.
-     * This is part of the Anti-Corruption Layer, preventing persistence details
-     * from leaking into the domain rehydration process.
-     */
-    public Payment.PaymentMemento toMemento(TransactionDocument document) {
-        if (document == null) {
-            return null;
-        }
-        return new Payment.PaymentMemento(
-            document.getTransactionId(),
-            document.getTransactionReference(),
-            document.getJourneyName(),
-            document.getDebitLegResult(),
-            document.getLimitEarmarkResult(),
-            document.getCreditLegResult(),
-            document.getStatus(),
-            document.getState()
-        );
-    }
+    @Mapping(target = "id", source = "transactionId")
+    Payment.PaymentMemento toMemento(TransactionDocument document);
 
-    public TransactionDocument toDocument(Payment payment) {
-        if (payment == null) {
-            return null;
-        }
-        TransactionDocument document = new TransactionDocument();
-        updateDocumentFromDomain(document, payment);
-        return document;
-    }
+    @Mapping(target = "transactionId", source = "memento.id")
+    @Mapping(target = "transactionReference", source = "memento.transactionReference")
+    @Mapping(target = "journeyName", source = "memento.journeyName")
+    @Mapping(target = "status", source = "memento.status")
+    @Mapping(target = "state", source = "memento.state")
+    @Mapping(target = "debitLegResult", source = "memento.debitLegResult")
+    @Mapping(target = "limitEarmarkResult", source = "memento.limitEarmarkResult")
+    @Mapping(target = "creditLegResult", source = "memento.creditLegResult")
+    @Mapping(target = "_id", ignore = true)
+    @Mapping(target = "orchestrationContext", ignore = true)
+    TransactionDocument toDocument(Payment payment);
 
-    public void updateDocumentFromDomain(TransactionDocument doc, Payment payment) {
-        Payment.PaymentMemento memento = payment.getMemento();
-        doc.setTransactionId(memento.id());
-        doc.setTransactionReference(memento.transactionReference());
-        doc.setJourneyName(memento.journeyName()); // Persist the journey context
-        doc.setStatus(memento.status());
-        doc.setState(memento.state());
-        doc.setDebitLegResult(memento.debitLegResult());
-        doc.setLimitEarmarkResult(memento.limitEarmarkResult());
-        doc.setCreditLegResult(memento.creditLegResult());
-    }
+    @Mapping(target = "transactionId", source = "memento.id")
+    @Mapping(target = "transactionReference", source = "memento.transactionReference")
+    @Mapping(target = "journeyName", source = "memento.journeyName")
+    @Mapping(target = "status", source = "memento.status")
+    @Mapping(target = "state", source = "memento.state")
+    @Mapping(target = "debitLegResult", source = "memento.debitLegResult")
+    @Mapping(target = "limitEarmarkResult", source = "memento.limitEarmarkResult")
+    @Mapping(target = "creditLegResult", source = "memento.creditLegResult")
+    @Mapping(target = "_id", ignore = true)
+    @Mapping(target = "orchestrationContext", ignore = true)
+    void updateDocumentFromDomain(@MappingTarget TransactionDocument doc, Payment payment);
 }
 
 <<--FILE_END-->>
@@ -7700,6 +7682,558 @@ class StateTransitionPolicy implements BusinessPolicy {
         }
     }
 }
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./infrastructure/target/generated-sources/annotations/dexter/banking/booktransfers/infrastructure/adapter/in/web/WebMapperImpl.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.infrastructure.adapter.in.web;
+
+import dexter.banking.booktransfers.core.application.compliance.command.RejectComplianceCaseCommand;
+import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
+import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
+import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
+import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.RelId;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.TransactionAmount;
+import java.util.Currency;
+import java.util.UUID;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+
+@Generated(
+    value = "org.mapstruct.ap.MappingProcessor",
+    date = "2025-09-04T20:01:14+0530",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
+)
+@Component
+class WebMapperImpl implements WebMapper {
+
+    @Override
+    public PaymentCommand toCommand(BookTransferRequest dto, ApiVersion version) {
+        if ( dto == null && version == null ) {
+            return null;
+        }
+
+        PaymentCommand.PaymentCommandBuilder paymentCommand = PaymentCommand.builder();
+
+        if ( dto != null ) {
+            paymentCommand.idempotencyKey( dto.getIdempotencyKey() );
+            paymentCommand.transactionReference( dto.getTransactionReference() );
+            paymentCommand.limitType( dto.getLimitType() );
+            paymentCommand.accountNumber( dto.getAccountNumber() );
+            paymentCommand.cardNumber( dto.getCardNumber() );
+            paymentCommand.webhookUrl( dto.getWebhookUrl() );
+            paymentCommand.realtime( dto.getRealtime() );
+        }
+        paymentCommand.version( version );
+        paymentCommand.modeOfTransfer( StringUtils.hasText(dto.getModeOfTransfer()) ? ModeOfTransfer.valueOf(dto.getModeOfTransfer().toUpperCase()) : ModeOfTransfer.ASYNC );
+
+        return paymentCommand.build();
+    }
+
+    @Override
+    public HighValuePaymentCommand toCommand(BookTransferRequestV3 dto) {
+        if ( dto == null ) {
+            return null;
+        }
+
+        HighValuePaymentCommand.HighValuePaymentCommandBuilder highValuePaymentCommand = HighValuePaymentCommand.builder();
+
+        highValuePaymentCommand.idempotencyKey( dto.getIdempotencyKey() );
+        highValuePaymentCommand.transactionReference( dto.getTransactionReference() );
+        highValuePaymentCommand.limitType( dto.getLimitType() );
+        highValuePaymentCommand.accountNumber( dto.getAccountNumber() );
+        highValuePaymentCommand.cardNumber( dto.getCardNumber() );
+
+        highValuePaymentCommand.relId( new RelId(dto.getRelId()) );
+        highValuePaymentCommand.transactionAmount( new TransactionAmount(dto.getAmount(), Currency.getInstance(dto.getCurrency())) );
+
+        return highValuePaymentCommand.build();
+    }
+
+    @Override
+    public RejectComplianceCaseCommand toCommand(UUID complianceCaseId, RejectComplianceRequest dto) {
+        if ( complianceCaseId == null && dto == null ) {
+            return null;
+        }
+
+        String reason = null;
+        if ( dto != null ) {
+            reason = dto.getReason();
+        }
+        UUID complianceCaseId1 = null;
+        complianceCaseId1 = complianceCaseId;
+
+        RejectComplianceCaseCommand rejectComplianceCaseCommand = new RejectComplianceCaseCommand( complianceCaseId1, reason );
+
+        return rejectComplianceCaseCommand;
+    }
+
+    @Override
+    public BookTransferResponse toResponse(PaymentResult paymentResult) {
+        if ( paymentResult == null ) {
+            return null;
+        }
+
+        BookTransferResponse.BookTransferResponseBuilder bookTransferResponse = BookTransferResponse.builder();
+
+        bookTransferResponse.transactionId( paymentResult.transactionId() );
+        bookTransferResponse.status( paymentResult.status() );
+        bookTransferResponse.state( paymentResult.state() );
+
+        return bookTransferResponse.build();
+    }
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./infrastructure/target/generated-sources/annotations/dexter/banking/booktransfers/infrastructure/adapter/out/http/payment/feign/HttpAdapterMapperImpl.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
+
+import dexter.banking.booktransfers.core.port.out.CreditCardPort;
+import dexter.banking.booktransfers.core.port.out.DepositPort;
+import dexter.banking.booktransfers.core.port.out.LimitPort;
+import dexter.banking.model.CreditCardBankingRequest;
+import dexter.banking.model.DepositBankingRequest;
+import dexter.banking.model.DepositBankingReversalRequest;
+import dexter.banking.model.LimitManagementRequest;
+import dexter.banking.model.LimitManagementReversalRequest;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
+
+@Generated(
+    value = "org.mapstruct.ap.MappingProcessor",
+    date = "2025-09-04T20:01:14+0530",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
+)
+@Component
+class HttpAdapterMapperImpl implements HttpAdapterMapper {
+
+    @Override
+    public LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest command) {
+        if ( command == null ) {
+            return null;
+        }
+
+        LimitManagementRequest.LimitManagementRequestBuilder limitManagementRequest = LimitManagementRequest.builder();
+
+        limitManagementRequest.transactionId( command.transactionId() );
+        limitManagementRequest.limitType( command.limitType() );
+
+        return limitManagementRequest.build();
+    }
+
+    @Override
+    public DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest command) {
+        if ( command == null ) {
+            return null;
+        }
+
+        DepositBankingRequest.DepositBankingRequestBuilder depositBankingRequest = DepositBankingRequest.builder();
+
+        depositBankingRequest.transactionId( command.transactionId() );
+        depositBankingRequest.accountNumber( command.accountNumber() );
+
+        return depositBankingRequest.build();
+    }
+
+    @Override
+    public CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest command) {
+        if ( command == null ) {
+            return null;
+        }
+
+        CreditCardBankingRequest.CreditCardBankingRequestBuilder creditCardBankingRequest = CreditCardBankingRequest.builder();
+
+        creditCardBankingRequest.transactionId( command.transactionId() );
+        creditCardBankingRequest.cardNumber( command.cardNumber() );
+
+        return creditCardBankingRequest.build();
+    }
+
+    @Override
+    public LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest command) {
+        if ( command == null ) {
+            return null;
+        }
+
+        LimitManagementReversalRequest.LimitManagementReversalRequestBuilder limitManagementReversalRequest = LimitManagementReversalRequest.builder();
+
+        limitManagementReversalRequest.transactionId( command.transactionId() );
+        limitManagementReversalRequest.limitManagementId( command.limitManagementId() );
+
+        return limitManagementReversalRequest.build();
+    }
+
+    @Override
+    public DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest command) {
+        if ( command == null ) {
+            return null;
+        }
+
+        DepositBankingReversalRequest.DepositBankingReversalRequestBuilder depositBankingReversalRequest = DepositBankingReversalRequest.builder();
+
+        depositBankingReversalRequest.transactionId( command.transactionId() );
+        depositBankingReversalRequest.reservationId( command.reservationId() );
+
+        return depositBankingReversalRequest.build();
+    }
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./infrastructure/target/generated-sources/annotations/dexter/banking/booktransfers/infrastructure/adapter/out/messaging/payment/jms/JmsAdapterMapperImpl.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.infrastructure.adapter.out.messaging.payment.jms;
+
+import dexter.banking.booktransfers.core.port.out.CreditCardPort;
+import dexter.banking.booktransfers.core.port.out.DepositPort;
+import dexter.banking.booktransfers.core.port.out.LimitPort;
+import dexter.banking.model.CreditCardBankingRequest;
+import dexter.banking.model.DepositBankingRequest;
+import dexter.banking.model.DepositBankingReversalRequest;
+import dexter.banking.model.LimitManagementRequest;
+import dexter.banking.model.LimitManagementReversalRequest;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
+
+@Generated(
+    value = "org.mapstruct.ap.MappingProcessor",
+    date = "2025-09-04T20:01:14+0530",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
+)
+@Component
+class JmsAdapterMapperImpl implements JmsAdapterMapper {
+
+    @Override
+    public LimitManagementRequest toLimitManagementRequest(LimitPort.EarmarkLimitRequest request) {
+        if ( request == null ) {
+            return null;
+        }
+
+        LimitManagementRequest.LimitManagementRequestBuilder limitManagementRequest = LimitManagementRequest.builder();
+
+        limitManagementRequest.transactionId( request.transactionId() );
+        limitManagementRequest.limitType( request.limitType() );
+
+        return limitManagementRequest.build();
+    }
+
+    @Override
+    public DepositBankingRequest toDepositBankingRequest(DepositPort.SubmitDepositRequest request) {
+        if ( request == null ) {
+            return null;
+        }
+
+        DepositBankingRequest.DepositBankingRequestBuilder depositBankingRequest = DepositBankingRequest.builder();
+
+        depositBankingRequest.transactionId( request.transactionId() );
+        depositBankingRequest.accountNumber( request.accountNumber() );
+
+        return depositBankingRequest.build();
+    }
+
+    @Override
+    public CreditCardBankingRequest toCreditCardBankingRequest(CreditCardPort.SubmitCreditCardPaymentRequest request) {
+        if ( request == null ) {
+            return null;
+        }
+
+        CreditCardBankingRequest.CreditCardBankingRequestBuilder creditCardBankingRequest = CreditCardBankingRequest.builder();
+
+        creditCardBankingRequest.transactionId( request.transactionId() );
+        creditCardBankingRequest.cardNumber( request.cardNumber() );
+
+        return creditCardBankingRequest.build();
+    }
+
+    @Override
+    public LimitManagementReversalRequest toLimitEarmarkReversalRequest(LimitPort.ReverseLimitEarmarkRequest request) {
+        if ( request == null ) {
+            return null;
+        }
+
+        LimitManagementReversalRequest.LimitManagementReversalRequestBuilder limitManagementReversalRequest = LimitManagementReversalRequest.builder();
+
+        limitManagementReversalRequest.transactionId( request.transactionId() );
+        limitManagementReversalRequest.limitManagementId( request.limitManagementId() );
+
+        return limitManagementReversalRequest.build();
+    }
+
+    @Override
+    public DepositBankingReversalRequest toDepositReversalRequest(DepositPort.SubmitDepositReversalRequest request) {
+        if ( request == null ) {
+            return null;
+        }
+
+        DepositBankingReversalRequest.DepositBankingReversalRequestBuilder depositBankingReversalRequest = DepositBankingReversalRequest.builder();
+
+        depositBankingReversalRequest.transactionId( request.transactionId() );
+        depositBankingReversalRequest.reservationId( request.reservationId() );
+
+        return depositBankingReversalRequest.build();
+    }
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./infrastructure/target/generated-sources/annotations/dexter/banking/booktransfers/infrastructure/adapter/out/persistence/compliance/mongo/CompliancePersistenceMapperImpl.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.compliance.mongo;
+
+import dexter.banking.booktransfers.core.domain.compliance.ComplianceCase;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
+
+@Generated(
+    value = "org.mapstruct.ap.MappingProcessor",
+    date = "2025-09-04T20:01:14+0530",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
+)
+@Component
+class CompliancePersistenceMapperImpl implements CompliancePersistenceMapper {
+
+    @Override
+    public ComplianceCaseDocument toDocument(ComplianceCase aggregate) {
+        if ( aggregate == null ) {
+            return null;
+        }
+
+        ComplianceCaseDocument complianceCaseDocument = new ComplianceCaseDocument();
+
+        complianceCaseDocument.setCaseId( aggregate.getId() );
+        complianceCaseDocument.setPaymentId( aggregate.getPaymentId() );
+        complianceCaseDocument.setStatus( aggregate.getStatus() );
+        complianceCaseDocument.setReason( aggregate.getReason() );
+
+        return complianceCaseDocument;
+    }
+
+    @Override
+    public void updateDocument(ComplianceCaseDocument doc, ComplianceCase aggregate) {
+        if ( aggregate == null ) {
+            return;
+        }
+
+        doc.setStatus( aggregate.getStatus() );
+        doc.setReason( aggregate.getReason() );
+    }
+}
+
+<<--FILE_END-->>
+<<--FILE_START-->>
+Path: ./infrastructure/target/generated-sources/annotations/dexter/banking/booktransfers/infrastructure/adapter/out/persistence/payment/mongo/PersistenceMapperImpl.java
+<<--CONTENT_START-->>
+package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment.mongo;
+
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import dexter.banking.booktransfers.core.domain.payment.PaymentState;
+import dexter.banking.booktransfers.core.domain.payment.Status;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import java.util.UUID;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
+
+@Generated(
+    value = "org.mapstruct.ap.MappingProcessor",
+    date = "2025-09-04T20:01:14+0530",
+    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Eclipse Adoptium)"
+)
+@Component
+class PersistenceMapperImpl implements PersistenceMapper {
+
+    @Override
+    public Payment.PaymentMemento toMemento(TransactionDocument document) {
+        if ( document == null ) {
+            return null;
+        }
+
+        UUID id = null;
+        String transactionReference = null;
+        String journeyName = null;
+        DebitLegResult debitLegResult = null;
+        LimitEarmarkResult limitEarmarkResult = null;
+        CreditLegResult creditLegResult = null;
+        Status status = null;
+        PaymentState state = null;
+
+        id = document.getTransactionId();
+        transactionReference = document.getTransactionReference();
+        journeyName = document.getJourneyName();
+        debitLegResult = document.getDebitLegResult();
+        limitEarmarkResult = document.getLimitEarmarkResult();
+        creditLegResult = document.getCreditLegResult();
+        status = document.getStatus();
+        state = document.getState();
+
+        Payment.PaymentMemento paymentMemento = new Payment.PaymentMemento( id, transactionReference, journeyName, debitLegResult, limitEarmarkResult, creditLegResult, status, state );
+
+        return paymentMemento;
+    }
+
+    @Override
+    public TransactionDocument toDocument(Payment payment) {
+        if ( payment == null ) {
+            return null;
+        }
+
+        TransactionDocument transactionDocument = new TransactionDocument();
+
+        transactionDocument.setTransactionId( paymentMementoId( payment ) );
+        transactionDocument.setTransactionReference( paymentMementoTransactionReference( payment ) );
+        transactionDocument.setJourneyName( paymentMementoJourneyName( payment ) );
+        transactionDocument.setStatus( paymentMementoStatus( payment ) );
+        transactionDocument.setState( paymentMementoState( payment ) );
+        transactionDocument.setDebitLegResult( paymentMementoDebitLegResult( payment ) );
+        transactionDocument.setLimitEarmarkResult( paymentMementoLimitEarmarkResult( payment ) );
+        transactionDocument.setCreditLegResult( paymentMementoCreditLegResult( payment ) );
+
+        return transactionDocument;
+    }
+
+    @Override
+    public void updateDocumentFromDomain(TransactionDocument doc, Payment payment) {
+        if ( payment == null ) {
+            return;
+        }
+
+        doc.setTransactionId( paymentMementoId( payment ) );
+        doc.setTransactionReference( paymentMementoTransactionReference( payment ) );
+        doc.setJourneyName( paymentMementoJourneyName( payment ) );
+        doc.setStatus( paymentMementoStatus( payment ) );
+        doc.setState( paymentMementoState( payment ) );
+        doc.setDebitLegResult( paymentMementoDebitLegResult( payment ) );
+        doc.setLimitEarmarkResult( paymentMementoLimitEarmarkResult( payment ) );
+        doc.setCreditLegResult( paymentMementoCreditLegResult( payment ) );
+    }
+
+    private UUID paymentMementoId(Payment payment) {
+        if ( payment == null ) {
+            return null;
+        }
+        Payment.PaymentMemento memento = payment.getMemento();
+        if ( memento == null ) {
+            return null;
+        }
+        UUID id = memento.id();
+        if ( id == null ) {
+            return null;
+        }
+        return id;
+    }
+
+    private String paymentMementoTransactionReference(Payment payment) {
+        if ( payment == null ) {
+            return null;
+        }
+        Payment.PaymentMemento memento = payment.getMemento();
+        if ( memento == null ) {
+            return null;
+        }
+        String transactionReference = memento.transactionReference();
+        if ( transactionReference == null ) {
+            return null;
+        }
+        return transactionReference;
+    }
+
+    private String paymentMementoJourneyName(Payment payment) {
+        if ( payment == null ) {
+            return null;
+        }
+        Payment.PaymentMemento memento = payment.getMemento();
+        if ( memento == null ) {
+            return null;
+        }
+        String journeyName = memento.journeyName();
+        if ( journeyName == null ) {
+            return null;
+        }
+        return journeyName;
+    }
+
+    private Status paymentMementoStatus(Payment payment) {
+        if ( payment == null ) {
+            return null;
+        }
+        Payment.PaymentMemento memento = payment.getMemento();
+        if ( memento == null ) {
+            return null;
+        }
+        Status status = memento.status();
+        if ( status == null ) {
+            return null;
+        }
+        return status;
+    }
+
+    private PaymentState paymentMementoState(Payment payment) {
+        if ( payment == null ) {
+            return null;
+        }
+        Payment.PaymentMemento memento = payment.getMemento();
+        if ( memento == null ) {
+            return null;
+        }
+        PaymentState state = memento.state();
+        if ( state == null ) {
+            return null;
+        }
+        return state;
+    }
+
+    private DebitLegResult paymentMementoDebitLegResult(Payment payment) {
+        if ( payment == null ) {
+            return null;
+        }
+        Payment.PaymentMemento memento = payment.getMemento();
+        if ( memento == null ) {
+            return null;
+        }
+        DebitLegResult debitLegResult = memento.debitLegResult();
+        if ( debitLegResult == null ) {
+            return null;
+        }
+        return debitLegResult;
+    }
+
+    private LimitEarmarkResult paymentMementoLimitEarmarkResult(Payment payment) {
+        if ( payment == null ) {
+            return null;
+        }
+        Payment.PaymentMemento memento = payment.getMemento();
+        if ( memento == null ) {
+            return null;
+        }
+        LimitEarmarkResult limitEarmarkResult = memento.limitEarmarkResult();
+        if ( limitEarmarkResult == null ) {
+            return null;
+        }
+        return limitEarmarkResult;
+    }
+
+    private CreditLegResult paymentMementoCreditLegResult(Payment payment) {
+        if ( payment == null ) {
+            return null;
+        }
+        Payment.PaymentMemento memento = payment.getMemento();
+        if ( memento == null ) {
+            return null;
+        }
+        CreditLegResult creditLegResult = memento.creditLegResult();
+        if ( creditLegResult == null ) {
+            return null;
+        }
+        return creditLegResult;
+    }
+}
+
 <<--FILE_END-->>
 <<--FILE_START-->>
 Path: ./pom.xml

@@ -1,50 +1,37 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment.mongo;
 
 import dexter.banking.booktransfers.core.domain.payment.Payment;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
-@Component
-class PersistenceMapper {
+@Mapper(componentModel = "spring")
+interface PersistenceMapper {
 
-    /**
-     * Maps a TransactionDocument to a pure data-only PaymentMemento.
-     * This is part of the Anti-Corruption Layer, preventing persistence details
-     * from leaking into the domain rehydration process.
-     */
-    public Payment.PaymentMemento toMemento(TransactionDocument document) {
-        if (document == null) {
-            return null;
-        }
-        return new Payment.PaymentMemento(
-            document.getTransactionId(),
-            document.getTransactionReference(),
-            document.getJourneyName(),
-            document.getDebitLegResult(),
-            document.getLimitEarmarkResult(),
-            document.getCreditLegResult(),
-            document.getStatus(),
-            document.getState()
-        );
-    }
+    @Mapping(target = "id", source = "transactionId")
+    Payment.PaymentMemento toMemento(TransactionDocument document);
 
-    public TransactionDocument toDocument(Payment payment) {
-        if (payment == null) {
-            return null;
-        }
-        TransactionDocument document = new TransactionDocument();
-        updateDocumentFromDomain(document, payment);
-        return document;
-    }
+    @Mapping(target = "transactionId", source = "memento.id")
+    @Mapping(target = "transactionReference", source = "memento.transactionReference")
+    @Mapping(target = "journeyName", source = "memento.journeyName")
+    @Mapping(target = "status", source = "memento.status")
+    @Mapping(target = "state", source = "memento.state")
+    @Mapping(target = "debitLegResult", source = "memento.debitLegResult")
+    @Mapping(target = "limitEarmarkResult", source = "memento.limitEarmarkResult")
+    @Mapping(target = "creditLegResult", source = "memento.creditLegResult")
+    @Mapping(target = "_id", ignore = true)
+    @Mapping(target = "orchestrationContext", ignore = true)
+    TransactionDocument toDocument(Payment payment);
 
-    public void updateDocumentFromDomain(TransactionDocument doc, Payment payment) {
-        Payment.PaymentMemento memento = payment.getMemento();
-        doc.setTransactionId(memento.id());
-        doc.setTransactionReference(memento.transactionReference());
-        doc.setJourneyName(memento.journeyName()); // Persist the journey context
-        doc.setStatus(memento.status());
-        doc.setState(memento.state());
-        doc.setDebitLegResult(memento.debitLegResult());
-        doc.setLimitEarmarkResult(memento.limitEarmarkResult());
-        doc.setCreditLegResult(memento.creditLegResult());
-    }
+    @Mapping(target = "transactionId", source = "memento.id")
+    @Mapping(target = "transactionReference", source = "memento.transactionReference")
+    @Mapping(target = "journeyName", source = "memento.journeyName")
+    @Mapping(target = "status", source = "memento.status")
+    @Mapping(target = "state", source = "memento.state")
+    @Mapping(target = "debitLegResult", source = "memento.debitLegResult")
+    @Mapping(target = "limitEarmarkResult", source = "memento.limitEarmarkResult")
+    @Mapping(target = "creditLegResult", source = "memento.creditLegResult")
+    @Mapping(target = "_id", ignore = true)
+    @Mapping(target = "orchestrationContext", ignore = true)
+    void updateDocumentFromDomain(@MappingTarget TransactionDocument doc, Payment payment);
 }

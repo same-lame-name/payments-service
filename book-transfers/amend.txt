@@ -1,275 +1,77 @@
 <<--FILE_START-->>
-Path: ./core/pom.xml
+Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/persistence/compliance/mongo/CompliancePersistenceMapper.java
 <<--CONTENT_START-->>
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>dexter.demo.payment</groupId>
-        <artifactId>book-transfers-service</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
-    </parent>
+package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.compliance.mongo;
 
-    <artifactId>book-transfers-core</artifactId>
-    <name>Book Transfers :: Core</name>
-    <description>The core business logic module (domain, application, ports).</description>
-
-    <dependencies>
-        <dependency>
-            <groupId>dexter.demo.payment</groupId>
-            <artifactId>common-domain</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>jakarta.validation</groupId>
-            <artifactId>jakarta.validation-api</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-tx</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-        </dependency>
-    </dependencies>
-
-</project>
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/pom.xml
-<<--CONTENT_START-->>
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>dexter.demo.payment</groupId>
-        <artifactId>book-transfers-service</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
-    </parent>
-
-    <artifactId>book-transfers-infrastructure</artifactId>
-    <name>Book Transfers :: Infrastructure</name>
-    <description>The infrastructure module containing all adapters and policies.</description>
-
-    <dependencies>
-        <dependency>
-            <groupId>dexter.demo.payment</groupId>
-            <artifactId>book-transfers-core</artifactId>
-            <version>0.1.0-SNAPSHOT</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-activemq</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-tx</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>jakarta.xml.bind</groupId>
-            <artifactId>jakarta.xml.bind-api</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>dexter.demo.payment</groupId>
-            <artifactId>common-domain</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-        </dependency>
-    </dependencies>
-
-</project>
-<<--FILE_END-->>
-<<--FILE_START-->>
-Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/in/web/WebMapper.java
-<<--CONTENT_START-->>
-package dexter.banking.booktransfers.infrastructure.adapter.in.web;
-import dexter.banking.booktransfers.core.application.compliance.command.RejectComplianceCaseCommand;
-import dexter.banking.booktransfers.core.application.payment.command.HighValuePaymentCommand;
-import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
-import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
-import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
-import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.RelId;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.TransactionAmount;
+import dexter.banking.booktransfers.core.domain.compliance.ComplianceCase;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.springframework.util.StringUtils;
+import org.mapstruct.MappingTarget;
 
-import java.util.Currency;
-import java.util.UUID;
+@Mapper(componentModel = "spring")
+interface CompliancePersistenceMapper {
 
-@Mapper(componentModel = "spring", imports = {ModeOfTransfer.class, StringUtils.class, RelId.class, TransactionAmount.class, Currency.class})
-public interface WebMapper {
-    @Mapping(target = "modeOfTransfer", expression = "java(StringUtils.hasText(dto.getModeOfTransfer()) ? ModeOfTransfer.valueOf(dto.getModeOfTransfer().toUpperCase()) : ModeOfTransfer.ASYNC)")
-    PaymentCommand toCommand(BookTransferRequest dto, ApiVersion version);
+    @Mapping(target = "caseId", source = "id")
+    @Mapping(target = "_id", ignore = true)
+    ComplianceCaseDocument toDocument(ComplianceCase aggregate);
 
-    @Mapping(target = "relId", expression = "java(new RelId(dto.getRelId()))")
-    @Mapping(target = "transactionAmount", expression = "java(new TransactionAmount(dto.getAmount(), Currency.getInstance(dto.getCurrency())))")
-    HighValuePaymentCommand toCommand(BookTransferRequestV3 dto);
+    default ComplianceCase toDomain(ComplianceCaseDocument document) {
+        if (document == null) {
+            return null;
+        }
+        // This default implementation is required to correctly use the aggregate's static factory method.
+        return ComplianceCase.rehydrate(
+                document.getCaseId(),
+                document.getPaymentId(),
+                document.getStatus(),
+                document.getReason()
+        );
+    }
 
-    RejectComplianceCaseCommand toCommand(UUID caseId, RejectComplianceRequest dto);
-
-    BookTransferResponse toResponse(PaymentResult paymentResult);
+    @Mapping(target = "caseId", ignore = true)
+    @Mapping(target = "paymentId", ignore = true)
+    @Mapping(target = "_id", ignore = true)
+    void updateDocument(@MappingTarget ComplianceCaseDocument doc, ComplianceCase aggregate);
 }
 <<--FILE_END-->>
 <<--FILE_START-->>
-Path: ./pom.xml
+Path: ./infrastructure/src/main/java/dexter/banking/booktransfers/infrastructure/adapter/out/persistence/payment/mongo/PersistenceMapper.java
 <<--CONTENT_START-->>
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.payment.mongo;
 
-    <parent>
-        <groupId>dexter.demo.payment</groupId>
-        <artifactId>payment-service</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
-    </parent>
+import dexter.banking.booktransfers.core.domain.payment.Payment;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
-    <artifactId>book-transfers-service</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
-    <packaging>pom</packaging>
-    <name>Book Transfers Service (Parent)</name>
-    <description>Own Account Fund Transfers Service</description>
+@Mapper(componentModel = "spring")
+interface PersistenceMapper {
 
-    <modules>
-        <module>core</module>
-        <module>infrastructure</module>
-        <module>app</module>
-    </modules>
+    @Mapping(target = "id", source = "transactionId")
+    Payment.PaymentMemento toMemento(TransactionDocument document);
 
-    <properties>
-        <java.version>21</java.version>
-        <spring-shell.version>3.3.1</spring-shell.version>
-        <mapstruct.version>1.5.5.Final</mapstruct.version>
-        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
-    </properties>
+    @Mapping(target = "transactionId", source = "memento.id")
+    @Mapping(target = "transactionReference", source = "memento.transactionReference")
+    @Mapping(target = "journeyName", source = "memento.journeyName")
+    @Mapping(target = "status", source = "memento.status")
+    @Mapping(target = "state", source = "memento.state")
+    @Mapping(target = "debitLegResult", source = "memento.debitLegResult")
+    @Mapping(target = "limitEarmarkResult", source = "memento.limitEarmarkResult")
+    @Mapping(target = "creditLegResult", source = "memento.creditLegResult")
+    @Mapping(target = "_id", ignore = true)
+    @Mapping(target = "orchestrationContext", ignore = true)
+    TransactionDocument toDocument(Payment payment);
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>dexter.demo.payment</groupId>
-                <artifactId>book-transfers-core</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>dexter.demo.payment</groupId>
-                <artifactId>book-transfers-infrastructure</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>dexter.demo.payment</groupId>
-                <artifactId>common-domain</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.springframework.shell</groupId>
-                <artifactId>spring-shell-starter</artifactId>
-                <version>${spring-shell.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.mapstruct</groupId>
-                <artifactId>mapstruct</artifactId>
-                <version>${mapstruct.version}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>${maven-compiler-plugin.version}</version>
-                    <configuration>
-                        <source>${java.version}</source>
-                        <target>${java.version}</target>
-                        <annotationProcessorPaths>
-                            <path>
-                                <groupId>org.mapstruct</groupId>
-                                <artifactId>mapstruct-processor</artifactId>
-                                <version>${mapstruct.version}</version>
-                            </path>
-                            <path>
-                                <groupId>org.projectlombok</groupId>
-                                <artifactId>lombok</artifactId>
-                                <version>${lombok.version}</version>
-                            </path>
-                            <path>
-                                <groupId>org.projectlombok</groupId>
-                                <artifactId>lombok-mapstruct-binding</artifactId>
-                                <version>${lombok-mapstruct-binding.version}</version>
-                            </path>
-                        </annotationProcessorPaths>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-    </build>
-
-</project>
+    @Mapping(target = "transactionId", source = "memento.id")
+    @Mapping(target = "transactionReference", source = "memento.transactionReference")
+    @Mapping(target = "journeyName", source = "memento.journeyName")
+    @Mapping(target = "status", source = "memento.status")
+    @Mapping(target = "state", source = "memento.state")
+    @Mapping(target = "debitLegResult", source = "memento.debitLegResult")
+    @Mapping(target = "limitEarmarkResult", source = "memento.limitEarmarkResult")
+    @Mapping(target = "creditLegResult", source = "memento.creditLegResult")
+    @Mapping(target = "_id", ignore = true)
+    @Mapping(target = "orchestrationContext", ignore = true)
+    void updateDocumentFromDomain(@MappingTarget TransactionDocument doc, Payment payment);
+}
 <<--FILE_END-->>

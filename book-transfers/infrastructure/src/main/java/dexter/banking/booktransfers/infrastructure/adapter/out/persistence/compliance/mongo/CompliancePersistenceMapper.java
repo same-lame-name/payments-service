@@ -1,27 +1,22 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.persistence.compliance.mongo;
 
 import dexter.banking.booktransfers.core.domain.compliance.ComplianceCase;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
-@Component
-class CompliancePersistenceMapper {
+@Mapper(componentModel = "spring")
+interface CompliancePersistenceMapper {
 
-    public ComplianceCaseDocument toDocument(ComplianceCase aggregate) {
-        if (aggregate == null) {
-            return null;
-        }
-        ComplianceCaseDocument document = new ComplianceCaseDocument();
-        document.setCaseId(aggregate.getId());
-        document.setPaymentId(aggregate.getPaymentId());
-        document.setStatus(aggregate.getStatus());
-        document.setReason(aggregate.getReason());
-        return document;
-    }
+    @Mapping(target = "caseId", source = "id")
+    @Mapping(target = "_id", ignore = true)
+    ComplianceCaseDocument toDocument(ComplianceCase aggregate);
 
-    public ComplianceCase toDomain(ComplianceCaseDocument document) {
+    default ComplianceCase toDomain(ComplianceCaseDocument document) {
         if (document == null) {
             return null;
         }
+        // This default implementation is required to correctly use the aggregate's static factory method.
         return ComplianceCase.rehydrate(
                 document.getCaseId(),
                 document.getPaymentId(),
@@ -30,8 +25,8 @@ class CompliancePersistenceMapper {
         );
     }
 
-    public void updateDocument(ComplianceCaseDocument doc, ComplianceCase aggregate) {
-        doc.setStatus(aggregate.getStatus());
-        doc.setReason(aggregate.getReason());
-    }
+    @Mapping(target = "caseId", ignore = true)
+    @Mapping(target = "paymentId", ignore = true)
+    @Mapping(target = "_id", ignore = true)
+    void updateDocument(@MappingTarget ComplianceCaseDocument doc, ComplianceCase aggregate);
 }
