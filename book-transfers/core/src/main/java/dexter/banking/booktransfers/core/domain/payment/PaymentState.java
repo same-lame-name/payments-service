@@ -20,7 +20,7 @@ public enum PaymentState {
     FUNDS_DEBIT_COULD_NOT_BE_REVERSED,
 
     // Terminal State (Requires Manual Intervention)
-    SETTLED, // Terminal State (Success)
+    SUCCESS, // Terminal State (Success)
     FAILED, // Terminal State (Failure)
     REMEDIATION_NEEDED,
 }

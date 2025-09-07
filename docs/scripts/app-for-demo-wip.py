@@ -1,13 +1,15 @@
 from flask import Flask, request, render_template_string, jsonify
 import requests
 import json
+from threading import Lock, Thread
 
 app = Flask(__name__)
 
-# Store webhook response globally
-webhook_response = None
+# Use a list as a queue to store all incoming webhooks
+webhook_responses = []
+lock = Lock() # To make list operations thread-safe
 
-# HTML and JavaScript template with the updated logic
+# HTML and JavaScript template with final logic
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -22,32 +24,19 @@ HTML_TEMPLATE = """
         button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
         button:hover { background-color: #0056b3; }
         
-        /* Checkbox styling */
         .checkbox-container { display: flex; align-items: center; margin-bottom: 10px; }
         #realtimeCheckbox { width: auto; margin-right: 8px; }
 
-        /* --- LOADER STYLES --- */
         .loader {
-            display: none; 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             flex-direction: column; align-items: center; justify-content: center; z-index: 1000;
         }
         .loader.active { display: flex; }
         
-        #loaderText {
-            color: #0056b3;
-            font-size: 20px;
-            margin-top: 25px;
-            font-weight: bold;
-        }
+        #loaderText { color: #0056b3; font-size: 20px; margin-top: 25px; font-weight: bold; }
         
-        @keyframes bounce {
-            0%, 100% { transform: scaleY(0.4); }
-            50% { transform: scaleY(1); }
-        }
+        @keyframes bounce { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
         .fancy-loader { display: flex; justify-content: space-between; width: 80px; height: 50px; }
         .fancy-loader div { width: 12px; background-color: #007bff; animation: bounce 1.2s infinite ease-in-out; border-radius: 4px; }
         .fancy-loader div:nth-child(2) { animation-delay: -1.1s; }
@@ -56,7 +45,6 @@ HTML_TEMPLATE = """
 
         .error { color: red; padding: 10px; background-color: #ffebee; border: 1px solid #e57373; border-radius: 4px; margin-top: 10px;}
         
-        /* --- RESPONSE CONTAINER STYLES --- */
         #responseContainer {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             text-align: center; padding: 50px; box-sizing: border-box; font-size: 24px;
@@ -67,7 +55,12 @@ HTML_TEMPLATE = """
         #responseContainer.success { background-color: #28a745; color: white; }
         #responseContainer.failed { background-color: #dc3545; color: white; }
         #responseContainer.other { background-color: #ffc107; color: #212529; }
-        #responseContent { background-color: rgba(255, 255, 255, 0.9); width: 80%; max-width: 800px; padding: 20px; border-radius: 8px; text-align: left; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 16px; max-height: 70vh; overflow-y: auto; color: #333; }
+        
+        #responseContent { 
+            background-color: rgba(255, 255, 255, 0.9); width: 80%; max-width: 800px; padding: 20px; 
+            border-radius: 8px; text-align: left; white-space: pre-wrap; word-wrap: break-word; 
+            font-family: monospace; font-size: 16px; max-height: 70vh; overflow-y: auto; color: #333; 
+        }
         #tryAgain { font-size: 24px; padding: 10px 20px; margin-top: 20px; cursor: pointer; }
     </style>
 </head>
@@ -76,7 +69,7 @@ HTML_TEMPLATE = """
         <h2>Post Payment Request</h2>
         <form id="paymentForm">
             <label for="backendUrl">Target URL:</label>
-            <input type="text" id="backendUrl" value="http://localhost:9090/api/v2/book-transfers/payment"><br>
+            <input type="text" id="backendUrl" value="http://localhost:8080/api/v2/book-transfers/payment"><br>
             <label for="httpMethod">HTTP Method:</label>
             <select id="httpMethod">
                 <option value="POST" selected>POST</option>
@@ -97,10 +90,7 @@ HTML_TEMPLATE = """
 
     <div id="loader" class="loader">
         <div class="fancy-loader">
-            <div></div>
-            <div></div>
-            <div></div>
-            <div></div>
+            <div></div> <div></div> <div></div> <div></div>
         </div>
         <p id="loaderText"></p>
     </div>
@@ -113,6 +103,7 @@ HTML_TEMPLATE = """
 
     <script>
         let pollingInterval = null;
+        let isProcessingQueue = false;
 
         const errorDiv = document.getElementById('error');
         const formContainer = document.getElementById('formContainer');
@@ -123,12 +114,11 @@ HTML_TEMPLATE = """
         const jsonPayloadTextarea = document.getElementById('jsonPayload');
         const loaderText = document.getElementById('loaderText');
 
-        // Event listener for the checkbox
         realtimeCheckbox.addEventListener('change', () => {
             try {
                 let payload = JSON.parse(jsonPayloadTextarea.value);
                 if (realtimeCheckbox.checked) {
-                    payload.realtime = "true";
+                    payload.realtime = true;
                 } else {
                     delete payload.realtime;
                 }
@@ -152,11 +142,12 @@ HTML_TEMPLATE = """
             }
             loader.classList.add('active');
 
-            const payload = jsonPayloadTextarea.value;
-            const url = document.getElementById('backendUrl').value;
-            const method = document.getElementById('httpMethod').value;
-
             try {
+                pollingInterval = setInterval(checkWebhook, 1000);
+
+                const payload = jsonPayloadTextarea.value;
+                const url = document.getElementById('backendUrl').value;
+                const method = document.getElementById('httpMethod').value;
                 JSON.parse(payload);
                 const response = await fetch('/submit', {
                     method: 'POST',
@@ -164,13 +155,13 @@ HTML_TEMPLATE = """
                     body: JSON.stringify({ payload, url, method })
                 });
 
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error || `Request failed: ${response.status}`);
+                if (!response.ok) {
+                    const result = await response.json();
+                    throw new Error(result.error || `Request to /submit failed: ${response.status}`);
+                }
                 
-                // Start polling. It will not stop until 'Try Again' is clicked.
-                pollingInterval = setInterval(checkWebhook, 1000);
-
             } catch (error) {
+                if (pollingInterval) clearInterval(pollingInterval);
                 errorDiv.textContent = 'Error: ' + error.message;
                 errorDiv.style.display = 'block';
                 loader.classList.remove('active');
@@ -178,41 +169,49 @@ HTML_TEMPLATE = """
             }
         });
 
+        function processResponseQueue(queue) {
+            isProcessingQueue = true;
+            let response = queue.shift();
+            if (!response) {
+                isProcessingQueue = false;
+                return;
+            }
+
+            loader.classList.remove('active');
+            responseContainer.classList.add('active');
+            
+            const jsonStringLC = JSON.stringify(response).toLowerCase();
+            responseContainer.classList.remove('success', 'failed', 'other');
+
+            if (jsonStringLC.includes('success')) {
+                responseContainer.classList.add('success');
+                responseTitle.textContent = "Status: Success ✅";
+            } else if (jsonStringLC.includes('fail')) {
+                responseContainer.classList.add('failed');
+                responseTitle.textContent = "Status: Fail ❌";
+            } else {
+                responseContainer.classList.add('other');
+                responseTitle.textContent = "Status: Update Received ℹ️";
+            }
+
+            // Always display the event payload consistently
+            document.getElementById('responseContent').textContent = JSON.stringify(response, null, 2);
+            
+            // Continue processing the rest of the current batch of messages
+            setTimeout(() => processResponseQueue(queue), 800);
+        }
+
         async function checkWebhook() {
+            if (isProcessingQueue) return;
+
             try {
                 const response = await fetch('/webhook-response');
                 const data = await response.json();
-
-                // If a webhook response exists, update the display.
-                // This will run for the first webhook and all subsequent ones.
-                if (data.response) {
-                    // Hide the loader and show the response container if it's the first response.
-                    loader.classList.remove('active');
-                    responseContainer.classList.add('active');
-                    
-                    // The polling interval is NOT cleared, so it will continue.
-                    
-                    const jsonString = JSON.stringify(data.response).toLowerCase();
-                    responseContainer.classList.remove('success', 'failed', 'other');
-
-                    // Always check the status and update the UI accordingly.
-                    if (jsonString.includes('success')) {
-                        responseContainer.classList.add('success');
-                        responseTitle.textContent = "Live Status: Success! ✅";
-                    } else if (jsonString.includes('fail')) {
-                        responseContainer.classList.add('failed');
-                        responseTitle.textContent = "Live Status: Failed ❌";
-                    } else {
-                        responseContainer.classList.add('other');
-                        responseTitle.textContent = "Live Status: Info Received ℹ️";
-                    }
-                    
-                    // Always re-render the content of the webhook payload.
-                    document.getElementById('responseContent').textContent = JSON.stringify(data.response, null, 2);
+                
+                if (data.responses && data.responses.length > 0) {
+                    processResponseQueue(data.responses);
                 }
-                // If data.response is null (no webhook received yet), do nothing and let the loader spin.
             } catch (error) {
-                // If the check itself fails (e.g., network error), stop polling to prevent infinite errors.
                 clearInterval(pollingInterval); 
                 errorDiv.textContent = 'Webhook check error: ' + error.message;
                 errorDiv.style.display = 'block';
@@ -222,8 +221,9 @@ HTML_TEMPLATE = """
         }
 
         document.getElementById('tryAgain').addEventListener('click', async () => {
-            // This is now the only place where the polling is stopped.
+            // This is now the only place polling is stopped by the user
             if (pollingInterval) clearInterval(pollingInterval);
+            isProcessingQueue = false;
             
             try {
                 await fetch('/reset', { method: 'POST' });
@@ -242,6 +242,13 @@ HTML_TEMPLATE = """
 """
 
 # Default JSON payload structure
+# default_payload = {
+#     "transactionReference": "Successful",
+#     "limitType": "Monthly",
+#     "accountNumber": "1312134",
+#     "cardNumber": "123222",
+#     "webhookUrl": "http://localhost:5000/webhook"
+# }
 default_payload = {
     "idempotencyKey": "6308efd6-cd45-44f2-86f6-ffd6f6ae6a06",
     "transactionReference": "REF-V2-ASYNC-REALTIME-1756329970",
@@ -250,15 +257,41 @@ default_payload = {
     "webhookUrl": "http://localhost:5000/webhook",
     "limitType": "Daily",
     "accountNumber": "1312134",
-    "cardNumber": "123222"
+    "cardNumber": "123111"
 }
+
+# --- UPDATED: Worker function now queues ONLY the status of the final response ---
+def make_long_running_request(url, method, payload):
+    """This function runs in a separate thread and queues only the status string of the final response."""
+    message_to_queue = None
+    try:
+        print(f"BACKGROUND THREAD: Starting request to {url}")
+        response = requests.request(method, url, json=payload, timeout=30)
+        response.raise_for_status()
+        print(f"BACKGROUND THREAD: Request completed with status {response.status_code}")
+
+        try:
+            response_body = response.json()
+            # As per requirement, queue ONLY the value of the 'status' key
+            message_to_queue = response_body.get('status', 'COMPLETED_BUT_STATUS_KEY_MISSING')
+        except json.JSONDecodeError:
+            message_to_queue = "COMPLETED_BUT_RESPONSE_NOT_JSON"
+
+    except requests.exceptions.RequestException as e:
+        print(f"BACKGROUND THREAD ERROR: {e}")
+        # Create a simple failure string to be queued
+        message_to_queue = f"REQUEST_FAILED: {e.response.status_code if e.response else 'No Response'}"
+
+    with lock:
+        webhook_responses.append(message_to_queue)
+        print(f"Queued final HTTP status: '{message_to_queue}'")
+
 
 @app.route('/')
 def index():
-    global webhook_response
-    webhook_response = None 
+    with lock:
+        webhook_responses.clear()
     
-    # Dynamically add the webhookUrl to the default payload for the template
     payload_for_template = default_payload.copy()
     payload_for_template['webhookUrl'] = request.host_url + 'webhook'
     
@@ -266,49 +299,49 @@ def index():
 
 @app.route('/submit', methods=['POST'])
 def submit():
-    global webhook_response
-    webhook_response = None
+    with lock:
+        webhook_responses.clear()
     try:
         data = request.get_json()
         payload = json.loads(data['payload'])
         url = data['url']
         method = data['method']
         
-        # Send the request to the target backend
-        response = requests.request(method, url, json=payload, timeout=10)
-        response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+        thread = Thread(target=make_long_running_request, args=(url, method, payload))
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({"status": "accepted", "message": "Long-running job started in the background."})
 
-        return jsonify({"status": "success", "message": "Request sent, waiting for webhook."})
-
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": f"Failed to connect to backend: {str(e)}"}), 500
-    except json.JSONDecodeError:
-        return jsonify({"error": "Invalid JSON in payload"}), 400
     except Exception as e:
-        return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
+        return jsonify({"error": f"Failed to start job: {str(e)}"}), 500
+
 
 @app.route('/webhook', methods=['POST', 'PUT'])
 def webhook():
-    global webhook_response
-    if request.is_json:
-        webhook_response = request.get_json()
-        print(f"Received webhook: {webhook_response}")
-        return jsonify({"status": "webhook received"}), 200
-    else:
-        # Handle cases where the incoming data is not JSON
-        webhook_response = {"error": "Received non-JSON data", "data": request.get_data(as_text=True)}
-        return jsonify({"error": "Invalid webhook format, expected JSON"}), 400
+    with lock:
+        if request.is_json:
+            # As per requirement, queue the ENTIRE payload for webhooks
+            webhook_responses.append(request.get_json())
+            print(f"Queued webhook: {webhook_responses[-1]}")
+            return jsonify({"status": "webhook received"}), 200
+        else:
+            error_data = {"error": "Received non-JSON data", "data": request.get_data(as_text=True)}
+            webhook_responses.append(error_data)
+            return jsonify({"error": "Invalid webhook format, expected JSON"}), 400
 
 @app.route('/webhook-response')
 def get_webhook_response():
-    # Client will poll this endpoint
-    return jsonify({"response": webhook_response})
+    with lock:
+        responses_to_send = webhook_responses[:]
+        webhook_responses.clear()
+    return jsonify({"responses": responses_to_send})
 
 @app.route('/reset', methods=['POST'])
 def reset():
-    global webhook_response
-    webhook_response = None
+    with lock:
+        webhook_responses.clear()
     return jsonify({"status": "reset"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, threaded=True)

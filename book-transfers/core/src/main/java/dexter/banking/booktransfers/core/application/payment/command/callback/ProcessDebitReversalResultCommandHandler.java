@@ -23,6 +23,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -49,17 +51,12 @@ public class ProcessDebitReversalResultCommandHandler implements CommandHandler<
 
         Payment payment = rehydratePayment(memento);
 
-        payment.recordDebitReversal(command.result(), Collections.emptyMap());
-
-        paymentRepository.update(payment);
-        eventDispatcher.dispatch(payment.pullDomainEvents());
-
         // Universal Routing Logic
         String journeyName = memento.journeyName();
         if (journeyName.contains("V2_ASYNC")) {
-            resumeV2Orchestration(command, memento);
+            resumeV2Orchestration(command, payment);
         } else if (journeyName.contains("V3")) {
-            resumeV3Orchestration(command, memento);
+            resumeV3Orchestration(command, payment);
         } else {
             log.error("Unknown journeyName '{}' for callback on transactionId {}", journeyName, command.transactionId());
         }
@@ -67,9 +64,17 @@ public class ProcessDebitReversalResultCommandHandler implements CommandHandler<
         return null;
     }
 
-    private void resumeV2Orchestration(ProcessDebitReversalResultCommand command, Payment.PaymentMemento memento) {
-        v2StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+
+
+    private void resumeV2Orchestration(ProcessDebitReversalResultCommand command, Payment payment) {
+        v2StateMachineFactory.acquireStateMachine(payment.getId().toString()).ifPresentOrElse(
                 stateMachine -> {
+                    var context = stateMachine.getContext();
+                    Map<String, Object> metadata = new HashMap<>();
+                    metadata.put("webhookUrl", context.getWebhookUrl());
+                    metadata.put("realtime", context.getRealtime());
+                    metadata.put("transactionReference", payment.getTransactionReference());
+                    recordAndPublish(command, payment, metadata);
                     AsyncProcessEvent event = command.result().status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL ?
                             AsyncProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED : AsyncProcessEvent.DEBIT_LEG_REVERSAL_FAILED;
                     stateMachine.fire(event);
@@ -78,9 +83,10 @@ public class ProcessDebitReversalResultCommandHandler implements CommandHandler<
         );
     }
 
-    private void resumeV3Orchestration(ProcessDebitReversalResultCommand command, Payment.PaymentMemento memento) {
-        v3StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+    private void resumeV3Orchestration(ProcessDebitReversalResultCommand command, Payment payment) {
+        v3StateMachineFactory.acquireStateMachine(payment.getId().toString()).ifPresentOrElse(
                 stateMachine -> {
+                    recordAndPublish(command, payment, Collections.emptyMap());
                     ProcessEventV3 event = command.result().status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL ?
                             ProcessEventV3.DEBIT_LEG_REVERSAL_SUCCEEDED : ProcessEventV3.DEBIT_LEG_REVERSAL_FAILED;
                     stateMachine.fire(event);
@@ -96,4 +102,12 @@ public class ProcessDebitReversalResultCommandHandler implements CommandHandler<
                 .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
         return Payment.rehydrate(memento, policy);
     }
+
+    private void recordAndPublish(ProcessDebitReversalResultCommand command, Payment payment, Map<String, Object> metadata) {
+        payment.recordDebitReversal(command.result(), metadata);
+
+        paymentRepository.update(payment);
+        eventDispatcher.dispatch(payment.pullDomainEvents());
+    }
+
 }

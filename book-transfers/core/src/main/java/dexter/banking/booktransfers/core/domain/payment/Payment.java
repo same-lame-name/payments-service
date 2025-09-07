@@ -17,6 +17,38 @@ import lombok.Getter;
 
 import java.util.Map;
 import java.util.UUID;
+
+/**
+ * Represents the central business entity in this domain: the Payment.
+ *
+ * <p><b>Architectural Role:</b> This class is the <b>Aggregate Root</b> for the Payment aggregate in a Domain-Driven
+ * Design (DDD) context. An aggregate is a cluster of associated objects that are treated as a single unit for the
+ * purpose of data changes. As the root, this class is the sole entry point for any command that modifies the state
+ * of the payment. All business invariants for a payment are enforced within this boundary.
+ *
+ * <p><b>Design Patterns & Principles:</b>
+ * <ul>
+ *     <li><b>Encapsulation & State Transitions:</b> The aggregate's state is fully encapsulated. All modifications
+ *         are performed exclusively through its own business methods (e.g., {@code recordDebit}, {@code recordCredit}).
+ *         Each method represents a valid, atomic state transition, ensuring the aggregate is always in a consistent state.</li>
+ *
+ *     <li><b>Policy Pattern (Strategy):</b> The aggregate's state transition logic is decoupled from the business
+ *         rules that govern it. The {@code transient BusinessPolicy policy} field holds a strategy object.
+ *         Before any state change, the aggregate consults this policy via {@code policy.evaluate(...)}.
+ *         This makes the core domain model stable while allowing complex business rules to be defined and
+ *         modified externally in the infrastructure layer.</li>
+ *
+ *     <li><b>Memento Pattern:</b> The aggregate's internal state can be externalized into a {@link PaymentMemento}
+ *         object via the {@code getMemento()} method. This allows for persistence (e.g., saving to a database)
+ *         without breaking encapsulation. The {@code rehydrate()} static factory method restores an aggregate
+ *         from a memento, cleanly separating domain logic from persistence concerns.</li>
+ *
+ *     <li><b>Domain Events:</b> The aggregate raises {@link dexter.banking.booktransfers.core.domain.shared.primitives.DomainEvent}s
+ *         (e.g., {@link PaymentSuccessfulEvent}) upon successful state transitions by calling {@code registerEvent()}.
+ *         This allows other parts of the system to react to changes without being tightly coupled, forming the
+ *         basis of an event-driven architecture.</li>
+ * </ul>
+ */
 @Getter
 public class Payment extends AggregateRoot<UUID> {
 
@@ -154,7 +186,7 @@ public class Payment extends AggregateRoot<UUID> {
     public void recordPaymentSettled(Map<String, Object> metadata) {
         var context = new PolicyEvaluationContext(this.getMemento(), metadata);
         this.policy.evaluate(context, BusinessAction.RECORD_PAYMENT_SETTLED);
-        this.setState(PaymentState.SETTLED);
+        this.setState(PaymentState.SUCCESS);
         this.registerEvent(new PaymentSuccessfulEvent(this.id, this.state, metadata));
     }
 
@@ -181,7 +213,7 @@ public class Payment extends AggregateRoot<UUID> {
     private void updateStatusFromState() {
         switch (this.state) {
             case NEW -> this.status = Status.NEW;
-            case SETTLED -> this.status = Status.SUCCESSFUL;
+            case SUCCESS -> this.status = Status.SUCCESSFUL;
             case FAILED -> this.status = Status.FAILED;
             case REMEDIATION_NEEDED -> this.status = Status.REMEDIATION_REQUIRED;
             default -> this.status = Status.IN_PROGRESS;

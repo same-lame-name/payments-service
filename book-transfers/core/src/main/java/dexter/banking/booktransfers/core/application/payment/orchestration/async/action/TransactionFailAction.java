@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Component
@@ -23,7 +25,10 @@ public class TransactionFailAction implements Action<AsyncProcessState, AsyncPro
     @Override
     public Optional<AsyncProcessEvent> execute(AsyncTransactionContext context, AsyncProcessEvent event) {
         log.info("Transaction flow for {} has reached a terminal state: {}", context.getPaymentId(), context.getCurrentState());
-        var params = new ConcludePaymentParams(context.getPaymentId(), event.name(), Collections.emptyMap());
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("webhookUrl", context.getWebhookUrl());
+        metadata.put("realtime", context.getRealtime());
+        var params = new ConcludePaymentParams(context.getPaymentId(), event.name(), metadata);
         concludePaymentFailedUseCase.handleFailure(params);
         return Optional.empty();
     }

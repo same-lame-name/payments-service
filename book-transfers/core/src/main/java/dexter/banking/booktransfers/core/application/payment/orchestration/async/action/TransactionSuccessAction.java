@@ -27,7 +27,7 @@ public class TransactionSuccessAction implements Action<AsyncProcessState, Async
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("webhookUrl", context.getWebhookUrl());
         metadata.put("realtime", context.getRealtime());
-        var params = new ConcludePaymentParams(context.getPaymentId(), null, metadata);
+        var params = new ConcludePaymentParams(context.getPaymentId(), event.name(), metadata);
         concludePaymentSuccessUseCase.handleSuccess(params);
         return Optional.empty();
     }

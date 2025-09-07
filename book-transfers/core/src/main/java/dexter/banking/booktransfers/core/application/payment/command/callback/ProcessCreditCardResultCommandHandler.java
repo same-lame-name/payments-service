@@ -23,6 +23,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -50,17 +52,12 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
 
         Payment payment = rehydratePayment(memento);
 
-        payment.recordCredit(command.result(), Collections.emptyMap());
-
-        paymentRepository.update(payment);
-        eventDispatcher.dispatch(payment.pullDomainEvents());
-
         // Universal Routing Logic
         String journeyName = memento.journeyName();
         if (journeyName.contains("V2_ASYNC")) {
-            resumeV2Orchestration(command, memento);
+            resumeV2Orchestration(command, payment);
         } else if (journeyName.contains("V3")) {
-            resumeV3Orchestration(command, memento);
+            resumeV3Orchestration(command, payment);
         } else {
             log.error("Unknown journeyName '{}' for callback on transactionId {}", journeyName, command.transactionId());
         }
@@ -68,9 +65,15 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
         return null;
     }
 
-    private void resumeV2Orchestration(ProcessCreditCardResultCommand command, Payment.PaymentMemento memento) {
-        v2StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+    private void resumeV2Orchestration(ProcessCreditCardResultCommand command, Payment payment) {
+        v2StateMachineFactory.acquireStateMachine(payment.getId().toString()).ifPresentOrElse(
                 stateMachine -> {
+                    var context = stateMachine.getContext();
+                    Map<String, Object> metadata = new HashMap<>();
+                    metadata.put("webhookUrl", context.getWebhookUrl());
+                    metadata.put("realtime", context.getRealtime());
+                    metadata.put("transactionReference", payment.getTransactionReference());
+                    recordAndPublish(command, payment, metadata);
                     AsyncProcessEvent event = command.result().status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
                             AsyncProcessEvent.CREDIT_LEG_SUCCEEDED : AsyncProcessEvent.CREDIT_LEG_FAILED;
                     stateMachine.fire(event);
@@ -79,9 +82,10 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
         );
     }
 
-    private void resumeV3Orchestration(ProcessCreditCardResultCommand command, Payment.PaymentMemento memento) {
-        v3StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+    private void resumeV3Orchestration(ProcessCreditCardResultCommand command, Payment payment) {
+        v3StateMachineFactory.acquireStateMachine(payment.getId().toString()).ifPresentOrElse(
                 stateMachine -> {
+                    recordAndPublish(command, payment, Collections.emptyMap());
                     ProcessEventV3 event = command.result().status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
                             ProcessEventV3.CREDIT_LEG_SUCCEEDED : ProcessEventV3.CREDIT_LEG_FAILED;
                     stateMachine.fire(event);
@@ -96,5 +100,12 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
                 .map(policyFactory::create)
                 .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
         return Payment.rehydrate(memento, policy);
+    }
+
+    private void recordAndPublish(ProcessCreditCardResultCommand command, Payment payment, Map<String, Object> metadata) {
+        payment.recordCredit(command.result(), metadata);
+
+        paymentRepository.update(payment);
+        eventDispatcher.dispatch(payment.pullDomainEvents());
     }
 }

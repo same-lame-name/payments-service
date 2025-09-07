@@ -23,6 +23,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -49,15 +51,11 @@ public class ProcessLimitEarmarkResultCommandHandler implements CommandHandler<P
 
         Payment payment = rehydratePayment(memento);
 
-        payment.recordLimitEarmark(command.result(), Collections.emptyMap());
-
-        paymentRepository.update(payment);
-        eventDispatcher.dispatch(payment.pullDomainEvents());
 
         // Universal Routing Logic - V3 does not have async limit earmark, so this only applies to V2.
         String journeyName = memento.journeyName();
         if (journeyName.contains("V2_ASYNC")) {
-            resumeV2Orchestration(command, memento);
+            resumeV2Orchestration(command, payment);
         } else {
             log.warn("Received a Limit Earmark callback for a non-V2-Async journey '{}'. Ignoring. TXN_ID: {}", journeyName, command.transactionId());
         }
@@ -65,9 +63,15 @@ public class ProcessLimitEarmarkResultCommandHandler implements CommandHandler<P
         return null;
     }
 
-    private void resumeV2Orchestration(ProcessLimitEarmarkResultCommand command, Payment.PaymentMemento memento) {
-        v2StateMachineFactory.acquireStateMachine(memento.id().toString()).ifPresentOrElse(
+    private void resumeV2Orchestration(ProcessLimitEarmarkResultCommand command, Payment payment) {
+        v2StateMachineFactory.acquireStateMachine(payment.getId().toString()).ifPresentOrElse(
                 stateMachine -> {
+                    var context = stateMachine.getContext();
+                    Map<String, Object> metadata = new HashMap<>();
+                    metadata.put("webhookUrl", context.getWebhookUrl());
+                    metadata.put("realtime", context.getRealtime());
+                    metadata.put("transactionReference", payment.getTransactionReference());
+                    recordAndPublish(command, payment, metadata);
                     AsyncProcessEvent event = command.result().status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL ?
                             AsyncProcessEvent.LIMIT_EARMARK_SUCCEEDED : AsyncProcessEvent.LIMIT_EARMARK_FAILED;
                     stateMachine.fire(event);
@@ -82,5 +86,12 @@ public class ProcessLimitEarmarkResultCommandHandler implements CommandHandler<P
                 .map(policyFactory::create)
                 .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
         return Payment.rehydrate(memento, policy);
+    }
+
+    private void recordAndPublish(ProcessLimitEarmarkResultCommand command, Payment payment, Map<String, Object> metadata) {
+        payment.recordLimitEarmark(command.result(), metadata);
+
+        paymentRepository.update(payment);
+        eventDispatcher.dispatch(payment.pullDomainEvents());
     }
 }
