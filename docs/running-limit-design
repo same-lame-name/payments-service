@@ -1,0 +1,116 @@
+================================================================================
+PART A: LIVE DATA FLOW (Event-Driven Update for a Single Transaction)
+================================================================================
+
+                                       +----------------------------+
+[ Transaction Request: 100 INR ] ----> |     Payment Service        |
+                                       +----------------------------+
+                                                    |
+                                                    | 1. Processes limit earmark.
+                                                    V
+                                       +----------------------------+
+                                       | Limit earmark event:       |
+                                       | "TransactionAmount:100INR" |
+                                       +----------------------------+
+                                                    |
+                                                    | 2. Event is consumed asynchronously.
+                                                    V
+                                       +----------------------------+
+                                       | UtilizationUpdateListener  |
+                                       | Application Event Bus      |
+                                       +----------------------------+
+                                                    |
+          +-----------------------------------------+-----------------------------------------+
+          |                             |                           |                         |
+          V                             V                           V                         V
++-------------------+      +--------------------+      +---------------------+      +---------------------+
+| UPSERT Hourly     |      | UPSERT Daily       |      | UPSERT Weekly       |      | UPSERT Monthly      |
+| amount += 100     |      | amount += 100      |      | amount += 100       |      | amount += 100       |
++-------------------+      +--------------------+      +---------------------+      +---------------------+
+
+================================================================================
+PART B: STATIC RANGE QUERY (e.g., "This Calendar Week")
+================================================================================
+
+[ START: Get total utilized amount for Calendar Week 36 ]
+    |
+    V
++-------------------------------------------------------------+
+| Query 'Weekly_Utilization' table                            |
+| WHERE customer_id = 'user-A' AND period_key = '2025-W36'    |
++-------------------------------------------------------------+
+    |
+    V
+[ RETURN Amount from the single row ]
+
+================================================================================
+PART C: ROLLING WINDOW CALCULATION : GREEDY STITCHING (e.g., "Last 7 days")
+================================================================================
+[ START: Calculate Utilized Amount for last 15 Days]
+    |
+    V
++-------------------------------------------------+
+| Initialize:                                     |
+|  - TotalSum = 0                                 |
+|  - RemainingWindow = 15 Days, 0 Hours           |
++-------------------------------------------------+
+    |
+    | (Assume current time is W37, Day 5, 12:00)
+    V
+< Get data from current PARTIAL week (W37) >
+|  - Amount = GetTotal("W37")                     |
+|  - Duration = 5 Days, 12 Hours                  |
++-------------------------------------------------+
+    |
+    V
++-------------------------------------------------+
+| Update:                                         |
+|  - TotalSum += Amount                           |
+|  - RemainingWindow -= Duration                  |
+|  (Now RemainingWindow = 9 Days, 12 Hours)       |
++-------------------------------------------------+
+    |
+    V
+< Get data from previous FULL week (W36) >
+|  - Amount = GetTotal("W36")                     |
+|  - Duration = 7 Days                            |
++-------------------------------------------------+
+    |
+    V
++-------------------------------------------------+
+| Update:                                         |
+|  - TotalSum += Amount                           |
+|  - RemainingWindow -= Duration                  |
+|  (Now RemainingWindow = 2 Days, 12 Hours)       |
++-------------------------------------------------+
+    |
+    V
+< Get data from 2 previous FULL days >
+|  - Amount = GetTotal("DayX") + GetTotal("DayY") |
+|  - Duration = 2 Days                            |
++-------------------------------------------------+
+    |
+    V
++-------------------------------------------------+
+| Update:                                         |
+|  - TotalSum += Amount                           |
+|  - RemainingWindow -= Duration                  |
+|  (Now RemainingWindow = 0 Days, 12 Hours)       |
++-------------------------------------------------+
+    |
+    V
+< Get data from 12 previous FULL hours >
+|  - Amount = SUM(GetTotal("Hour1..12"))          |
+|  - Duration = 12 Hours                          |
++-------------------------------------------------+
+    |
+    V
++-------------------------------------------------+
+| Update:                                         |
+|  - TotalSum += Amount                           |
+|  - RemainingWindow -= Duration                  |
+|  (Now RemainingWindow = 0)                      |
++-------------------------------------------------+
+    |
+    V
+[ END: Return Final TotalSum ]

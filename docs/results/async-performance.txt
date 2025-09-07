@@ -1,0 +1,12 @@
+--- Async Performance Analysis ---
+Total Correlated Requests: 500
+--------------------------------
+Average Latency: 6113.93 ms
+Median (p50) Latency: 6113.72 ms
+95th Percentile (p95) Latency: 6129.08 ms
+Min Latency: 6079.71 ms
+Max Latency: 6159.07 ms
+--------------------------------
+Total Test Duration: 312.09 seconds
+Overall Throughput: 1.60 req/sec
+----------------------------------

@@ -1,0 +1,80 @@
+package dexter.banking.booktransfers.infrastructure.adapter.out.events.payment;
+
+import dexter.banking.booktransfers.core.domain.compliance.event.ComplianceCaseApproved;
+import dexter.banking.booktransfers.core.domain.payment.PaymentState;
+import dexter.banking.booktransfers.core.domain.payment.event.*;
+import dexter.banking.booktransfers.core.port.in.compliance.CreateComplianceCaseUseCase;
+import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentParams;
+import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentUseCase;
+import dexter.banking.booktransfers.core.port.out.WebhookPort;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+
+import java.util.Map;
+import java.util.UUID;
+/**
+ * A single, unified Spring component that listens for all domain events.
+ * It uses the @TransactionalEventListener to ensure that event handling only occurs
+ * AFTER the originating transaction has successfully committed. This is critical for
+ * preventing inconsistent state if a webhook call fails after the DB commit.
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+class TransactionalPaymentEventListener {
+    private final CreateComplianceCaseUseCase createComplianceCaseUseCase;
+    private final WebhookPort webhookPort;
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(PaymentSuccessfulEvent event) {
+        log.info("Handling successful payment event for transaction {}", event.aggregateId());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(PaymentFailedEvent event) {
+        log.info("Handling failed payment event for transaction {}", event.aggregateId());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(ManualInterventionRequiredEvent event) {
+        log.info("Handling manual intervention event for transaction {}", event.aggregateId());
+        notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(PaymentInProgressEvent event) {
+        log.info("Handling in-progress payment event for transaction {}", event.aggregateId());
+        var eventMetadata = event.metadata();
+        boolean realtimeEnabled = eventMetadata.containsKey("realtime") && "true".equals(eventMetadata.get("realtime"));
+        if (realtimeEnabled) {
+            log.info("Realtime flag is set. Notifying webhook immediately for transaction {}", event.aggregateId());
+            notifyWebhook(event.aggregateId(), event.aggregateState(), event.metadata());
+        } else {
+            log.info("Realtime flag not set or false. Skipping immediate webhook notification for transaction {}", event.aggregateId());
+        }
+    }
+
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void on(PaymentRequiresComplianceCheck event) {
+        log.info("SAGA: Received PaymentRequiresComplianceCheck for paymentId {}. Invoking CreateComplianceCaseUseCase.", event.aggregateId());
+        // No command object is needed for this internal-only use case.
+        createComplianceCaseUseCase.create(event.aggregateId());
+    }
+
+    private void notifyWebhook(UUID aggregateId, PaymentState paymentState, Map<String, Object> metadata) {
+        String webhookUrl = (String) metadata.get("webhookUrl");
+        String transactionReference = (String) metadata.get("transactionReference");
+        if (webhookUrl != null && !webhookUrl.isBlank()) {
+            log.info("Notifying webhook {} for transaction {} with final state {}", webhookUrl, aggregateId, paymentState);
+            var notification = new WebhookPort.WebhookNotification(transactionReference, paymentState);
+            webhookPort.notifyTransactionStatus(webhookUrl, notification);
+        } else {
+            log.info("No webhook URL configured for transaction {}. Skipping notification.", aggregateId);
+        }
+    }
+}

@@ -1,9 +1,5 @@
-logging:
-  level:
-    org.springframework.cloud: DEBUG
-    org.springframework.web: DEBUG
-
-server.port: 8888
+server:
+  port: 8888
 
 spring:
   application:
@@ -19,9 +15,15 @@ spring:
       server:
         native:
           search-locations: classpath:/{application}/
+
 eureka:
   instance:
     prefer-ip-address: true
   client:
     serviceUrl:
       defaultZone: http://eurekaUser:eurekaPassword@localhost:8761/eureka/
+
+logging:
+  level:
+    org.springframework.cloud: DEBUG
+    org.springframework.web: DEBUG

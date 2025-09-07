@@ -1,7 +1,39 @@
-logging.level.tech: debug
-
 spring:
+  application:
+    name: limit-management-service
+  config:
+    import: "optional:configserver:"
+  cloud:
+    config:
+      discovery:
+        enabled: true
+        service-id: payment-config-server
+      fail-fast: true
+      username: configUser
+      password: configPassword
+  jms:
+    listener:
+      concurrency: 5
+      max-concurrency: 10
   jackson:
     serialization:
       write-dates-as-timestamps: false
       write-date-timestamps-as-nanoseconds: true
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    logging:
+      enabled: true
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    serviceUrl:
+      defaultZone: http://eurekaUser:eurekaPassword@localhost:8761/eureka/
+
+logging:
+  level:
+    tech: debug
