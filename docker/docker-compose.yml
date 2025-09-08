@@ -37,6 +37,14 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: mongoUser
     networks:
       - spring
+  redis_server:
+    image: redis:7.2.4
+    container_name: redis_test
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - spring
 
 networks:
   postgres:
