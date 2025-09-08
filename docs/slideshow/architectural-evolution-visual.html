@@ -1,0 +1,428 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architectural Evolution: A Blueprint for a Resilient & Refactor-Friendly Service</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+        }
+        .slide {
+            scroll-snap-align: start;
+            flex-shrink: 0;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+        .slide.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .card-icon {
+            font-size: 3rem;
+        }
+        .problem-icon { color: #E53E3E; } /* Red */
+        .benefit-icon { color: #38A169; }
+        .challenge-icon { color: #DD6B20; } /* Orange */
+
+        #progress-bar {
+            transition: width 0.3s ease-in-out;
+        }
+        .visual-container {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: #1a202c; /* bg-gray-900 to match slide */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 1rem;
+            border: 1px solid #4A5568; /* border-gray-700 */
+        }
+        .visual-container img {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+            border-radius: 0.25rem; /* rounded-sm */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white overflow-hidden flex flex-col h-screen">
+
+<main id="slides-container" class="flex-grow w-full flex overflow-x-auto snap-x snap-mandatory scroll-smooth">
+    <!-- Slides will be injected here by JavaScript -->
+</main>
+
+<!-- Navigation and Progress Bar -->
+<footer class="w-full bg-gray-800 p-4 flex items-center justify-between shadow-lg">
+    <button id="prevBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+        &larr; Prev
+    </button>
+    <div class="flex-grow mx-4">
+        <div class="w-full bg-gray-700 rounded-full h-2.5">
+            <div id="progress-bar" class="bg-blue-500 h-2.5 rounded-full" style="width: 0%"></div>
+        </div>
+    </div>
+    <button id="nextBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300">
+        Next &rarr;
+    </button>
+</footer>
+
+<script>
+    // === ACTION REQUIRED ===
+    // 1. Upload your 8 images to an image hosting service (like imgur.com).
+    // 2. Get the "Direct Link" for each image.
+    // 3. Paste each link into the corresponding placeholder below.
+    const imagePaths = {
+        "1.CQRS.jpg": "./1.CQRS.png",
+        "2.hexagonal.jpg": "./2.hexagonal.png",
+        "3.maven-modules.jpg": "./3.maven-modules.png",
+        "4.public-facade-with-package-private.jpg": "./4.public-facade-with-package-private.png",
+        "5.payment-ar-proper.jpg": "./5.payment-ar-proper.png",
+        "6.statemachine.jpg": "./6.statemachine.png",
+        "7.durable-statemachine.jpg": "./7.durable-statemachine.png",
+        "8.idempotency.jpg": "./8.idempotency.png"
+    };
+
+    const slidesData = [
+        {
+            type: 'title',
+            title: 'Architectural Evolution',
+            subtitle: 'A Blueprint for Resilient & Refactor-Friendly Services',
+            tagline: 'Moving from "Gentleman\'s Agreements" to Architectural Guarantees'
+        },
+        {
+            type: 'problems',
+            title: 'The Core Problems We Face Today',
+            problems: [
+                { icon: '&#129521;', label: 'Tangled Dependencies', text: 'Changes have an unpredictable and wide blast radius.' },
+                { icon: '&#128185;', label: 'Data Inconsistency', text: 'Audits reveal impossible states in our data (e.g., `Transaction Successful`, `Debit Failed`).' },
+                { icon: '📜', label: 'Brittle Workflows', text: 'Procedural sagas are a maintenance nightmare and lose state on application crashes.' }
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #1: CQRS - The "Fast & Safe" Lanes',
+            problem: 'Our read APIs get slower every time we add a new security check to our payment logic because they share the same code path.',
+            solution: 'This visual shows an API request splitting into two paths: A streamlined <span class="font-semibold text-blue-400">"Fast Lane"</span> for Queries leading directly to a data response, and a methodical <span class="font-semibold text-orange-400">"Safe Lane"</span> for Commands that must pass through gates like Validation, Security, and Idempotency.',
+            visual: "1.CQRS.jpg",
+            benefits: [
+                '🚀 <span class="font-semibold">Fast UX:</span> Queries remain consistently fast.',
+                '🛡️ <span class="font-semibold">Reduced Blast Radius:</span> Complex command logic has zero performance impact on reads.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> More code to manage two separate paths.',
+                '<span class="font-semibold">Challenge:</span> The team must maintain the discipline of the separation.'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #2: Hexagonal Architecture',
+            problem: 'In our current Layered Architecture, business logic is tightly coupled to the database and UI, making it impossible to test or change in isolation.',
+            solution: 'This diagram shows our goal: a central <span class="font-semibold text-yellow-400">Application Core</span> that is completely isolated. It exposes "Ports," and all external concerns—like REST controllers or databases—are <span class="font-semibold">"Adapters"</span> that plug into those ports. The arrows show dependencies only ever point inward.',
+            visual: "2.hexagonal.jpg",
+            benefits: [
+                '✅ <span class="font-semibold">High Testability:</span> Core business logic can be tested without a database or UI.',
+                '🔌 <span class="font-semibold">Technology Agnostic:</span> We can swap a database or message queue without changing business rules.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> More classes & interfaces are required (boilerplate).',
+                '<span class="font-semibold">Challenge:</span> Requires a significant mental shift from the traditional layered approach.'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #3: Enforce Boundaries with Maven Modules',
+            problem: 'We have a "gentleman\'s agreement" not to let infrastructure code trespass into the core domain, but it happens, creating a tangled mess.',
+            solution: 'Here, we see the compiler-enforced boundary. An `APP` can depend on `INFRASTRUCTURE`, which depends on `CORE`. But a dependency arrow going from `CORE` back to `INFRASTRUCTURE` is shown as impossible—it results in a build failure.',
+            visual: "3.maven-modules.jpg",
+            benefits: [
+                '🔒 <span class="font-semibold">Impossible to Trespass:</span> Guaranteed isolation of pure business logic.',
+                '🧹 <span class="font-semibold">Clean Dependency Graph:</span> Makes the architecture explicit and impossible to misunderstand.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> More initial project setup complexity.',
+                '<span class="font-semibold">Challenge:</span> Requires managing a multi-module build.'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #4: Isolate Adapters with a Public Facade',
+            problem: 'A change in our "shared" logging adapter broke the persistence adapter because they were accidentally coupled through a helper class.',
+            solution: 'This visual shows our "atomic switch" pattern. Inside the <span class="font-semibold">Adapter Package</span>, internal classes are hidden. The only entry point for the application\'s Component Scanner is the single, <span class="font-semibold text-green-400">Public Facade</span>. Any attempt by another adapter to access internal details is blocked with a compile error.',
+            visual: "4.public-facade-with-package-private.jpg",
+            benefits: [
+                '🔌 <span class="font-semibold">Truly Independent Adapters:</span> Eliminates hidden coupling between components.',
+                '💡 <span class="font-semibold">Atomic On/Off Switch:</span> An entire adapter is enabled/disabled via a single class.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> Requires strict discipline in maintaining package structure and access modifiers.',
+                '<span class="font-semibold">Challenge:</span> A new concept for developers used to making everything public by default.'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #5: DDD - The Aggregate as a "Gatekeeper"',
+            problem: 'Corrupt data and "impossible states" in our production database.',
+            solution: 'This diagram shows the <span class="font-semibold text-cyan-400">Payment Aggregate</span> as a hexagonal guardian. A direct, invalid state change is disallowed. A valid command, `.processDebit()`, enters through a guarded port, updates the internal state, and publishes an event, ensuring the aggregate is <span class="font-semibold">Always Consistent</span>.',
+            visual: "5.payment-ar-proper.jpg",
+            benefits: [
+                '✅ <span class="font-semibold">Guaranteed Data Integrity:</span> Eliminates contradictory states by design.',
+                '🎯 <span class="font-semibold">Centralized Rules:</span> Business logic for a concept is in one, obvious place.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> Requires more upfront design effort to define boundaries.',
+                '<span class="font-semibold">Challenge:</span> Correctly identifying aggregate boundaries is a critical skill the team must develop.'
+            ]
+        },
+         {
+            type: 'decision',
+            title: 'Decision #6: State Machines for Declarative Workflows',
+            problem: 'Our procedural payment saga is brittle and a maintenance nightmare. A simple change requires navigating a complex web of if/else statements.',
+            solution: 'This visual contrasts our "before" and "after". On the left, the chaotic, tangled mess of a <span class="font-semibold text-red-400">Procedural Script</span>. On the right, the clean, organized, and maintainable flowchart of a <span class="font-semibold text-blue-400">Declarative State Machine</span>.',
+            visual: "6.statemachine.jpg",
+            benefits: [
+                '🗺️ <span class="font-semibold">Visualizable Logic:</span> The flow is easy to read and understand.',
+                '🛠️ <span class="font-semibold">Maintainable:</span> Adding a new step is adding a node to a graph, not performing surgery on a complex script.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> Requires the team to learn to think in states and events.',
+                '<span class="font-semibold">Challenge:</span> The logic is less centralized than a single script.'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #7: State Machine Persisters for "Memory"',
+            problem: 'Lost transactions on application crashes; inability to handle async or human-in-the-loop flows.',
+            solution: 'Here we see a workflow that saves its progress to a database, its <span class="font-semibold">Durable Memory</span>. This allows the state machine to survive application crashes and pause indefinitely, resuming later. This is what enables truly resilient, long-running processes.',
+            visual: "7.durable-statemachine.jpg",
+            benefits: [
+                '💪 <span class="font-semibold">Resilient & Resumable:</span> No more lost transactions on restart.',
+                '⏳ <span class="font-semibold">Enables Async & Pause/Resume:</span> Makes truly async and human-in-the-loop workflows possible.',
+                '🚀 <span class="font-semibold">Future-Proof:</span> Supports our current needs and our future target state of ACK+CALLBACK.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> Adds a database write to each state transition.',
+                '<span class="font-semibold">Challenge:</span> Debugging requires checking logs and the database state.'
+            ]
+        },
+         {
+            type: 'decision',
+            title: 'Decision #8: Smart Idempotency',
+            problem: 'Preventing accidental duplicate payments while still allowing legitimate retries by support teams.',
+            solution: 'This diagram shows three scenarios. A <span class="font-semibold text-green-400">New Request</span> is processed. An <span class="font-semibold text-red-400">Accidental Duplicate</span> with the same key is blocked by the middleware, returning a cached response. An <span class="font-semibold text-green-400">Intentional Retry</span> with a new key is processed correctly.',
+            visual: "8.idempotency.jpg",
+            benefits: [
+                '🎯 <span class="font-semibold">Targeted Safety:</span> Apply idempotency only where it\'s needed.',
+                '✅ <span class="font-semibold">Clear Intent:</span> Differentiates between an accidental replay (blocked) and an intentional retry (allowed).'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> The client is now responsible for generating and managing idempotency keys.',
+                '<span class="font-semibold">Challenge:</span> Requires clear API documentation for clients.'
+            ]
+        },
+        {
+            type: 'summary',
+            title: 'The Trade-Off: A Deliberate Choice',
+            benefits: [
+                'Guaranteed Data Integrity',
+                'High Testability & Resilience',
+                'True Refactor-Friendliness & Evolvability'
+            ],
+            challenges: [
+                'Increased Number of Classes (Boilerplate)',
+                'Steeper Initial Learning Curve',
+                'Requires Strict Team Discipline'
+            ],
+            conclusion: 'We are trading the false simplicity of our current system for the explicit complexity required to build correct, maintainable software. The effort is in upfront discipline, not in late-night production fixes.'
+        },
+        {
+            type: 'discussion',
+            title: 'Discussion & Questions'
+        }
+    ];
+
+    const container = document.getElementById('slides-container');
+    let currentSlide = 0;
+
+    function renderSlides() {
+        container.innerHTML = '';
+        slidesData.forEach((slide, index) => {
+            let slideEl;
+            if (slide.type === 'title') {
+                slideEl = createTitleSlide(slide, index);
+            } else if (slide.type === 'problems') {
+                slideEl = createProblemsSlide(slide, index);
+            } else if (slide.type === 'decision') {
+                slideEl = createDecisionSlide(slide, index);
+            } else if (slide.type === 'summary') {
+                slideEl = createSummarySlide(slide, index);
+            } else if (slide.type === 'discussion') {
+                slideEl = createDiscussionSlide(slide, index);
+            }
+            container.appendChild(slideEl);
+        });
+    }
+
+    function createBaseSlide(index) {
+        const slideEl = document.createElement('div');
+        slideEl.className = 'slide w-full h-full p-8 md:p-12 flex flex-col items-center justify-center text-center snap-start';
+        return slideEl;
+    }
+
+    function createTitleSlide(data, index) {
+        const slide = createBaseSlide(index);
+        slide.innerHTML = `
+            <div class="bg-gray-800 p-10 rounded-xl shadow-2xl animate-fade-in">
+                <h1 class="text-4xl md:text-6xl font-bold text-blue-400 mb-4">${data.title}</h1>
+                <h2 class="text-xl md:text-2xl text-gray-300 mb-6">${data.subtitle}</h2>
+                <p class="text-lg md:text-xl text-gray-400 italic">${data.tagline}</p>
+            </div>
+        `;
+        return slide;
+    }
+
+    function createProblemsSlide(data, index) {
+        const slide = createBaseSlide(index);
+        let problemsHtml = data.problems.map(p => `
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg flex flex-col items-center">
+                <div class="card-icon problem-icon mb-4">${p.icon}</div>
+                <h3 class="text-xl font-semibold text-gray-200 mb-2">${p.label}</h3>
+                <p class="text-gray-400">${p.text}</p>
+            </div>
+        `).join('');
+        slide.innerHTML = `
+            <h1 class="text-3xl md:text-4xl font-bold mb-12">${data.title}</h1>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
+                ${problemsHtml}
+            </div>
+        `;
+        return slide;
+    }
+
+    function createDecisionSlide(data, index) {
+        const slide = createBaseSlide(index);
+        let benefitsHtml = data.benefits.map(b => `<li class="flex items-start"><span class="benefit-icon mr-3">&#10004;</span><span>${b}</span></li>`).join('');
+        let challengesHtml = data.challenges.map(c => `<li class="flex items-start"><span class="challenge-icon mr-3">&#9888;</span><span>${c}</span></li>`).join('');
+        const imageUrl = imagePaths[data.visual] || 'https://placehold.co/600x400/1a202c/4a5568?text=Image+Not+Found';
+
+        slide.innerHTML = `
+            <div class="w-full max-w-6xl">
+                <h1 class="text-3xl md:text-4xl font-bold text-blue-400 mb-4">${data.title}</h1>
+                <p class="text-lg text-red-400 mb-4 text-left"><span class="font-semibold">Problem:</span> ${data.problem}</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div class="h-full flex flex-col">
+                       <div class="visual-container">
+                            <img src="${imageUrl}" alt="${data.title}" onerror="this.onerror=null;this.src='https://placehold.co/600x400/1a202c/4a5568?text=Image+Not+Found';">
+                       </div>
+                       <p class="text-md text-green-400 mt-4 text-left flex-grow"><span class="font-semibold">Solution:</span> ${data.solution}</p>
+                    </div>
+                    <div class="flex flex-col gap-4 text-left h-full">
+                        <div class="bg-gray-800 p-6 rounded-xl shadow-lg flex-1">
+                            <h2 class="text-2xl font-semibold mb-4 text-green-400">Key Benefits</h2>
+                            <ul class="space-y-3 text-gray-300">${benefitsHtml}</ul>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-xl shadow-lg flex-1">
+                            <h2 class="text-2xl font-semibold mb-4 text-orange-400">Costs & New Challenges</h2>
+                            <ul class="space-y-3 text-gray-300">${challengesHtml}</ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        return slide;
+    }
+
+    function createSummarySlide(data, index) {
+        const slide = createBaseSlide(index);
+        let benefitsHtml = data.benefits.map(b => `<li class="flex items-start"><span class="benefit-icon mr-3">&#10004;</span><span>${b}</span></li>`).join('');
+        let challengesHtml = data.challenges.map(c => `<li class="flex items-start"><span class="challenge-icon mr-3">&#9888;</span><span>${c}</span></li>`).join('');
+        slide.innerHTML = `
+             <div class="w-full max-w-6xl">
+                <h1 class="text-3xl md:text-4xl font-bold mb-8">${data.title}</h1>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-left mb-8">
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                        <h2 class="text-2xl font-semibold mb-4 text-green-400">Benefits</h2>
+                        <ul class="space-y-3 text-gray-300">${benefitsHtml}</ul>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                        <h2 class="text-2xl font-semibold mb-4 text-orange-400">Costs & Challenges</h2>
+                        <ul class="space-y-3 text-gray-300">${challengesHtml}</ul>
+                    </div>
+                </div>
+                <p class="text-lg md:text-xl text-gray-400 italic bg-gray-800 p-6 rounded-xl">${data.conclusion}</p>
+            </div>
+        `;
+        return slide;
+    }
+
+    function createDiscussionSlide(data, index) {
+        const slide = createBaseSlide(index);
+        slide.innerHTML = `
+            <div class="flex flex-col items-center">
+                <div class="text-9xl mb-8">&#63;</div>
+                <h1 class="text-4xl md:text-6xl font-bold">${data.title}</h1>
+            </div>
+        `;
+        return slide;
+    }
+
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const progressBar = document.getElementById('progress-bar');
+
+    function updateUI() {
+        const slides = document.querySelectorAll('.slide');
+        slides.forEach((slide, index) => {
+            if (index === currentSlide) {
+                slide.classList.add('active');
+                slide.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+            } else {
+                slide.classList.remove('active');
+            }
+        });
+
+        prevBtn.disabled = currentSlide === 0;
+        nextBtn.disabled = currentSlide === slidesData.length - 1;
+
+        const progress = ((currentSlide + 1) / slidesData.length) * 100;
+        progressBar.style.width = `${progress}%`;
+    }
+
+    prevBtn.addEventListener('click', () => {
+        if (currentSlide > 0) {
+            currentSlide--;
+            updateUI();
+        }
+    });
+
+    nextBtn.addEventListener('click', () => {
+        if (currentSlide < slidesData.length - 1) {
+            currentSlide++;
+            updateUI();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight') {
+            nextBtn.click();
+        } else if (e.key === 'ArrowLeft') {
+            prevBtn.click();
+        }
+    });
+
+    // Initial render
+    renderSlides();
+    // Set initial state after a short delay to allow rendering
+    setTimeout(() => {
+        updateUI();
+    }, 100);
+
+</script>
+</body>
+</html>
+
