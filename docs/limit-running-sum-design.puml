@@ -1,0 +1,112 @@
+@startuml
+!theme materia
+skinparam backgroundColor white ' Ensure a clear background for notes.
+skinparam defaultText {
+  FontName Arial ' A common, readable professional font
+  FontSize 12
+  FontColor #333333 ' Dark grey for good contrast
+}
+
+title Limit Check System: Component Interactions
+
+' === Define all participants in the system ===
+participant "Payment Service" as PymtSvc
+queue "Limit Service Application Event Bus" as Events
+participant "UtilizationUpdateListener" as Listener
+participant "LimitQueryService" as QuerySvc
+participant "LimitStitchingService" as StitchingSvc
+database "hourly-db" as HourlyDB
+database "daily-db" as DailyDB
+database "weekly-db" as WeeklyDB
+database "monthly-db" as MonthlyDB
+
+' ================================================
+' ===           PART A: LIVE UPDATE            ===
+' ================================================
+group Part A: Live Data Flow (Event-Driven Update)
+
+    PymtSvc ->> Events : Publishes TransactionSuccessEvent
+    activate Events
+
+    Events ->> Listener : Delivers event
+    deactivate Events
+    activate Listener
+
+    Listener -> HourlyDB : UPSERT amount
+    Listener -> DailyDB : UPSERT amount
+    Listener -> WeeklyDB : UPSERT amount
+    Listener -> MonthlyDB : UPSERT amount
+    note right of Listener #LightBlue: These four UPSERT operations\nare executed in parallel\nasynchronously.
+    ' Using LightBlue (#ADD8E6) or LightGrey (#D3D3D3) for notes, as they have better contrast.
+
+    deactivate Listener
+end
+
+... 2 Minutes Later ...
+
+' ================================================
+' ===         PART B: STATIC QUERY             ===
+' ================================================
+group Part B: Static Range Query
+
+    actor User
+    User -> QuerySvc : Get amount for '2025-W36'
+    activate QuerySvc
+
+    note over QuerySvc #LightSteelBlue: Direct, single lookup for a fixed period.
+    ' Using LightSteelBlue (#B0C4DE) or LightSalmon (#FFA07A) for good contrast
+
+    QuerySvc -> WeeklyDB : SELECT amount WHERE period_key = '2025-W36'
+    activate WeeklyDB
+    WeeklyDB --> QuerySvc : Returns amount
+    deactivate WeeklyDB
+
+    QuerySvc --> User : Returns final amount
+    deactivate QuerySvc
+
+end
+
+... 5 Minutes Later ...
+
+' ================================================
+' ===      PART C: ROLLING WINDOW QUERY        ===
+' ================================================
+group Part C: Rolling Window Calculation ("Stitching")
+
+    User -> QuerySvc : Get amount for last 45 days
+    activate QuerySvc
+
+    QuerySvc -> StitchingSvc : calculateUtilizedAmount(window)
+    activate StitchingSvc
+
+    note over StitchingSvc #LightGoldenrodYellow: Implements the "Remainder" algorithm.\nIt iteratively queries tables from the largest\ntime unit down to the smallest.
+    ' Using LightGoldenrodYellow (#FAFAD2) or similar, still light but with better text contrast
+
+    ' --- The Stitching Logic Loop ---
+    StitchingSvc -> MonthlyDB : getForPartialMonth("September")
+    activate MonthlyDB
+    MonthlyDB --> StitchingSvc : Returns partial month data
+    deactivate MonthlyDB
+
+    StitchingSvc -> MonthlyDB : getForFullMonth("August")
+    activate MonthlyDB
+    MonthlyDB --> StitchingSvc : Returns full month data
+    deactivate MonthlyDB
+
+    StitchingSvc -> WeeklyDB : getForFullWeek("W31")
+    activate WeeklyDB
+    WeeklyDB --> StitchingSvc : Returns full week data
+    deactivate WeeklyDB
+
+    note right of StitchingSvc #LightCoral: ... and so on for days & hours ...
+    ' A slightly more distinct color for the "continuation" note
+
+    StitchingSvc --> QuerySvc : Returns stitched TotalSum
+    deactivate StitchingSvc
+
+    QuerySvc --> User : Returns final amount
+    deactivate QuerySvc
+
+end
+
+@enduml
