@@ -70,10 +70,8 @@
 <body class="bg-gray-900 text-white overflow-hidden flex flex-col h-screen">
 
 <main id="slides-container" class="flex-grow w-full flex overflow-x-auto snap-x snap-mandatory scroll-smooth">
-    <!-- Slides will be injected here by JavaScript -->
 </main>
 
-<!-- Navigation and Progress Bar -->
 <footer class="w-full bg-gray-800 p-4 flex items-center justify-between shadow-lg">
     <button id="prevBtn"
             class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -91,174 +89,189 @@
 
 <script>
     const imagePaths = {
-      "1.CQRS.jpg": "./1.CQRS.png",
-      "2.hexagonal.jpg": "./2.hexagonal.png",
-      "3.maven-modules.jpg": "./3.maven-modules.png",
-      "4.public-facade-with-package-private.jpg": "./4.public-facade-with-package-private.png",
-      "5.payment-ar-proper.jpg": "./5.payment-ar-proper.png",
-      "6.statemachine.jpg": "./6.statemachine.png",
-      "7.durable-statemachine.jpg": "./7.durable-statemachine.png",
-      "8.idempotency.jpg": "./8.idempotency.png"
+        "1.CQRS.jpg": "./1.CQRS.png",
+        "2.hexagonal.jpg": "./2.hexagonal.png",
+        "3.maven-modules.jpg": "./3.maven-modules.png",
+        "4.public-facade-with-package-private.jpg": "./4.public-facade-with-package-private.png",
+        "5.payment-ar-proper.jpg": "./5.payment-ar-proper.png",
+        "6.statemachine.jpg": "./6.statemachine.png",
+        "7.durable-statemachine.jpg": "./7.durable-statemachine.png",
+        "8.idempotency.jpg": "./8.idempotency.png",
+        "9.command-bus.png": "./9.command-bus.png"
     };
 
     const slidesData = [
-      {
-        type: 'title',
-        title: 'Architectural Evolution',
-        subtitle: 'A Blueprint for Resilient & Refactor-Friendly Services',
-        tagline: 'Moving from "Gentleman\'s Agreements" to Architectural Guarantees'
-      },
-      {
-        type: 'problems',
-        title: 'The Core Problems We Face Today',
-        problems: [
-          {icon: '&#129521;', label: 'Tangled Dependencies', text: 'Changes have an unpredictable and wide blast radius.'},
-          {icon: '&#128185;', label: 'Data Inconsistency', text: 'Audits reveal impossible states in our data (e.g. \'Transaction Successful\', \'Debit Failed\').'},
-          {icon: '📜', label: 'Brittle Workflows', text: 'Procedural sagas are a maintenance nightmare and lose state on application crashes.'}
-        ]
-      },
-
-      {
-        type: 'decision',
-        title: 'Decision #1: Hexagonal Architecture',
-        problem: 'In our current Layered Architecture, business logic is tightly coupled to the database and technology, making it impossible to test or change in isolation. Any changes in the infrastructure (API spec, new fields, new DB) ripple through the entire codebase.',
-        solution: 'This diagram shows our goal: a central <span class="font-semibold text-yellow-400">Application Core</span> that is completely isolated. It exposes "Ports," and all external concerns—like REST controllers or databases—are <span class="font-semibold">"Adapters"</span> that plug into those ports. The arrows show dependencies only ever point inward.',
-        visual: "2.hexagonal.jpg",
-        benefits: [
-          '<span class="font-semibold">High Testability:</span> Core business logic can be tested without tight coupling on adapter, every adapter is mock-able.',
-          '<span class="font-semibold">Technology Agnostic:</span> We can swap a database or message queue without changing business rules.'
-        ],
-        challenges: [
-          '<span class="font-semibold">Effort:</span> More classes & interfaces are required (boilerplate).',
-          '<span class="font-semibold">Challenge:</span> Requires a significant mental shift from the traditional layered approach. Would necessitate more time spent on low-level design.'
-        ]
-      },
-      {
-        type: 'decision',
-        title: 'Decision #2: Enforce Boundaries with Maven Modules',
-        problem: 'We have a "gentleman\'s agreement" not to let infrastructure code trespass into the core domain, but it happens, creating a tangled mess.',
-        solution: 'Here, we see the compiler-enforced boundary. An `APP` can depend on `INFRASTRUCTURE`, which depends on `CORE`. But a dependency arrow going from `CORE` back to `INFRASTRUCTURE` is shown as impossible—it results in a build failure.',
-        visual: "3.maven-modules.jpg",
-        benefits: [
-          '<span class="font-semibold">Impossible to Trespass:</span> Guaranteed isolation of pure business logic.',
-          '<span class="font-semibold">Clean Dependency Graph:</span> Makes the architecture explicit and impossible to misunderstand.'
-        ],
-        challenges: [
-          '<span class="font-semibold">Effort:</span> More initial project setup complexity.',
-          '<span class="font-semibold">Challenge:</span> Requires managing a multi-module build.'
-        ]
-      },
-      {
-        type: 'decision',
-        title: 'Decision #3: Isolate Adapters with a Public Facade',
-        problem: 'We can\'t truly remove our external dependencies leading us to use @Autowired(required = false) because there is no clean exit, the dependencies have hidden coupling.',
-        solution: 'This visual shows our "atomic switch" pattern. Inside the <span class="font-semibold">Adapter Package</span>, internal classes are hidden. The only entry point for the application\'s Component Scanner is the single, <span class="font-semibold text-green-400">Public Facade</span>. Any attempt by another adapter to access internal details is blocked with a compile error.',
-        visual: "4.public-facade-with-package-private.jpg",
-        benefits: [
-          '<span class="font-semibold">Truly Independent Adapters:</span> Eliminates hidden coupling between components.',
-          '<span class="font-semibold">Atomic On/Off Switch:</span> An entire adapter is enabled/disabled via a single switch.'
-        ],
-        challenges: [
-          '<span class="font-semibold">Effort:</span> Requires strict discipline in maintaining package structure and access modifiers.',
-          '<span class="font-semibold">Challenge:</span> A new concept for developers used to making everything public by default. Shared code should be explicitly placed under shared package with public-modifier and a strong justification'
-        ]
-      },
-      {
-        type: 'decision',
-        title: 'Decision #4: CQRS - The "Fast & Safe" Lanes',
-        problem: 'Our read APIs get slower every time we add a new security check to our payment logic because they share the same code path.',
-        solution: 'This visual shows an API request splitting into two paths: A streamlined <span class="font-semibold text-blue-400">"Fast Lane"</span> for Queries leading directly to a data response, and a methodical <span class="font-semibold text-orange-400">"Safe Lane"</span> for Commands that must pass through gates like Validation, Security, and Idempotency.',
-        visual: "1.CQRS.jpg",
-        benefits: [
-          '<span class="font-semibold">Fast UX:</span> Queries remain consistently fast.',
-          '<span class="font-semibold">Reduced Blast Radius:</span> Complex command logic has zero performance impact on reads.'
-        ],
-        challenges: [
-          '<span class="font-semibold">Effort:</span> More code to manage two separate paths.',
-          '<span class="font-semibold">Challenge:</span> The team must maintain the discipline of the separation.'
-        ]
-      },
-
-      {
-        type: 'decision',
-        title: 'Decision #5: State Machines for Declarative Workflows',
-        problem: 'Our procedural payment saga is brittle and a maintenance nightmare. A simple change requires navigating a complex web of if/else statements.',
-        solution: 'This visual contrasts our "before" and "after". On the left, the chaotic, tangled mess of a <span class="font-semibold text-red-400">Procedural Script</span>. On the right, the clean, organized, and maintainable flowchart of a <span class="font-semibold text-blue-400">Declarative State Machine</span>.',
-        visual: "6.statemachine.jpg",
-        benefits: [
-          '<span class="font-semibold">Visualizable Logic:</span> The flow is easy to read and understand.',
-          '<span class="font-semibold">Maintainable:</span> Adding a new step is adding a node to a graph, not performing surgery on a complex script.'
-        ],
-        challenges: [
-          '<span class="font-semibold">Effort:</span> Requires the team to learn to think in states and events.',
-          '<span class="font-semibold">Challenge:</span> The logic is less centralized than a single script. Exception logging and tracing needs to be well-thought-out.'
-        ]
-      },
-      {
-        type: 'decision',
-        title: 'Decision #6: State Machine Persisters for "Memory"',
-        problem: 'Lost transactions on application crashes; inability to handle async or human-in-the-loop flows. Thread.sleep(..) solutions, separate cron jobs to clean up stuck transactions, fragile retry implementation are all indicative of same issue.',
-        solution: 'Here we see a workflow that saves its progress to a database, its <span class="font-semibold">Durable Memory</span>. This allows the state machine to survive application crashes and pause indefinitely, resuming later. This is what enables truly resilient, long-running processes.',
-        visual: "7.durable-statemachine.jpg",
-        benefits: [
-          '<span class="font-semibold">Resilient & Resumable:</span> No more lost transactions on restart.',
-          '<span class="font-semibold">Enables Async & Pause/Resume:</span> Makes truly async and human-in-the-loop workflows possible.',
-          '<span class="font-semibold">Future-Proof:</span> Supports our current needs and our future target state of ACK+CALLBACK.'
-        ],
-        challenges: [
-          '<span class="font-semibold">Effort:</span> Adds a database write to each state transition.',
-          '<span class="font-semibold">Challenge:</span> Debugging requires checking logs and the database state.'
-        ]
-      },
-      {
-        type: 'decision',
-        title: 'Decision #7: Smart Idempotency',
-        problem: 'Preventing accidental duplicate payments while still allowing legitimate retries by callers (Experience layer).',
-        solution: 'This diagram shows three scenarios. A <span class="font-semibold text-green-400">New Request</span> is processed. An <span class="font-semibold text-red-400">Accidental Duplicate</span> with the same key is blocked by the middleware, returning a cached response. An <span class="font-semibold text-green-400">Intentional Retry</span> with a new key is processed correctly.',
-        visual: "8.idempotency.jpg",
-        benefits: [
-          '<span class="font-semibold">Targeted Safety:</span> Apply idempotency only where it\'s needed.',
-          '<span class="font-semibold">Clear Intent:</span> Differentiates between an accidental replay (blocked) and an intentional retry (allowed).'
-        ],
-        challenges: [
-          '<span class="font-semibold">Effort:</span> The client is now responsible for generating and managing idempotency keys.',
-          '<span class="font-semibold">Challenge:</span> Requires clear API documentation for clients.'
-        ]
-      },
-      {
-        type: 'decision',
-        title: 'Decision #8: DDD - The Aggregate as a "Gatekeeper"',
-        problem: 'Corrupt data and "impossible states" in our production database.',
-        solution: 'This diagram shows the <span class="font-semibold text-cyan-400">Payment Aggregate</span> as a hexagonal guardian. A direct, invalid state change is disallowed. A valid command, `.processDebit()`, enters through a guarded port, updates the internal state, and publishes an event, ensuring the aggregate is <span class="font-semibold">Always Consistent</span>.',
-        visual: "5.payment-ar-proper.jpg",
-        benefits: [
-          '<span class="font-semibold">Guaranteed Data Integrity:</span> Eliminates contradictory states by design.',
-          '<span class="font-semibold">Centralized Rules:</span> Business logic for a concept is in one, obvious place.'
-        ],
-        challenges: [
-          '<span class="font-semibold">Effort:</span> Requires more upfront design effort.',
-          '<span class="font-semibold">Challenge:</span> Correctly identifying and formulating policies can be challenging, team must refrain from creating anemic models (getters & setters should be avoided)'
-        ]
-      },
-      {
-        type: 'summary',
-        title: 'The Trade-Off: A Deliberate Choice',
-        benefits: [
-          'Guaranteed Data Integrity',
-          'High Testability & Resilience',
-          'True Refactor-Friendliness & Evolvability'
-        ],
-        challenges: [
-          'Increased Number of Classes (Boilerplate)',
-          'Steeper Initial Learning Curve, requires strict team discipline',
-          'Rigorous design and development phase, more errors during development, less during production'
-        ],
-        conclusion: 'We are trading the false simplicity of our current system for the explicit complexity required to build correct, maintainable software. The effort is in upfront discipline, not in late-night production fixes.'
-      },
-      {
-        type: 'discussion',
-        title: 'Discussion & Questions'
-      }
+        {
+            type: 'title',
+            title: 'Architectural Evolution',
+            subtitle: 'A Blueprint for Resilient & Refactor-Friendly Services',
+            tagline: 'Moving from "Gentleman\'s Agreements" to Architectural Guarantees'
+        },
+        {
+            type: 'problems',
+            title: 'The Core Problems We Face Today',
+            problems: [
+                { icon: '&#129521;', label: 'Tangled Dependencies', text: 'Changes have an unpredictable and wide blast radius.' },
+                { icon: '&#128185;', label: 'Data Inconsistency', text: 'Audits reveal impossible states in our data (e.g., `Transaction Successful`, `Debit Failed`).' },
+                { icon: '📜', label: 'Brittle Workflows', text: 'Procedural sagas are a maintenance nightmare and lose state on application crashes.' }
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #1: Hexagonal Architecture',
+            problem: 'In our current Layered Architecture, business logic is tightly coupled to the database and technology, making it impossible to test or change in isolation. Any changes in the infrastructure (API spec, new fields, new DB) ripple through the entire codebase.',
+            solution: 'This diagram shows our goal: a central <span class="font-semibold text-yellow-400">Application Core</span> that is completely isolated. It exposes "Ports," and all external concerns—like REST controllers or databases—are <span class="font-semibold">"Adapters"</span> that plug into those ports. The arrows show dependencies only ever point inward.',
+            visual: "2.hexagonal.jpg",
+            benefits: [
+                '<span class="font-semibold">High Testability:</span> Core business logic can be tested without tight coupling on adapter, every adapter is mock-able.',
+                '<span class="font-semibold">Technology Agnostic:</span> We can swap a database or message queue without changing business rules.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> More classes & interfaces are required (boilerplate).',
+                '<span class="font-semibold">Challenge:</span> Requires a significant mental shift from the traditional layered approach. Would necessitate more time spent on low-level design.'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #2: Enforce Boundaries with Maven Modules',
+            problem: 'We have a "gentleman\'s agreement" not to let infrastructure code trespass into the core domain, but it happens, creating a tangled mess.',
+            solution: 'Here, we see the compiler-enforced boundary. An `APP` can depend on `INFRASTRUCTURE`, which depends on `CORE`. But a dependency arrow going from `CORE` back to `INFRASTRUCTURE` is shown as impossible—it results in a build failure.',
+            visual: "3.maven-modules.jpg",
+            benefits: [
+                '<span class="font-semibold">Impossible to Trespass:</span> Guaranteed isolation of pure business logic.',
+                '<span class="font-semibold">Clean Dependency Graph:</span> Makes the architecture explicit and impossible to misunderstand.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> More initial project setup complexity.',
+                '<span class="font-semibold">Challenge:</span> Requires managing a multi-module build.'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #3: Isolate Adapters with a Public Facade',
+            problem: 'We can\'t truly remove our external dependencies leading us to use @Autowired(required = false) because there is no clean exit, the dependencies have hidden coupling.',
+            solution: 'This visual shows our "atomic switch" pattern. Inside the <span class="font-semibold">Adapter Package</span>, internal classes are hidden. The only entry point for the application\'s Component Scanner is the single, <span class="font-semibold text-green-400">Public Facade</span>. Any attempt by another adapter to access internal details is blocked with a compile error.',
+            visual: "4.public-facade-with-package-private.jpg",
+            benefits: [
+                '<span class="font-semibold">Truly Independent Adapters:</span> Eliminates hidden coupling between components.',
+                '<span class="font-semibold">Atomic On/Off Switch:</span> An entire adapter is enabled/disabled via a single switch.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> Requires strict discipline in maintaining package structure and access modifiers.',
+                '<span class="font-semibold">Challenge:</span> A new concept for developers used to making everything public by default. Shared code should be explicitly placed under shared package with public-modifier and a strong justification'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #4: CQRS - The "Fast & Safe" Lanes',
+            problem: 'Our read APIs get slower every time we add a new security check to our payment logic because they share the same code path.',
+            solution: 'This visual shows an API request splitting into two paths: A streamlined <span class="font-semibold text-blue-400">"Fast Lane"</span> for Queries leading directly to a data response, and a methodical <span class="font-semibold text-orange-400">"Safe Lane"</span> for Commands that must pass through gates like Validation, Security, and Idempotency.',
+            visual: "1.CQRS.jpg",
+            benefits: [
+                '<span class="font-semibold">Fast UX:</span> Queries remain consistently fast.',
+                '<span class="font-semibold">Reduced Blast Radius:</span> Complex command logic has zero performance impact on reads.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> More code to manage two separate paths.',
+                '<span class="font-semibold">Challenge:</span> The team must maintain the discipline of the separation.'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #5: State Machines for Declarative Workflows',
+            problem: 'Our procedural payment saga is brittle and a maintenance nightmare. A simple change requires navigating a complex web of if/else statements.',
+            solution: 'This visual contrasts our "before" and "after". On the left, the chaotic, tangled mess of a <span class="font-semibold text-red-400">Procedural Script</span>. On the right, the clean, organized, and maintainable flowchart of a <span class="font-semibold text-blue-400">Declarative State Machine</span>.',
+            visual: "6.statemachine.jpg",
+            benefits: [
+                '<span class="font-semibold">Visualizable Logic:</span> The flow is easy to read and understand.',
+                '<span class="font-semibold">Maintainable:</span> Adding a new step is adding a node to a graph, not performing surgery on a complex script.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> Requires the team to learn to think in states and events.',
+                '<span class="font-semibold">Challenge:</span> The logic is less centralized than a single script. Exception logging and tracing needs to be well-thought-out.'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #6: State Machine Persisters for "Memory"',
+            problem: 'Lost transactions on application crashes; inability to handle async or human-in-the-loop flows. Thread.sleep(..) solutions, separate cron jobs to clean up stuck transactions, fragile retry implementation are all indicative of same issue.',
+            solution: 'Here we see a workflow that saves its progress to a database, its <span class="font-semibold">Durable Memory</span>. This allows the state machine to survive application crashes and pause indefinitely, resuming later. This is what enables truly resilient, long-running processes.',
+            visual: "7.durable-statemachine.jpg",
+            benefits: [
+                '<span class="font-semibold">Resilient & Resumable:</span> No more lost transactions on restart.',
+                '<span class="font-semibold">Enables Async & Pause/Resume:</span> Makes truly async and human-in-the-loop workflows possible.',
+                '<span class="font-semibold">Future-Proof:</span> Supports our current needs and our future target state of ACK+CALLBACK.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> Adds a database write to each state transition.',
+                '<span class="font-semibold">Challenge:</span> Debugging requires checking logs and the database state.'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #7: Smart Idempotency',
+            problem: 'Preventing accidental duplicate payments while still allowing legitimate retries by callers (Experience layer).',
+            solution: 'This diagram shows three scenarios. A <span class="font-semibold text-green-400">New Request</span> is processed. An <span class="font-semibold text-red-400">Accidental Duplicate</span> with the same key is blocked by the middleware, returning a cached response. An <span class="font-semibold text-green-400">Intentional Retry</span> with a new key is processed correctly.',
+            visual: "8.idempotency.jpg",
+            benefits: [
+                '<span class="font-semibold">Targeted Safety:</span> Apply idempotency only where it\'s needed.',
+                '<span class="font-semibold">Clear Intent:</span> Differentiates between an accidental replay (blocked) and an intentional retry (allowed).'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> The client is now responsible for generating and managing idempotency keys.',
+                '<span class="font-semibold">Challenge:</span> Requires clear API documentation for clients.'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #8: DDD - The Aggregate as a "Gatekeeper"',
+            problem: 'Corrupt data and "impossible states" in our production database.',
+            solution: 'This diagram shows the <span class="font-semibold text-cyan-400">Payment Aggregate</span> as a hexagonal guardian. A direct, invalid state change is disallowed. A valid command, `.processDebit()`, enters through a guarded port, updates the internal state, and publishes an event, ensuring the aggregate is <span class="font-semibold">Always Consistent</span>.',
+            visual: "5.payment-ar-proper.jpg",
+            benefits: [
+                '<span class="font-semibold">Guaranteed Data Integrity:</span> Eliminates contradictory states by design.',
+                '<span class="font-semibold">Centralized Rules:</span> Business logic for a concept is in one, obvious place.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> Requires more upfront design effort.',
+                '<span class="font-semibold">Challenge:</span> Correctly identifying and formulating policies can be challenging, team must refrain from creating anemic models (getters & setters should be avoided)'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #9: The Command Bus: Our "Safe Lane" Traffic Controller',
+            problem: 'Without a central dispatcher, our controllers become bloated. Adding cross-cutting concerns like idempotency means duplicating that code in every controller method or creating complex webs of service-to-service calls.',
+            solution: 'This diagram shows the Command Bus in action. Inbound adapters create a \'Command\' and fire it into the bus. The bus routes it through an ordered pipeline of <span class="font-semibold">middleware</span> before delivering it to the single, correct \'CommandHandler\', making our controllers incredibly thin.',
+            visual: "9.command-bus.png",
+            benefits: [
+                '<span class="font-semibold">Clean Controllers:</span> Adapters only create commands and send them.',
+                '<span class="font-semibold">Centralized Middleware:</span> Cross-cutting concerns (idempotency, service config) are handled in one place, in a defined order.',
+                '<span class="font-semibold">Automatic Registration:</span> The bus is Spring-aware; new handlers are discovered automatically.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> Requires defining \'Command\' and \'CommandHandler\' with appropriate generic-type-match or <span class="font-semibold">"matches"</span>  condition.',
+                '<span class="font-semibold">Challenge:</span> Debugging involves tracing the command through the middleware chain, a new mental model.'
+            ]
+        },
+        {
+            type: 'summary',
+            title: 'The Trade-Off: A Deliberate Choice',
+            benefits: [
+                'Guaranteed Data Integrity',
+                'High Testability & Resilience',
+                'True Refactor-Friendliness & Evolvability'
+            ],
+            challenges: [
+                'Increased Number of Classes (Boilerplate)',
+                'Steeper Initial Learning Curve, requires strict team discipline',
+                'Rigorous design and development phase, more errors during development, less during production'
+            ],
+            conclusion: 'We are trading the false simplicity of our current system for the explicit complexity required to build correct, maintainable software. The effort is in upfront discipline, not in late-night production fixes.'
+        },
+        {
+            type: 'discussion',
+            title: 'Discussion & Questions'
+        }
     ];
 
     const container = document.getElementById('slides-container');
