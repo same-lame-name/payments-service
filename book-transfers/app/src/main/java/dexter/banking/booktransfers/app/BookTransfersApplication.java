@@ -19,7 +19,10 @@ import org.springframework.context.annotation.FilterType;
  */
 @SpringBootApplication
 @ComponentScans({
-    @ComponentScan(basePackages = {"dexter.banking.booktransfers.core", "dexter.banking.booktransfers.app"}),
+    @ComponentScan(basePackages = {
+            "dexter.banking.booktransfers.core",
+            "dexter.banking.booktransfers.app"
+    }),
     @ComponentScan(
         basePackages = "dexter.banking.booktransfers.infrastructure",
         includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = FacadeConfiguration.class),

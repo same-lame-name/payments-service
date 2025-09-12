@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: filesystem, idempotency-redis
+    active: mongo, idempotency-mongo
   application:
     name: book-transfers-service
   config:
