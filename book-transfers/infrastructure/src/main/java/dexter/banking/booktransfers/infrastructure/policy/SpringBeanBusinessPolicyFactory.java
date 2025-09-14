@@ -8,6 +8,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -23,13 +24,21 @@ class SpringBeanBusinessPolicyFactory implements BusinessPolicyFactory {
 
     @Override
     public BusinessPolicy create(JourneySpecification spec) {
-        if (spec.policies() == null || spec.policies().isEmpty()) {
-            throw new IllegalArgumentException("Journey specification must contain at least one policy.");
-        }
+//        if (spec.policies() == null || spec.policies().isEmpty()) {
+//            throw new IllegalArgumentException("Journey specification must contain at least one policy.");
+//        }
 
-        List<BusinessPolicy> policies = spec.policies().stream()
+        List<BusinessPolicy> policies = Optional.of(spec)
+                .map(JourneySpecification::policies)
+                .stream()
+                .flatMap(List::stream)
                 .map(beanName -> applicationContext.getBean(beanName, BusinessPolicy.class))
-                .collect(Collectors.toList());
+                .toList();
+
+
+//        List<BusinessPolicy> policies = spec.policies().stream()
+//                .map(beanName -> applicationContext.getBean(beanName, BusinessPolicy.class))
+//                .collect(Collectors.toList());
 
         return new CompositeBusinessPolicy(policies);
     }

@@ -9,6 +9,7 @@ import dexter.banking.booktransfers.core.application.payment.query.PaymentView;
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
+import dexter.banking.booktransfers.core.domain.shared.context.BeginJourney;
 import dexter.banking.booktransfers.core.port.in.compliance.ComplianceQueryUseCase;
 import dexter.banking.booktransfers.core.port.in.payment.PaymentQueryUseCase;
 import dexter.banking.commandbus.CommandBus;
@@ -38,6 +39,7 @@ class BookTransferController {
     private final WebMapper webMapper;
 
     @PostMapping("/v1/book-transfers/payment")
+    @BeginJourney("'PAYMENT_SUBMIT_V1'") // <-- The new annotation
     public BookTransferResponse submitTransactionV1(@RequestBody @Valid BookTransferRequest bookTransferRequest) {
         PaymentCommand command = webMapper.toCommand(bookTransferRequest, ApiVersion.V1);
         PaymentResult initiatedPayment = commandBus.send(command);

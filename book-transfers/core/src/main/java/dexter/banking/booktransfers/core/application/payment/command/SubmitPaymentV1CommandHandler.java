@@ -5,12 +5,11 @@ import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
-import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContextHolder;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager; // <-- ADDED
 import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.*;
 import dexter.banking.commandbus.CommandHandler;
-import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -41,9 +40,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
         log.info("▶️ [V1] Starting procedural transaction for Command: {}", command.getTransactionReference());
-        JourneySpecification spec = CommandProcessingContextHolder.getContext()
-                .map(CommandProcessingContext::getJourneySpecification)
-                .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context"));
+        JourneySpecification spec = JourneyContextManager.getContext().specification();
+
         BusinessPolicy policy = policyFactory.create(spec);
 
         UUID transactionId = UUID.randomUUID();
