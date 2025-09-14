@@ -136,6 +136,15 @@ The architecture is a SpEL-driven, `ScopedValue`-based Implicit Context Framewor
 **Decision**: Spring AOP will be activated by placing `@EnableAspectJAutoProxy` on `AspectFacadeConfiguration.java` within the `infrastructure` module.
 **Reasoning**: This aligns with the project's existing facade pattern for infrastructure components, creating an atomic on/off switch for the AOP subsystem and reducing coupling with the `app` module.
 
+### 2024-07-30: AOP Framework Re-evaluation and Migration to AspectJ Compile-Time Weaving
+**Decision**: Migrate from Spring AOP to **AspectJ Compile-Time Weaving**.
+**Reasoning**: The initial decision to use Spring AOP led to issues related to proxying and wrapping, which introduce runtime overhead and potential complexities in the interception chain. AspectJ compile-time weaving directly modifies bytecode, eliminating runtime proxies and providing a more robust, transparent, and performant AOP solution. This aligns better with the goal of a clean, robust, and future-aligned implicit context framework by avoiding runtime proxy limitations.
+**Implementation Strategy**:
+1.  **Remove Spring AOP**: Deactivate Spring AOP by removing `spring-boot-starter-aop` dependency and `@EnableAspectJAutoProxy` (if present).
+2.  **Centralize AspectJ Configuration**: Define AspectJ versions and `aspectj-maven-plugin` configuration in the root `payments-service/pom.xml`'s `pluginManagement` and `dependencyManagement` sections.
+3.  **Module-Specific Activation**: Apply `aspectj-maven-plugin` to `book-transfers-core`, `book-transfers-app`, and `book-transfers-infrastructure` modules to ensure compile-time weaving across all relevant codebases.
+4.  **Spring Integration for Aspects**: Utilize Spring's `@Configurable` annotation on the `BeginJourneyAspect` and enable `@EnableSpringConfigured` in a Spring configuration to allow dependency injection of Spring beans (e.g., `ConfigurationPort`) into AspectJ-instantiated aspects.
+
 </details>
 
 ---
