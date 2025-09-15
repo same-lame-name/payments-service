@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class BasicService {
 
-    @DependsOn("beginJourneyAspect")
     @BeginJourney("'BASIC_SERVICE'")
     @Transactional
     public void submit() {
