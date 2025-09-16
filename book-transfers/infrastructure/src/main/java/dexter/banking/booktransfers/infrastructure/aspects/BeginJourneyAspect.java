@@ -9,6 +9,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.expression.EvaluationContext;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 @Aspect
 @Component
+@Configurable
 public class BeginJourneyAspect {
 
     private final ConfigurationPort configurationPort;
