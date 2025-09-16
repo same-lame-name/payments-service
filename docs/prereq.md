@@ -145,6 +145,12 @@ The architecture is a SpEL-driven, `ScopedValue`-based Implicit Context Framewor
 3.  **Module-Specific Activation**: Apply `aspectj-maven-plugin` to `book-transfers-core`, `book-transfers-app`, and `book-transfers-infrastructure` modules to ensure compile-time weaving across all relevant codebases.
 4.  **Spring Integration for Aspects**: Utilize Spring's `@Configurable` annotation on the `BeginJourneyAspect` and enable `@EnableSpringConfigured` in a Spring configuration to allow dependency injection of Spring beans (e.g., `ConfigurationPort`) into AspectJ-instantiated aspects.
 
+### 2024-07-31: AspectJ Weaving Strategy and IDE Configuration
+**Decision**: Use **AspectJ post-compile weaving** via the `aspectj-maven-plugin`.
+**Reasoning**: The standard AspectJ compiler (`ajc`) is not compatible with Lombok's annotation processing. To use both, compilation must be a two-stage process. First, `javac` (with Lombok) compiles the source code. Second, the AspectJ weaver performs binary weaving on the generated `.class` files. This approach correctly separates concerns and avoids conflicts.
+**Implementation Detail**: The `aspectj-maven-plugin` will be configured to run in the `compile` phase, after `maven-compiler-plugin`. It will be configured for weaving only, with `<sources/>` being empty and `<weaveDirectory>` pointing to the build output directory.
+**Operational Mandate**: To ensure consistency between the command-line build and the IDE, all build and test execution within the IDE **must be delegated to Maven**. This is the only way to guarantee that the two-stage compile/weave process is executed correctly, preventing runtime errors and debugging inconsistencies.
+
 </details>
 
 ---

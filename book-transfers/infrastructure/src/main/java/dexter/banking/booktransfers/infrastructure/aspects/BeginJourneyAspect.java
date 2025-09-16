@@ -1,6 +1,9 @@
-package dexter.banking.booktransfers.core.domain.shared.context;
+package dexter.banking.booktransfers.infrastructure.aspects;
 
 import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.BeginJourney;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
 import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
