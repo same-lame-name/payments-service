@@ -113,6 +113,10 @@
                             <groupId>dexter.demo.payment</groupId>
                             <artifactId>book-transfers-infrastructure</artifactId>
                         </aspectLibrary>
+                        <aspectLibrary>
+                            <groupId>org.springframework</groupId>
+                            <artifactId>spring-aspects</artifactId>
+                        </aspectLibrary>
                     </aspectLibraries>
                     <weaveDependencies>
                         <weaveDependency>

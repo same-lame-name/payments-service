@@ -9,6 +9,7 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
@@ -18,17 +19,15 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 
 @Aspect
-@Component
+//@Component
 @Configurable
 public class BeginJourneyAspect {
 
-    private final ConfigurationPort configurationPort;
     private final SpelExpressionParser parser = new SpelExpressionParser();
     private final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
+    @Autowired
+    private ConfigurationPort configurationPort;
 
-    public BeginJourneyAspect(ConfigurationPort configurationPort) {
-        this.configurationPort = configurationPort;
-    }
 
     @Around("@annotation(beginJourneyAnnotation)")
     public Object initializeContext(ProceedingJoinPoint pjp, BeginJourney beginJourneyAnnotation) throws Throwable {

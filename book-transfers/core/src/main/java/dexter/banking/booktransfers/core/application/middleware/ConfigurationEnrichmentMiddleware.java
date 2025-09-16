@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
  * CommandProcessingContextHolder for downstream compatibility.
  */
 @Order(1)
-@Component
+//@Component
 @RequiredArgsConstructor
 @Slf4j
 public class ConfigurationEnrichmentMiddleware implements Middleware {

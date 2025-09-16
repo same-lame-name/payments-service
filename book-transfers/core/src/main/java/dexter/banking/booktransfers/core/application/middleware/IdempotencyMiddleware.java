@@ -2,6 +2,8 @@ package dexter.banking.booktransfers.core.application.middleware;
 
 import dexter.banking.booktransfers.core.domain.payment.exception.IdempotencyConflictException;
 import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContextHolder;
+import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
 import dexter.banking.booktransfers.core.domain.shared.idempotency.IdempotencyData;
 import dexter.banking.booktransfers.core.domain.shared.idempotency.IdempotencyStatus;
 import dexter.banking.booktransfers.core.port.out.IdempotencyPort;
@@ -27,9 +29,11 @@ public class IdempotencyMiddleware implements Middleware {
     @SuppressWarnings("unchecked")
     public <R, C extends Command<R>> R invoke(C command, Next<R> next) {
         // This middleware is now pure. It depends only on the core context and core ports.
-        boolean isApplicable = CommandProcessingContextHolder.getContext()
-                .map(ctx -> ctx.getJourneySpecification().isIdempotencyEnabled())
-                .orElse(false);
+        JourneySpecification spec = JourneyContextManager.getContext().specification();
+        boolean isApplicable = spec.isIdempotencyEnabled();
+//        boolean isApplicable = CommandProcessingContextHolder.getContext()
+//                .map(ctx -> ctx.getJourneySpecification().isIdempotencyEnabled())
+//                .orElse(false);
 
         if (!isApplicable || !(command instanceof IdempotentCommand<?> idempotentCommand)) {
             return next.invoke();
