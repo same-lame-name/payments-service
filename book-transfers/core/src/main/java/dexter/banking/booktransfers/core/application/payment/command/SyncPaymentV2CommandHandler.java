@@ -9,7 +9,6 @@ import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
 import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContextHolder;
 import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
-import dexter.banking.booktransfers.core.domain.shared.context.BeginJourney;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
 import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
@@ -39,7 +38,6 @@ public class SyncPaymentV2CommandHandler implements CommandHandler<PaymentComman
 
     @Override
     @Transactional
-    @BeginJourney("PAYMENT_SUBMIT_V2_SYNC")
     public PaymentResult handle(PaymentCommand command) {
         JourneySpecification spec = CommandProcessingContextHolder.getContext()
                 .map(CommandProcessingContext::getJourneySpecification)
