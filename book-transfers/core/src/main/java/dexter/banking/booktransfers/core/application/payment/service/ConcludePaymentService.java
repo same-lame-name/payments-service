@@ -1,7 +1,7 @@
 package dexter.banking.booktransfers.core.application.payment.service;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
-import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.in.payment.ConcludePaymentFailedUseCase;
 import dexter.banking.booktransfers.core.port.in.payment.ConcludePaymentParams;

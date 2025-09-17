@@ -1,9 +1,9 @@
 package dexter.banking.booktransfers.infrastructure.aspects;
 
-import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
-import dexter.banking.booktransfers.core.domain.shared.context.BeginJourney;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
 import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
+import dexter.banking.booktransfers.core.domain.shared.markers.WithJourneyContext;
 import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -19,20 +19,20 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Aspect
 @Configurable
-public class BeginJourneyAspect {
+public class WithJourneyContextAspect {
 
     private final SpelExpressionParser parser = new SpelExpressionParser();
     private final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
     @Autowired
     private ConfigurationPort configurationPort;
 
-
-    @Around("@annotation(beginJourneyAnnotation)")
-    public Object initializeContext(ProceedingJoinPoint pjp, BeginJourney beginJourneyAnnotation) throws Throwable {
-        String journeyName = resolveJourneyName(pjp, beginJourneyAnnotation.value());
-        JourneySpecification spec = configurationPort.findForJourney(journeyName)
-                .orElseThrow(() -> new IllegalArgumentException("JourneySpecification not found for name: " + journeyName));
-        JourneyContext context = new JourneyContext(spec);
+    @Around("@annotation(withJourneyContext)")
+    public Object initializeContext(ProceedingJoinPoint pjp, WithJourneyContext withJourneyContext) throws Throwable {
+        String journeyName = resolveJourneyName(pjp, withJourneyContext.value());
+        var spec = configurationPort
+                .findForJourney(journeyName)
+                .orElseGet(JourneySpecification::defaultInstance);
+        var context = new JourneyContext(spec);
 
         try {
             // The aspect calls the clean, application-level manager.
@@ -42,13 +42,12 @@ public class BeginJourneyAspect {
                 try {
                     return pjp.proceed();
                 } catch (Throwable t) {
-                    // Wrap the original Throwable to transport it through the 'Callable' interface.
-                    throw new Exception(t);
+                    // Wrap throwable to escape the lambda
+                    throw new AspectExecutionException(t);
                 }
             });
-        } catch (Exception e) {
-            // 2. THE UNWRAP: The aspect unwraps the exception to restore the original Throwable.
-            // This is the aspect "swinging the sword" to guarantee its own transparency.
+        } catch (AspectExecutionException e) {
+            // Unwrap and rethrow the original throwable to be fully transparent
             throw e.getCause();
         }
     }
@@ -70,5 +69,12 @@ public class BeginJourneyAspect {
             throw new IllegalStateException("SpEL expression '" + expression + "' evaluated to null. Cannot begin journey.");
         }
         return journeyName;
+    }
+
+    // Private wrapper exception for transparently handling Throwables in lambdas
+    private static class AspectExecutionException extends RuntimeException {
+        public AspectExecutionException(Throwable cause) {
+            super(cause);
+        }
     }
 }

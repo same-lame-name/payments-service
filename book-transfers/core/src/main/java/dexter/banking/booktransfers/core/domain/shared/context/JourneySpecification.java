@@ -1,9 +1,10 @@
-package dexter.banking.booktransfers.core.domain.shared.config;
+package dexter.banking.booktransfers.core.domain.shared.context;
 
 
 import dexter.banking.booktransfers.core.domain.shared.primitives.ValueObject;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,4 +19,10 @@ public record JourneySpecification(
         List<String> policies,
         Optional<BigDecimal> complianceThreshold
 ) implements ValueObject {
+    /**
+     * Provides a safe, default specification when one is not explicitly configured.
+     */
+    public static JourneySpecification defaultInstance() {
+        return new JourneySpecification(false, Collections.emptyList(), Optional.empty());
+    }
 }

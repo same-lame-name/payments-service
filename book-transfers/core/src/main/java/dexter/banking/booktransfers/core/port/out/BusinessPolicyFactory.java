@@ -1,7 +1,7 @@
 package dexter.banking.booktransfers.core.port.out;
 
 
-import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 
 /**

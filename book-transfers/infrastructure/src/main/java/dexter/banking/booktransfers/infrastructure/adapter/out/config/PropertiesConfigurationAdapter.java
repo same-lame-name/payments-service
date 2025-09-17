@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.config;
 
-import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
 import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

@@ -1,10 +1,9 @@
 package dexter.banking.booktransfers.core.application.middleware;
 
-import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContext;
-import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContextHolder;
-import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager; // <-- New import
-// import dexter.banking.booktransfers.core.port.out.ConfigurationPort; // <-- REMOVED
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
 import dexter.banking.commandbus.Command;
 import dexter.banking.commandbus.Middleware;
 import lombok.RequiredArgsConstructor;
@@ -12,43 +11,37 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-/**
- * An inbound adapter that acts as a Middleware.
- * Its responsibility is now to bridge the new JourneyContextManager to the legacy
- * CommandProcessingContextHolder for downstream compatibility.
- */
+import java.util.Optional;
+
 @Order(1)
-//@Component
+@Component
 @RequiredArgsConstructor
 @Slf4j
 public class ConfigurationEnrichmentMiddleware implements Middleware {
 
-    // private final ConfigurationPort configurationPort; // <-- REMOVED
+    private final ConfigurationPort configurationPort;
 
     @Override
     public <R, C extends Command<R>> R invoke(C command, Next<R> next) {
-        String identifier = command.getIdentifier();
-        
-        // The new logic: Get the spec from the new context manager.
-        try {
-            JourneySpecification spec = JourneyContextManager.getContext().specification();
-            CommandProcessingContext context = new CommandProcessingContext(spec);
-            CommandProcessingContextHolder.setContext(context);
-            log.debug("Service config for '{}' loaded into legacy context from JourneyContextManager.", identifier);
-        } catch (IllegalStateException e) {
-            // This occurs if a journey has not yet been migrated to @BeginJourney.
-            // We log and proceed without the legacy context, maintaining backward compatibility.
-            log.warn("No JourneyContext found for command identifier: '{}'. Proceeding without configuration in legacy context.", identifier);
-        }
+        String journeyName = command.getIdentifier();
+        var journeySpecification = configurationPort
+                .findForJourney(journeyName)
+                .orElseGet(JourneySpecification::defaultInstance);
+
+        var context = new JourneyContext(journeySpecification);
+
+        log.debug("Running command for journey '{}' with ScopedValue journey context", journeyName);
 
         try {
-            return next.invoke();
-        } finally {
-            // CRUCIAL: The old context holder still needs to be cleared for thread safety.
-            if (CommandProcessingContextHolder.getContext().isPresent()) {
-                CommandProcessingContextHolder.clearContext();
-                log.debug("Legacy context cleared for command identifier: '{}'", identifier);
-            }
+            // This logic correctly handles the `throws Exception` signature of `runWithContext`
+            // while respecting the `invoke` method's signature, which does not throw checked exceptions.
+            return JourneyContextManager.runWithContext(context, next::invoke);
+        } catch (RuntimeException e) {
+            // Propagate runtime exceptions from the downstream middleware/handlers.
+            throw e;
+        } catch (Exception e) {
+            // Wrap any unexpected checked exceptions from `runWithContext` itself.
+            throw new RuntimeException(e);
         }
     }
 }

@@ -7,15 +7,14 @@ import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
-import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContextHolder;
-import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
 import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
 import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
 import dexter.banking.commandbus.CommandHandler;
 import dexter.banking.statemachine.StateMachineFactory;
-import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContext;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -39,9 +38,7 @@ public class SyncPaymentV2CommandHandler implements CommandHandler<PaymentComman
     @Override
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
-        JourneySpecification spec = CommandProcessingContextHolder.getContext()
-                .map(CommandProcessingContext::getJourneySpecification)
-                .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context"));
+        JourneySpecification spec = JourneyContextManager.getContext().specification();
         BusinessPolicy policy = policyFactory.create(spec);
 
         UUID transactionId = UUID.randomUUID();

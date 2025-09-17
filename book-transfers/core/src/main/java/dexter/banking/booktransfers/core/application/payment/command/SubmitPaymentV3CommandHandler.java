@@ -6,7 +6,7 @@ import dexter.banking.booktransfers.core.application.payment.orchestration.hybri
 import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
-import dexter.banking.booktransfers.core.domain.shared.config.CommandProcessingContextHolder;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
 import dexter.banking.booktransfers.core.port.out.CustomerPort;
@@ -40,8 +40,7 @@ public class SubmitPaymentV3CommandHandler implements CommandHandler<HighValuePa
             throw new IllegalArgumentException("Customer is not valid");
         }
 
-        var spec = CommandProcessingContextHolder.getContext()
-                .orElseThrow(() -> new IllegalStateException("JourneySpecification not found in context")).getJourneySpecification();
+        var spec = JourneyContextManager.getContext().specification();
         BusinessPolicy policy = policyFactory.create(spec);
 
         UUID transactionId = UUID.randomUUID();

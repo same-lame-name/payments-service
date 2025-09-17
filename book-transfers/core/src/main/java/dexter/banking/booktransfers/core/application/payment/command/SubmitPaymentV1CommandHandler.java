@@ -6,7 +6,7 @@ import dexter.banking.booktransfers.core.domain.payment.valueobject.result.Credi
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager; // <-- ADDED
-import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.*;
 import dexter.banking.commandbus.CommandHandler;

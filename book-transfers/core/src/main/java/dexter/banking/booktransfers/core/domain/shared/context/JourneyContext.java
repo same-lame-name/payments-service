@@ -1,6 +1,5 @@
 package dexter.banking.booktransfers.core.domain.shared.context;
 
-import dexter.banking.booktransfers.core.domain.shared.config.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.shared.primitives.ValueObject;
 
 /**

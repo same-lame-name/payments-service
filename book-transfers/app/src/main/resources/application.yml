@@ -62,6 +62,9 @@ service-config:
       policies:
         - "stateTransitionPolicy"
       complianceThreshold: 10000.00
+    PAYMENT_DETAILS_QUERY_V1:
+      policies:
+        - "stateTransitionPolicy"
 
 logging:
   level:
