@@ -1,11 +1,7 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.events.payment;
 
-import dexter.banking.booktransfers.core.domain.compliance.event.ComplianceCaseApproved;
 import dexter.banking.booktransfers.core.domain.payment.PaymentState;
 import dexter.banking.booktransfers.core.domain.payment.event.*;
-import dexter.banking.booktransfers.core.port.in.compliance.CreateComplianceCaseUseCase;
-import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentParams;
-import dexter.banking.booktransfers.core.port.in.payment.ResumePaymentUseCase;
 import dexter.banking.booktransfers.core.port.out.WebhookPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +21,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 class TransactionalPaymentEventListener {
-    private final CreateComplianceCaseUseCase createComplianceCaseUseCase;
     private final WebhookPort webhookPort;
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -57,13 +52,6 @@ class TransactionalPaymentEventListener {
         } else {
             log.info("Realtime flag not set or false. Skipping immediate webhook notification for transaction {}", event.aggregateId());
         }
-    }
-
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void on(PaymentRequiresComplianceCheck event) {
-        log.info("SAGA: Received PaymentRequiresComplianceCheck for paymentId {}. Invoking CreateComplianceCaseUseCase.", event.aggregateId());
-        // No command object is needed for this internal-only use case.
-        createComplianceCaseUseCase.create(event.aggregateId());
     }
 
     private void notifyWebhook(UUID aggregateId, PaymentState paymentState, Map<String, Object> metadata) {

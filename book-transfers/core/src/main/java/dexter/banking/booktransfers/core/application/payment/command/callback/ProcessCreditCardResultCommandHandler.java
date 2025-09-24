@@ -3,9 +3,6 @@ package dexter.banking.booktransfers.core.application.payment.command.callback;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
-import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
-import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
-import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
@@ -22,10 +19,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -37,10 +32,7 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
     private final BusinessPolicyFactory policyFactory;
     private final EventDispatcherPort eventDispatcher;
 
-    @Qualifier("asyncTransactionFsmFactory")
     private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
-    @Qualifier("v3TransactionFsmFactory")
-    private final StateMachineFactory<ProcessStateV3, ProcessEventV3, HybridTransactionContext> v3StateMachineFactory;
 
     @Override
     @Transactional
@@ -56,8 +48,6 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
         String journeyName = memento.journeyName();
         if (journeyName.contains("V2_ASYNC")) {
             resumeV2Orchestration(command, payment);
-        } else if (journeyName.contains("V3")) {
-            resumeV3Orchestration(command, payment);
         } else {
             log.error("Unknown journeyName '{}' for callback on transactionId {}", journeyName, command.transactionId());
         }
@@ -82,17 +72,6 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
         );
     }
 
-    private void resumeV3Orchestration(ProcessCreditCardResultCommand command, Payment payment) {
-        v3StateMachineFactory.acquireStateMachine(payment.getId().toString()).ifPresentOrElse(
-                stateMachine -> {
-                    recordAndPublish(command, payment, Collections.emptyMap());
-                    ProcessEventV3 event = command.result().status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
-                            ProcessEventV3.CREDIT_LEG_SUCCEEDED : ProcessEventV3.CREDIT_LEG_FAILED;
-                    stateMachine.fire(event);
-                },
-                () -> log.error("Could not acquire V3 state machine for transaction id: {}", command.transactionId())
-        );
-    }
 
     private Payment rehydratePayment(Payment.PaymentMemento memento) {
         BusinessPolicy policy = configurationPort

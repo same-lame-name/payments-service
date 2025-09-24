@@ -3,9 +3,6 @@ package dexter.banking.booktransfers.core.application.payment.command.callback;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
-import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessEventV3;
-import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.model.ProcessStateV3;
-import dexter.banking.booktransfers.core.application.payment.orchestration.hybrid.persistence.HybridTransactionContext;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
@@ -18,11 +15,9 @@ import dexter.banking.commandbus.CommandHandler;
 import dexter.banking.statemachine.StateMachineFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,10 +31,7 @@ public class ProcessLimitReversalResultCommandHandler implements CommandHandler<
     private final BusinessPolicyFactory policyFactory;
     private final EventDispatcherPort eventDispatcher;
 
-    @Qualifier("asyncTransactionFsmFactory")
     private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
-    @Qualifier("v3TransactionFsmFactory")
-    private final StateMachineFactory<ProcessStateV3, ProcessEventV3, HybridTransactionContext> v3StateMachineFactory;
 
 
     @Override
