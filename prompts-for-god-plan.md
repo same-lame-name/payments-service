@@ -32,3 +32,13 @@ Go through the god-plan-critique.md and concur back your understanding and the w
 Let's start with issue #2 (Brittle String-Based Contracts)
 
 Share your design for fixing it, always keeping the god-plan and current-state of book-transfers in mind. You must try to align with god-plan without actively trying to rebel like a teenager and trying to dismantle or ridicule the god-plan. Also your solution must reconcile with the current state of the book-transfers, if you're introduce some model or design, and if that purpose is already served by some existing implementation, then we must not introduce new implementation, instead we should refine and modify the current existing one. For instance if we have certain middleware which takes care of injection of the journey-specification and in your attempt to fix the journey-spec injection you want to have a cross cutting injection point, you must identify that we already have middleware serving the purpose. We must not treat or new inclusions and design in isolation, but always a part of whole. a cog in a well oiled and moving machinery.
+
+=======================================
+Good fucking job. pardon my french but I think we have hit gold.
+
+Let's document it in god-plan.md please make sure you keep the very elaborative and descriptive nature of god-plan intact, you will need to do modifications on various places of the god-plan.md and you must do it, god-plan must be coherent and consistent at all times.
+
+You have shared a mere conceptual peek with me in our discussions which is the most fruitful way of getting to a point. But in the god-plan as you can see we are not cutting any corners, we must meticulously and judiciious and in an unabridged fashion must provide the detailed peek and liberal with words on explanation and agenda.
+
+Document this discussion in god-plan.md and ensure all the cascading changes are also captured.
+Amend god-plan.md and ensure it's coherent and exhaustive, use your write-files privilege and I shall review and approve your changes. Let's go.
