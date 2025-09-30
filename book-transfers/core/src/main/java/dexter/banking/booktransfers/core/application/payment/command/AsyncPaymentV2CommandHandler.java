@@ -8,8 +8,8 @@ import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
 import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
@@ -40,7 +40,7 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     @Override
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
-        JourneySpecification spec = JourneyContextManager.getContext().specification();
+        JourneySpecificationDeprecated spec = JourneyContextManagerDeprecated.getContext().specification();
         BusinessPolicy policy = policyFactory.create(spec);
 
         UUID transactionId = UUID.randomUUID();

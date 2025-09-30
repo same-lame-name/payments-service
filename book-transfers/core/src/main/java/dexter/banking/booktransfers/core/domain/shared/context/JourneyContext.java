@@ -1,10 +1,14 @@
 package dexter.banking.booktransfers.core.domain.shared.context;
 
-import dexter.banking.booktransfers.core.domain.shared.primitives.ValueObject;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /**
- * An immutable record that holds the JourneySpecification for the currently executing journey.
+ * An immutable class that holds the JourneySpecification for the currently executing journey.
  * This serves as the carrier for all journey-specific configuration.
  */
-public record JourneyContext(JourneySpecification specification) implements ValueObject {
+@Getter
+@RequiredArgsConstructor
+public class JourneyContext {
+    private final JourneySpecification specification;
 }

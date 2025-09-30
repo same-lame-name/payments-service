@@ -1,9 +1,9 @@
 package dexter.banking.booktransfers.infrastructure.aspects;
 
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
-import dexter.banking.booktransfers.core.domain.shared.markers.WithJourneyContext;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextDeprecated;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
+import dexter.banking.booktransfers.core.domain.shared.markers.WithJourneyContextDeprecated;
 import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -19,24 +19,24 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Aspect
 @Configurable
-public class WithJourneyContextAspect {
+class WithJourneyContextAspectDeprecated {
 
     private final SpelExpressionParser parser = new SpelExpressionParser();
     private final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
     @Autowired
     private ConfigurationPort configurationPort;
 
-    @Around("@annotation(withJourneyContext)")
-    public Object initializeContext(ProceedingJoinPoint pjp, WithJourneyContext withJourneyContext) throws Throwable {
-        String journeyName = resolveJourneyName(pjp, withJourneyContext.value());
+    @Around("@annotation(withJourneyContextDeprecated)")
+    public Object initializeContext(ProceedingJoinPoint pjp, WithJourneyContextDeprecated withJourneyContextDeprecated) throws Throwable {
+        String journeyName = resolveJourneyName(pjp, withJourneyContextDeprecated.value());
         var spec = configurationPort
                 .findForJourney(journeyName)
-                .orElseGet(JourneySpecification::defaultInstance);
-        var context = new JourneyContext(spec);
+                .orElseGet(JourneySpecificationDeprecated::defaultInstance);
+        var context = new JourneyContextDeprecated(spec);
 
         try {
             // The aspect calls the clean, application-level manager.
-            return JourneyContextManager.runWithContext(context, () -> {
+            return JourneyContextManagerDeprecated.runWithContext(context, () -> {
                 // 1. THE WRAP: The aspect handles its own dirty work.
                 // It must catch Throwable to create a valid Callable.
                 try {

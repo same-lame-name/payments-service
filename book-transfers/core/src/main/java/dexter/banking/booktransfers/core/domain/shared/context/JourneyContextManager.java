@@ -1,26 +1,27 @@
 package dexter.banking.booktransfers.core.domain.shared.context;
 
-import java.lang.ScopedValue;
-import java.util.concurrent.Callable;
+import java.util.function.Supplier;
 
 /**
- * Manages the lifecycle of the JourneyContext, providing a clean, application-level
- * API for running operations within a specific journey's scope.
+ * Manages the lifecycle of the JourneyContext using ScopedValues, providing a clean,
+ * application-level API for running operations within a specific journey's scope.
  */
 public final class JourneyContextManager {
+    private static final ScopedValue<JourneyContext> CONTEXT = ScopedValue.newInstance();
 
-    static final ScopedValue<JourneyContext> CONTEXT = ScopedValue.newInstance();
-
-    private JourneyContextManager() { /* Private constructor */ }
+    private JourneyContextManager() {}
 
     public static JourneyContext getContext() {
         return CONTEXT.get();
     }
 
     /**
-     * Executes a standard Callable within a context scope.
+     * Executes a standard Supplier within a context scope.
+     * @param context The JourneyContext to set for the operation.
+     * @param operation The operation to execute.
+     * @return The result of the operation.
      */
-    public static <T> T runWithContext(JourneyContext context, Callable<T> operation) throws Exception {
-        return ScopedValue.where(CONTEXT, context).call(operation);
+    public static <R> R runWithContext(JourneyContext context, Supplier<R> operation) throws Exception {
+        return ScopedValue.where(CONTEXT, context).call(operation::get);
     }
 }

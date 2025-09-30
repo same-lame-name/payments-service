@@ -1,7 +1,7 @@
 package dexter.banking.booktransfers.core.port.out;
 
 
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
 
 import java.util.Optional;
 /**
@@ -15,5 +15,5 @@ public interface ConfigurationPort {
      * @param journeyIdentifier The unique identifier of the journey (e.g., "PAYMENT_SUBMIT_V1").
      * @return An Optional containing the pure, domain-aligned configuration if found.
      */
-    Optional<JourneySpecification> findForJourney(String journeyIdentifier);
+    Optional<JourneySpecificationDeprecated> findForJourney(String journeyIdentifier);
 }

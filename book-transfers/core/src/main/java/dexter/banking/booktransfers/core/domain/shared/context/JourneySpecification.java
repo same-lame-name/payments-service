@@ -1,28 +1,21 @@
 package dexter.banking.booktransfers.core.domain.shared.context;
 
-
-import dexter.banking.booktransfers.core.domain.shared.primitives.ValueObject;
-
-import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyType;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import java.util.Map;
 
 /**
  * A pure, technology-agnostic value object representing the complete, unified
  * configuration for a single business journey.
- * This is the contract defined by the
- * core that the infrastructure layer must fulfill.
+ * This is the carrier for the materialized blueprint proxy and its raw configuration.
  */
-public record JourneySpecification(
-        boolean isIdempotencyEnabled,
-        List<String> policies,
-        Optional<BigDecimal> complianceThreshold
-) implements ValueObject {
-    /**
-     * Provides a safe, default specification when one is not explicitly configured.
-     */
-    public static JourneySpecification defaultInstance() {
-        return new JourneySpecification(false, Collections.emptyList(), Optional.empty());
-    }
+@Getter
+@RequiredArgsConstructor
+public class JourneySpecification {
+    private final String journeyName;
+    private final JourneyType journeyType;
+    private final Map<String, Object> rawConfig;
+    private final JourneyBlueprint blueprint;
 }

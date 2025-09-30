@@ -1,7 +1,7 @@
 package dexter.banking.booktransfers.core.application.payment.service;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.in.payment.ConcludePaymentFailedUseCase;
 import dexter.banking.booktransfers.core.port.in.payment.ConcludePaymentParams;
@@ -51,7 +51,7 @@ public class ConcludePaymentService implements ConcludePaymentSuccessUseCase, Co
     private void concludePayment(UUID transactionId, Consumer<Payment> recordPaymentAction) {
         Payment.PaymentMemento memento = paymentRepository.findMementoById(transactionId)
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId));
-        JourneySpecification spec = configurationPort.findForJourney(memento.journeyName())
+        JourneySpecificationDeprecated spec = configurationPort.findForJourney(memento.journeyName())
                 .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
         BusinessPolicy policy = policyFactory.create(spec);
 

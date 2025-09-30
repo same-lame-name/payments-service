@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.UUID;
 
-@Component
+@Component(value = "DEBIT_PORT_FEIGN")
 @Primary
 class DepositAdapter implements DepositPort {
 

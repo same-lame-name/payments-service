@@ -1,0 +1,15 @@
+package dexter.banking.booktransfers.core.domain.shared.blueprint;
+
+import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.StandardPaymentBlueprint;
+import lombok.Getter;
+
+@Getter
+public enum JourneyType {
+    STANDARD_PAYMENT(StandardPaymentBlueprint.class);
+
+    private final Class<? extends JourneyBlueprint> blueprintClass;
+
+    JourneyType(Class<? extends JourneyBlueprint> blueprintClass) {
+        this.blueprintClass = blueprintClass;
+    }
+}

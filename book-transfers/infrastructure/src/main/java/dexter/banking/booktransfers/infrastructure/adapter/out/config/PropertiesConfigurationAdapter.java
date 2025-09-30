@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.config;
 
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
 import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -19,7 +19,7 @@ class PropertiesConfigurationAdapter implements ConfigurationPort {
 
     private final ServiceConfigProperties serviceConfigProperties;
     @Override
-    public Optional<JourneySpecification> findForJourney(String journeyIdentifier) {
+    public Optional<JourneySpecificationDeprecated> findForJourney(String journeyIdentifier) {
         // 1. Get the infrastructure-specific configuration object.
         JourneyProperties infraConfig = serviceConfigProperties.getJourneys().get(journeyIdentifier);
 
@@ -27,8 +27,8 @@ class PropertiesConfigurationAdapter implements ConfigurationPort {
         return Optional.ofNullable(infraConfig).map(this::toDomain);
     }
 
-    private JourneySpecification toDomain(JourneyProperties infraConfig) {
-        return new JourneySpecification(
+    private JourneySpecificationDeprecated toDomain(JourneyProperties infraConfig) {
+        return new JourneySpecificationDeprecated(
                 infraConfig.isIdempotencyEnabled(),
                 infraConfig.getPolicies(),
                 Optional.ofNullable(infraConfig.getComplianceThreshold())

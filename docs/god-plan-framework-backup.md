@@ -163,8 +163,8 @@ This component is pure infrastructure and will reside in the `infrastructure` mo
 
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyType;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
-    import dexter.banking.booktransfers.infrastructure.blueprint.BlueprintProxyFactory;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
+    import dexter.banking.booktransfers.infrastructure.provider.BlueprintProxyFactory;
     import org.springframework.boot.context.properties.ConfigurationProperties;
     import org.springframework.context.ApplicationContext;
     import org.springframework.context.annotation.Bean;
@@ -334,9 +334,9 @@ This middleware is the primary, technology-agnostic entry point for establishing
     ```java
     package dexter.banking.booktransfers.core.application.middleware;
 
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextDeprecated;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
     import dexter.banking.commandbus.Command;
     import dexter.banking.commandbus.Middleware;
     import lombok.RequiredArgsConstructor;
@@ -414,9 +414,9 @@ This provides a flexible entry point for queries and other non-command scenarios
         ```java
         package dexter.banking.booktransfers.infrastructure.aspect;
 
-        import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
-        import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
-        import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+        import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextDeprecated;
+        import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
+        import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
         import dexter.banking.booktransfers.core.domain.shared.context.WithJourneyContext;
         import org.aspectj.lang.ProceedingJoinPoint;
         import org.aspectj.lang.annotation.Around;
@@ -442,12 +442,12 @@ This provides a flexible entry point for queries and other non-command scenarios
                 this.journeySpecifications = journeySpecifications;
             }
 
-            @Around("@annotation(withJourneyContext)")
-            public Object establishAdHocContext(ProceedingJoinPoint pjp, WithJourneyContext withJourneyContext) throws Throwable {
+            @Around("@annotation(withJourneyContextDeprecated)")
+            public Object establishAdHocContext(ProceedingJoinPoint pjp, WithJourneyContext withJourneyContextDeprecated) throws Throwable {
                 // 1. Parse SpEL expression to get journey identifier
                 Method method = ((MethodSignature) pjp.getSignature()).getMethod();
                 MethodBasedEvaluationContext evaluationContext = new MethodBasedEvaluationContext(pjp.getTarget(), method, pjp.getArgs(), parameterNameDiscoverer);
-                String journeyName = (String) expressionParser.parseExpression(withJourneyContext.journeyIdentifier()).getValue(evaluationContext);
+                String journeyName = (String) expressionParser.parseExpression(withJourneyContextDeprecated.journeyIdentifier()).getValue(evaluationContext);
 
                 if (journeyName == null) {
                     throw new IllegalStateException("SpEL expression for @WithJourneyContext resolved to null.");
@@ -482,7 +482,7 @@ This pattern provides the single, secure way for application code to receive the
 
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
     import dexter.banking.booktransfers.core.domain.shared.context.InJourney;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
     import org.aspectj.lang.ProceedingJoinPoint;
     import org.aspectj.lang.annotation.Around;
     import org.aspectj.lang.annotation.Aspect;

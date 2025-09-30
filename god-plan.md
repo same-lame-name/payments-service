@@ -183,8 +183,8 @@ This component is pure infrastructure and will reside in the `infrastructure` mo
 
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyType;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
-    import dexter.banking.booktransfers.infrastructure.blueprint.BlueprintProxyFactory;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
+    import dexter.banking.booktransfers.infrastructure.provider.BlueprintProxyFactory;
     import org.springframework.boot.context.properties.ConfigurationProperties;
     import org.springframework.context.ApplicationContext;
     import org.springframework.context.annotation.Bean;
@@ -330,9 +330,9 @@ This provides a flexible entry point for queries and other scenarios.
     public class WithJourneyContextAspect {
         // ... constructor with journeySpecifications map and SpEL parser ...
 
-        @Around("@annotation(withJourneyContext)")
-        public Object establishAdHocContext(ProceedingJoinPoint pjp, WithJourneyContext withJourneyContext) throws Throwable {
-            String journeyName = parseSpelExpression(withJourneyContext.journeyName(), pjp.getArgs());
+        @Around("@annotation(withJourneyContextDeprecated)")
+        public Object establishAdHocContext(ProceedingJoinPoint pjp, WithJourneyContext withJourneyContextDeprecated) throws Throwable {
+            String journeyName = parseSpelExpression(withJourneyContextDeprecated.journeyName(), pjp.getArgs());
             JourneySpecification spec = journeySpecifications.get(journeyName);
             // ... error handling ...
 

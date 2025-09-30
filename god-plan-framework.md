@@ -151,8 +151,8 @@ This component is pure infrastructure and will reside in the `infrastructure` mo
 
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyType;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
-    import dexter.banking.booktransfers.infrastructure.blueprint.BlueprintProxyFactory;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
+    import dexter.banking.booktransfers.infrastructure.provider.BlueprintProxyFactory;
     import org.springframework.boot.context.properties.ConfigurationProperties;
     import org.springframework.context.ApplicationContext;
     import org.springframework.context.annotation.Bean;
@@ -254,8 +254,8 @@ This class is the secure, encapsulated store and materializer.
 
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyType;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
-    import dexter.banking.booktransfers.infrastructure.blueprint.BlueprintProxyFactory;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
+    import dexter.banking.booktransfers.infrastructure.provider.BlueprintProxyFactory;
     import jakarta.annotation.PostConstruct;
     import org.springframework.boot.context.properties.ConfigurationProperties;
     import org.springframework.context.ApplicationContext;
@@ -454,9 +454,9 @@ This middleware is moved into the secure package to gain access to the provider.
     ```java
     package dexter.banking.booktransfers.infrastructure.provider; // MOVED to the secure package
 
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextDeprecated;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
     import dexter.banking.commandbus.Command;
     import dexter.banking.commandbus.Middleware;
     import lombok.RequiredArgsConstructor;
@@ -496,9 +496,9 @@ This aspect is also moved into the secure package.
     ```java
     package dexter.banking.booktransfers.infrastructure.provider; // MOVED to the secure package
 
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextDeprecated;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
     import dexter.banking.booktransfers.core.domain.shared.context.WithJourneyContext;
     import org.aspectj.lang.ProceedingJoinPoint;
     import org.aspectj.lang.annotation.Around;
@@ -523,11 +523,11 @@ This aspect is also moved into the secure package.
             this.blueprintProvider = blueprintProvider;
         }
 
-        @Around("@annotation(withJourneyContext)")
-        public Object establishAdHocContext(ProceedingJoinPoint pjp, WithJourneyContext withJourneyContext) throws Throwable {
+        @Around("@annotation(withJourneyContextDeprecated)")
+        public Object establishAdHocContext(ProceedingJoinPoint pjp, WithJourneyContext withJourneyContextDeprecated) throws Throwable {
             Method method = ((MethodSignature) pjp.getSignature()).getMethod();
             MethodBasedEvaluationContext evaluationContext = new MethodBasedEvaluationContext(pjp.getTarget(), method, pjp.getArgs(), parameterNameDiscoverer);
-            String journeyName = (String) expressionParser.parseExpression(withJourneyContext.journeyIdentifier()).getValue(evaluationContext);
+            String journeyName = (String) expressionParser.parseExpression(withJourneyContextDeprecated.journeyIdentifier()).getValue(evaluationContext);
 
             if (journeyName == null) {
                 throw new IllegalStateException("SpEL expression for @WithJourneyContext resolved to null.");
@@ -558,7 +558,7 @@ The `@InJourney` annotation and its backing `InJourneyParameterAspect` require n
 
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
     import dexter.banking.booktransfers.core.domain.shared.context.InJourney;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
     import org.aspectj.lang.ProceedingJoinPoint;
     import org.aspectj.lang.annotation.Around;
     import org.aspectj.lang.annotation.Aspect;
@@ -599,3 +599,67 @@ The `@InJourney` annotation and its backing `InJourneyParameterAspect` require n
         }
     }
     ```
+---
+
+## 6. Implementation Status & Roadmap
+
+This section tracks the delivery of the framework components as per the defined MVPs.
+
+### **MVP 1: The Core Blueprint Contracts**
+- **Status:** Implemented
+
+#### **Sub-stage 1.1: Foundational Contracts**
+- **Status:** Implemented
+- **Artifacts Delivered:**
+  - `JourneyBlueprint.java`
+  - `BeanReference.java`
+  - `InJourney.java`
+  - `WithJourneyContext.java`
+
+#### **Sub-stage 1.2: Concrete Blueprint Definition**
+- **Status:** Implemented
+- **Artifacts Delivered:**
+  - `StandardPaymentBlueprint.java`
+  - `JourneyType.java`
+
+#### **Sub-stage 1.3: Context Data Structures**
+- **Status:** Implemented
+- **Artifacts Delivered:**
+  - `JourneySpecification.java`
+  - `JourneyContext.java`
+  - `JourneyContextManager.java`
+
+---
+
+### **MVP 2: The Secure Infrastructure Provider**
+- **Status:** Implemented
+
+#### **Sub-stage 2.1: The Proxy Factory**
+- **Status:** Implemented
+- **Objective:** Implement the `BlueprintProxyFactory` responsible for creating dynamic proxies from the configuration.
+- **Artifacts Delivered:**
+  - `BlueprintProxyFactory.java`
+
+#### **Sub-stage 2.2: The Secure Provider**
+- **Status:** Implemented
+- **Objective:** Implement the `package-private` `BlueprintProvider` that loads, validates, and caches the journey blueprints.
+- **Artifacts Delivered:**
+  - `BlueprintProvider.java`
+
+---
+
+### **MVP 3: Context Propagation & Injection**
+- **Status:** Implemented
+
+#### **Sub-stage 3.1: Secure Context Establishment**
+- **Status:** Implemented
+- **Objective:** Implement and co-locate the `ConfigurationEnrichmentMiddleware` and `WithJourneyContextAspect` to securely establish the `JourneyContext`.
+- **Artifacts Delivered:**
+  - `ConfigurationEnrichmentMiddleware.java`
+  - `WithJourneyContextAspect.java`
+
+#### **Sub-stage 3.2: Parameter Injection**
+- **Status:** Implemented
+- **Objective:** Implement the `InJourneyParameterAspect` to handle the `@InJourney` annotation and inject the correct blueprint.
+- **Artifacts Delivered:**
+  - `InJourneyParameterAspect.java`

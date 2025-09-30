@@ -1,7 +1,7 @@
 package dexter.banking.booktransfers.core.port.out;
 
 
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 
 /**
@@ -17,5 +17,5 @@ public interface BusinessPolicyFactory {
      * @return The composed BusinessPolicy.
      * @throws IllegalArgumentException if any policy bean name in the spec cannot be resolved.
      */
-    BusinessPolicy create(JourneySpecification spec);
+    BusinessPolicy create(JourneySpecificationDeprecated spec);
 }

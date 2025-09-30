@@ -101,7 +101,7 @@ Our "no public API" principle means that any framework-internal utility must hav
     ```java
     package dexter.banking.booktransfers.core.domain.shared.contract;
 
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
     import java.util.List;
     import java.util.function.Function;
 
@@ -128,7 +128,7 @@ Our "no public API" principle means that any framework-internal utility must hav
     ```java
     package dexter.banking.booktransfers.core.domain.shared.contract;
 
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
     import java.util.List;
     import java.util.function.Function;
 
@@ -211,7 +211,7 @@ This component is pure infrastructure and will reside in the `infrastructure` mo
     ```java
     package dexter.banking.booktransfers.infrastructure.adapter.in.config;
 
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
     import dexter.banking.booktransfers.core.domain.shared.contract.JourneyContract;
     import org.springframework.context.ApplicationContext;
     import org.springframework.context.ApplicationListener;
@@ -462,8 +462,8 @@ To bind the `ScopedValue`, we need to wrap the entire request processing chain. 
     ```java
     package dexter.banking.booktransfers.infrastructure.adapter.in.web;
 
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextDeprecated;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
     import jakarta.servlet.*;
     import jakarta.servlet.http.HttpServletRequest;
     import org.springframework.stereotype.Component;
@@ -523,8 +523,8 @@ This is the engine that enforces our guarantee at the point of use.
     package dexter.banking.booktransfers.infrastructure.aspect;
 
     import dexter.banking.booktransfers.core.domain.shared.context.InJourney;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextDeprecated;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
     import dexter.banking.booktransfers.core.domain.shared.contract.JourneyContract;
     import org.aspectj.lang.ProceedingJoinPoint;
     import org.aspectj.lang.annotation.Around;
@@ -729,7 +729,7 @@ The implementation is cleanly divided into the two phases, with components spann
         package dexter.banking.booktransfers.infrastructure.middleware;
 
         import dexter.banking.booktransfers.core.domain.shared.context.InJourney;
-        import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+        import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
         import jakarta.validation.ConstraintViolation;
         import jakarta.validation.ConstraintViolationException;
         import jakarta.validation.Validator;

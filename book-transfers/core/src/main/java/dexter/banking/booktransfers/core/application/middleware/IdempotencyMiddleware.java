@@ -1,8 +1,10 @@
 package dexter.banking.booktransfers.core.application.middleware;
 
 import dexter.banking.booktransfers.core.domain.payment.exception.IdempotencyConflictException;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
 import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
 import dexter.banking.booktransfers.core.domain.shared.idempotency.IdempotencyData;
 import dexter.banking.booktransfers.core.domain.shared.idempotency.IdempotencyStatus;
 import dexter.banking.booktransfers.core.port.out.IdempotencyPort;
@@ -16,7 +18,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
-@Order(2)
+@Order(3)
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -28,7 +30,8 @@ public class IdempotencyMiddleware implements Middleware {
     @SuppressWarnings("unchecked")
     public <R, C extends Command<R>> R invoke(C command, Next<R> next) {
         // This middleware is now pure. It depends only on the core context and core ports.
-        JourneySpecification spec = JourneyContextManager.getContext().specification();
+        JourneySpecificationDeprecated spec = JourneyContextManagerDeprecated.getContext().specification();
+        JourneySpecification newSpec = JourneyContextManager.getContext().getSpecification();
         boolean isApplicable = spec.isIdempotencyEnabled();
 
         if (!isApplicable || !(command instanceof IdempotentCommand<?> idempotentCommand)) {

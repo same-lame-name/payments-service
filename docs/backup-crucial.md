@@ -187,8 +187,8 @@ This component is pure infrastructure and will reside in the `infrastructure` mo
 
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyType;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
-    import dexter.banking.booktransfers.infrastructure.blueprint.BlueprintProxyFactory;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
+    import dexter.banking.booktransfers.infrastructure.provider.BlueprintProxyFactory;
     import org.springframework.boot.context.properties.ConfigurationProperties;
     import org.springframework.context.ApplicationContext;
     import org.springframework.context.annotation.Bean;
@@ -449,8 +449,8 @@ This is the lightweight, performant gatekeeper. It is **not** a Spring component
 
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
     import dexter.banking.booktransfers.core.domain.shared.context.InJourney;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextDeprecated;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
     import org.aspectj.lang.ProceedingJoinPoint;
     import org.aspectj.lang.annotation.Around;
     import org.aspectj.lang.annotation.Aspect;

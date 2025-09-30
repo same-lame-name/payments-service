@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import java.util.UUID;
 
-@Component
+@Component(value = "LIMIT_PORT_FEIGN")
 @Primary
 class LimitAdapter implements LimitPort {
 

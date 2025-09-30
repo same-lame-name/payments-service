@@ -23,7 +23,7 @@ import java.util.UUID;
  * This is the concrete implementation that knows how to talk to the external service.
  * It is composed of a raw Feign client and a mapper to act as an Anti-Corruption Layer.
  */
-@Component
+@Component(value = "CREDIT_PORT_FEIGN")
 @Primary
 class CreditCardAdapter implements CreditCardPort {
 

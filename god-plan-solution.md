@@ -46,9 +46,9 @@ This is the blueprint for the final, correct implementation.
     // In infrastructure/aspect/JourneyContextProviderAspect.java
     package dexter.banking.booktransfers.infrastructure.aspect;
 
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextDeprecated;
     import dexter.banking.booktransfers.core.domain.shared.context.JourneyIdentifiable;
-    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+    import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
     import dexter.banking.booktransfers.infrastructure.registry.JourneySpecificationRegistry; // Fetches the spec
     import org.aspectj.lang.ProceedingJoinPoint;
     import org.aspectj.lang.annotation.Around;
