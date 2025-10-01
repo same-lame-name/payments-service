@@ -4,6 +4,7 @@ import dexter.banking.booktransfers.core.application.payment.orchestration.async
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.BeanReference;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.ExtractBean;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
 import dexter.banking.booktransfers.core.port.out.CreditCardPort;
 import dexter.banking.booktransfers.core.port.out.DepositPort;
@@ -17,18 +18,22 @@ public interface StandardPaymentBlueprint extends BaseJourneyBlueprint {
     OrchestrationBlueprint getOrchestration();
 
     interface AdapterRoutingBlueprint extends JourneyBlueprint {
-        @BeanReference
+        @ExtractBean
+//        @BeanReference
         DepositPort getDepositPort();
 
-        @BeanReference
+        @ExtractBean
+//        @BeanReference
         CreditCardPort getCreditCardPort();
 
-        @BeanReference
+        @ExtractBean
+//        @BeanReference
         LimitPort getLimitPort();
     }
 
     interface OrchestrationBlueprint extends JourneyBlueprint {
-        @BeanReference
+        @ExtractBean
+//        @BeanReference
         StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> getEngine();
     }
 }

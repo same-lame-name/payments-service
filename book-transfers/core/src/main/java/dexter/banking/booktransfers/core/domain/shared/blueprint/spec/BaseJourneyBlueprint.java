@@ -1,6 +1,7 @@
 package dexter.banking.booktransfers.core.domain.shared.blueprint.spec;
 
 import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.VerifyBean;
 import dexter.banking.booktransfers.core.domain.shared.validation.ValidationGroup;
 
 import java.util.List;
@@ -15,7 +16,9 @@ import java.util.List;
 public interface BaseJourneyBlueprint extends JourneyBlueprint {
     // === COMMON & MANDATORY ===
     List<ValidationGroup> getValidationGroups();
+    @VerifyBean
     List<String> getDataCollectors();
+    @VerifyBean
     List<String> getBusinessRules();
 
     // === COMMON & OPTIONAL ===

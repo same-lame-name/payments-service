@@ -29,98 +29,55 @@ class BlueprintProvider {
     @PostConstruct
     void initialize() {
         this.specifications = this.serviceConfigProperties.getJourneys().entrySet().stream().collect(Collectors.toUnmodifiableMap(
-            Map.Entry::getKey,
-            entry -> {
-                String journeyName = entry.getKey();
-                var properties = entry.getValue();
-                try {
-                    Class<? extends JourneyBlueprint> blueprintInterface = properties.getJourneyType().getBlueprintClass();
+                Map.Entry::getKey,
+                entry -> {
+                    String journeyName = entry.getKey();
+                    var properties = entry.getValue();
+                    try {
+                        Class<? extends JourneyBlueprint> blueprintInterface = properties.getJourneyType().getBlueprintClass();
 
-                    // STEP 1: Create the root proxy.
-                    JourneyBlueprint blueprintProxy = BlueprintProxyFactory.createProxy(
-                        blueprintInterface,
-                        properties,
-                        applicationContext
-                    );
+                        // STEP 1: Eagerly construct the entire proxy graph.
+                        // The constructor of the InvocationHandler now does all the recursive work.
+                        JourneyBlueprint blueprintProxy = BlueprintProxyFactory.createProxy(
+                                blueprintInterface,
+                                properties,
+                                applicationContext
+                        );
 
-                    // STEP 2: Eagerly construct the entire nested proxy graph.
-                    constructProxyGraph(blueprintProxy, blueprintInterface, new HashSet<>());
+                        // STEP 2: Perform a pure validation test-drive on the completed graph.
+                        validateBlueprint(blueprintProxy, blueprintInterface, new HashSet<>());
 
-                    // STEP 3: Perform a full validation test-drive on the completed graph.
-                    validateBlueprint(blueprintProxy, blueprintInterface, new HashSet<>());
-
-                    return new JourneySpecification(journeyName, properties.getJourneyType(), blueprintProxy);
-                } catch (Exception e) {
-                    throw new IllegalStateException("Failed to materialize and validate blueprint for journey: '" + journeyName + "'", e);
+                        return new JourneySpecification(journeyName, properties.getJourneyType(), blueprintProxy);
+                    } catch (Exception e) {
+                        throw new IllegalStateException("Failed to materialize and validate blueprint for journey: '" + journeyName + "'", e);
+                    }
                 }
-            }
         ));
     }
 
-    /**
-     * Traverses the blueprint graph with the SOLE purpose of triggering the
-     * just-in-time creation of all nested proxy objects.
-     */
-    private void constructProxyGraph(Object blueprintProxy, Class<? extends JourneyBlueprint> blueprintInterface, Set<Class<?>> visited) {
-        if (visited.contains(blueprintInterface)) {
-            return;
-        }
-        visited.add(blueprintInterface);
-
-        // Traverse down the composition graph.
-        for (Method method : blueprintInterface.getDeclaredMethods()) {
-            if (method.getParameterCount() == 0 && JourneyBlueprint.class.isAssignableFrom(method.getReturnType())) {
-                try {
-                    Object nestedProxy = method.invoke(blueprintProxy); // This triggers the InvocationHandler to create the nested proxy.
-                    if (nestedProxy != null) {
-                        constructProxyGraph(nestedProxy, (Class<? extends JourneyBlueprint>) method.getReturnType(), visited);
-                    }
-                } catch (Exception e) {
-                    // This wrap is critical. An error during construction is a construction error.
-                    throw new IllegalStateException("Failed to construct nested proxy for method '" + method.getName() + "'", e);
-                }
-            }
-        }
-
-        // Traverse up the inheritance graph.
-        for (Class<?> superInterface : blueprintInterface.getInterfaces()) {
-            if (JourneyBlueprint.class.isAssignableFrom(superInterface)) {
-                constructProxyGraph(blueprintProxy, (Class<? extends JourneyBlueprint>) superInterface, visited);
-            }
-        }
-    }
-
-    /**
-     * Traverses the fully constructed blueprint graph to validate every method.
-     * This method can now be modified independently to skip certain validations.
-     */
     private void validateBlueprint(Object blueprintProxy, Class<? extends JourneyBlueprint> blueprintInterface, Set<Class<?>> visited) {
         if (visited.contains(blueprintInterface)) {
             return;
         }
         visited.add(blueprintInterface);
 
-        // Validate all methods on the current interface.
         for (Method method : blueprintInterface.getDeclaredMethods()) {
             if (method.getParameterCount() == 0) {
                 try {
                     // The "test-drive" invocation.
                     Object result = method.invoke(blueprintProxy);
-
-                    // If the method returns a nested blueprint, recurse down to validate it too.
                     if (result instanceof JourneyBlueprint) {
                         validateBlueprint(result, (Class<? extends JourneyBlueprint>) method.getReturnType(), visited);
                     }
                 } catch (Exception e) {
                     throw new IllegalStateException(String.format(
-                        "Validation failed for blueprint method '%s' on interface '%s'",
-                        method.getName(), blueprintInterface.getSimpleName()
+                            "Validation failed for blueprint method '%s' on interface '%s'",
+                            method.getName(), blueprintInterface.getSimpleName()
                     ), e);
                 }
             }
         }
 
-        // Recurse up the inheritance graph.
         for (Class<?> superInterface : blueprintInterface.getInterfaces()) {
             if (JourneyBlueprint.class.isAssignableFrom(superInterface)) {
                 validateBlueprint(blueprintProxy, (Class<? extends JourneyBlueprint>) superInterface, visited);

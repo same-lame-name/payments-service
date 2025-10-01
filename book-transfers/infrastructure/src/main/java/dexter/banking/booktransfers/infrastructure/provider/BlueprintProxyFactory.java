@@ -5,8 +5,15 @@ import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprin
 import org.springframework.context.ApplicationContext;
 import org.springframework.util.StringUtils;
 
-import java.lang.reflect.*;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public final class BlueprintProxyFactory {
@@ -17,75 +24,108 @@ public final class BlueprintProxyFactory {
     @SuppressWarnings("unchecked")
     public static <T extends JourneyBlueprint> T createProxy(
             Class<T> blueprintInterface,
-            Object properties, // Backed by a type-safe @ConfigurationProperties object
+            Object properties,
             ApplicationContext ctx
     ) {
         return (T) Proxy.newProxyInstance(
                 blueprintInterface.getClassLoader(),
                 new Class<?>[]{blueprintInterface},
-                new BlueprintInvocationHandler(properties, ctx)
+                new BlueprintInvocationHandler(blueprintInterface, properties, ctx)
         );
     }
 
     private static class BlueprintInvocationHandler implements InvocationHandler {
-        private final Object properties;
-        private final ApplicationContext ctx;
+        // This cache now holds a mix of EAGERLY created proxies and LAZILY prepared suppliers.
+        private final Map<Method, Object> methodCache = new HashMap<>();
 
-        public BlueprintInvocationHandler(Object properties, ApplicationContext ctx) {
-            this.properties = properties;
-            this.ctx = ctx;
+        public BlueprintInvocationHandler(Class<?> blueprintInterface, Object properties, ApplicationContext ctx) {
+            // The constructor now recursively builds the entire graph.
+            buildCache(blueprintInterface, properties, ctx);
+        }
+
+        private void buildCache(Class<?> blueprintInterface, Object properties, ApplicationContext ctx) {
+            for (Method method : blueprintInterface.getMethods()) {
+                if (method.getDeclaringClass().equals(Object.class) || methodCache.containsKey(method)) {
+                    continue;
+                }
+
+                try {
+                    // If it's a nested blueprint (intermediate node), EAGERLY create the proxy.
+                    if (JourneyBlueprint.class.isAssignableFrom(method.getReturnType())) {
+                        Method propertiesGetter = properties.getClass().getMethod(method.getName());
+                        Object nestedProperties = propertiesGetter.invoke(properties);
+                        if (nestedProperties == null)
+                            throw new IllegalStateException("Missing config for nested blueprint '" + method.getName() + "'");
+
+                        // The recursion happens here, during construction. The result is a real proxy.
+                        Object nestedProxy = createProxy((Class<? extends JourneyBlueprint>) method.getReturnType(), nestedProperties, ctx);
+                        methodCache.put(method, nestedProxy);
+                    }
+                    // If it's a leaf node (bean or literal), create a LAZY recipe.
+                    else {
+                        Supplier<Object> recipe = createRecipeForLeaf(method, properties, ctx);
+                        methodCache.put(method, recipe);
+                    }
+                } catch (Exception e) {
+                    throw new IllegalStateException("Failed to build blueprint cache for method '" + method.getName() + "'", e);
+                }
+            }
+        }
+
+        private Supplier<Object> createRecipeForLeaf(Method method, Object properties, ApplicationContext ctx) throws NoSuchMethodException {
+            Method propertiesGetter = properties.getClass().getMethod(method.getName());
+
+            // Create a recipe for a bean reference.
+            if (method.isAnnotationPresent(BeanReference.class)) {
+                return () -> {
+                    try {
+                        Object configuredValue = propertiesGetter.invoke(properties);
+                        if (configuredValue == null)
+                            throw new IllegalStateException("Missing config for @BeanReference '" + method.getName() + "'");
+
+                        if (method.getReturnType().equals(List.class)) {
+                            Type beanType = ((ParameterizedType) method.getGenericReturnType()).getActualTypeArguments()[0];
+                            List<String> beanNames = (List<String>) configuredValue;
+                            return beanNames.stream()
+                                    .map(name -> ctx.getBean(name, (Class<?>) beanType))
+                                    .collect(Collectors.toList());
+                        } else {
+                            String beanName = (String) configuredValue;
+                            if (!StringUtils.hasText(beanName))
+                                throw new IllegalStateException("Empty config for @BeanReference '" + method.getName() + "'");
+                            return ctx.getBean(beanName, method.getReturnType());
+                        }
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                };
+            }
+            // Create a recipe for a simple literal.
+            else {
+                return () -> {
+                    try {
+                        Object configuredValue = propertiesGetter.invoke(properties);
+                        if (configuredValue == null)
+                            throw new IllegalStateException("Missing config for mandatory property '" + method.getName() + "'");
+                        return configuredValue;
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                };
+            }
         }
 
         @Override
-        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-            Class<?> returnType = method.getReturnType();
-            Method propertiesGetter = properties.getClass().getMethod(method.getName());
-            Object configuredValue = propertiesGetter.invoke(properties);
+        public Object invoke(Object proxy, Method method, Object[] args) {
+            Object cachedValue = methodCache.get(method);
 
-            // 1. Is the return type a nested blueprint?
-            if (JourneyBlueprint.class.isAssignableFrom(returnType)) {
-                if (configuredValue == null) {
-                    throw new IllegalStateException(String.format(
-                            "Configuration missing for mandatory nested blueprint '%s'", method.getName()
-                    ));
-                }
-                return createProxy((Class<? extends JourneyBlueprint>) returnType, configuredValue, ctx);
+            // If the cached value is a recipe, execute it.
+            if (cachedValue instanceof Supplier) {
+                return ((Supplier<?>) cachedValue).get();
             }
-            // 2. Is it a reference to a Spring bean (or a List of beans)?
-            else if (method.isAnnotationPresent(BeanReference.class)) {
-                if (configuredValue == null) {
-                    throw new IllegalStateException("Configuration for @BeanReference key '" + method.getName() + "' is missing.");
-                }
-                // Handle List<Bean>
-                if (returnType.equals(List.class)) {
-                    Type genericReturnType = method.getGenericReturnType();
-                    if (!(genericReturnType instanceof ParameterizedType)) {
-                        throw new IllegalStateException("@BeanReference on a List must have a generic type (e.g., List<MyBean>).");
-                    }
-                    Type beanType = ((ParameterizedType) genericReturnType).getActualTypeArguments()[0];
-                    Class<?> beanClass = (Class<?>) beanType;
-
-                    List<String> beanNames = (List<String>) configuredValue;
-                    return beanNames.stream()
-                            .map(name -> ctx.getBean(name, beanClass))
-                            .collect(Collectors.toList());
-                }
-                // Handle single bean
-                else {
-                    String beanName = (String) configuredValue;
-                    if (!StringUtils.hasText(beanName)) {
-                        throw new IllegalStateException("Configuration for @BeanReference key '" + method.getName() + "' is empty.");
-                    }
-                    return ctx.getBean(beanName, returnType);
-                }
-            }
-            // 3. If none of the above, it is a simple literal property.
-            // Any other scenario, as in a
+            // Otherwise, it's a pre-built nested proxy. Return it directly.
             else {
-                if (configuredValue == null) {
-                    throw new IllegalStateException("Configuration for mandatory blueprint property '" + method.getName() + "' is missing.");
-                }
-                return configuredValue;
+                return cachedValue;
             }
         }
     }
