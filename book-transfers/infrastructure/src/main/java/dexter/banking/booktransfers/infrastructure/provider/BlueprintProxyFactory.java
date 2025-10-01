@@ -1,7 +1,8 @@
 package dexter.banking.booktransfers.infrastructure.provider;
 
-import dexter.banking.booktransfers.core.domain.shared.blueprint.BeanReference;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.ExtractBean;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.VerifyBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.util.StringUtils;
 
@@ -75,13 +76,13 @@ public final class BlueprintProxyFactory {
         private Supplier<Object> createRecipeForLeaf(Method method, Object properties, ApplicationContext ctx) throws NoSuchMethodException {
             Method propertiesGetter = properties.getClass().getMethod(method.getName());
 
-            // Create a recipe for a bean reference.
-            if (method.isAnnotationPresent(BeanReference.class)) {
+            // === CASE 1: @ExtractBean ===
+            if (method.isAnnotationPresent(ExtractBean.class)) {
                 return () -> {
                     try {
                         Object configuredValue = propertiesGetter.invoke(properties);
                         if (configuredValue == null)
-                            throw new IllegalStateException("Missing config for @BeanReference '" + method.getName() + "'");
+                            throw new IllegalStateException("Missing config for @ExtractBean '" + method.getName() + "'");
 
                         if (method.getReturnType().equals(List.class)) {
                             Type beanType = ((ParameterizedType) method.getGenericReturnType()).getActualTypeArguments()[0];
@@ -92,7 +93,7 @@ public final class BlueprintProxyFactory {
                         } else {
                             String beanName = (String) configuredValue;
                             if (!StringUtils.hasText(beanName))
-                                throw new IllegalStateException("Empty config for @BeanReference '" + method.getName() + "'");
+                                throw new IllegalStateException("Empty config for @ExtractBean '" + method.getName() + "'");
                             return ctx.getBean(beanName, method.getReturnType());
                         }
                     } catch (Exception e) {
@@ -100,7 +101,33 @@ public final class BlueprintProxyFactory {
                     }
                 };
             }
-            // Create a recipe for a simple literal.
+            // === CASE 2: @VerifyBean ===
+            else if (method.isAnnotationPresent(VerifyBean.class)) {
+                return () -> {
+                    try {
+                        Object configuredValue = propertiesGetter.invoke(properties);
+                        if (configuredValue == null)
+                            throw new IllegalStateException("Missing config for @VerifyBean '" + method.getName() + "'");
+
+                        if (configuredValue instanceof List) {
+                            List<String> beanNames = (List<String>) configuredValue;
+                            for (String beanName : beanNames) {
+                                if (!ctx.containsBean(beanName))
+                                    throw new IllegalStateException("Verified bean not found: " + beanName);
+                            }
+                        } else {
+                            String beanName = (String) configuredValue;
+                            if (!ctx.containsBean(beanName))
+                                throw new IllegalStateException("Verified bean not found: ".concat(beanName));
+                        }
+                        // IMPORTANT: Return the original configured value, not the bean.
+                        return configuredValue;
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                };
+            }
+            // === CASE 3: Simple Literal ===
             else {
                 return () -> {
                     try {
