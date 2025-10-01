@@ -16,6 +16,5 @@ import java.util.Map;
 public class JourneySpecification {
     private final String journeyName;
     private final JourneyType journeyType;
-    private final Map<String, Object> rawConfig;
     private final JourneyBlueprint blueprint;
 }

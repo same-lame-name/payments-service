@@ -1,17 +1,17 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.config;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.validation.annotation.Validated;
 
-import jakarta.validation.constraints.NotNull;
 import java.util.Map;
+import java.util.HashMap;
+
+@Getter
+@Setter
 @Configuration
-@ConfigurationProperties(prefix = "service-config")
-@Data
-@Validated
-class ServiceConfigProperties {
-    @NotNull
-    private Map<String, JourneyProperties> journeys;
+@ConfigurationProperties(prefix = "app")
+public class ServiceConfigProperties {
+    private Map<String, JourneyProperties> journeys = new HashMap<>();
 }

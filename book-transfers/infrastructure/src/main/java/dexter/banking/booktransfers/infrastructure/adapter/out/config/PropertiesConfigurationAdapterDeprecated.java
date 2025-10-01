@@ -15,19 +15,19 @@ import java.util.Optional;
  */
 @Component
 @RequiredArgsConstructor
-class PropertiesConfigurationAdapter implements ConfigurationPort {
+class PropertiesConfigurationAdapterDeprecated implements ConfigurationPort {
 
-    private final ServiceConfigProperties serviceConfigProperties;
+    private final ServiceConfigPropertiesDeprecated serviceConfigPropertiesDeprecated;
     @Override
     public Optional<JourneySpecificationDeprecated> findForJourney(String journeyIdentifier) {
         // 1. Get the infrastructure-specific configuration object.
-        JourneyProperties infraConfig = serviceConfigProperties.getJourneys().get(journeyIdentifier);
+        JourneyPropertiesDeprecated infraConfig = serviceConfigPropertiesDeprecated.getJourneys().get(journeyIdentifier);
 
         // 2. Map it to the pure core/domain configuration object.
         return Optional.ofNullable(infraConfig).map(this::toDomain);
     }
 
-    private JourneySpecificationDeprecated toDomain(JourneyProperties infraConfig) {
+    private JourneySpecificationDeprecated toDomain(JourneyPropertiesDeprecated infraConfig) {
         return new JourneySpecificationDeprecated(
                 infraConfig.isIdempotencyEnabled(),
                 infraConfig.getPolicies(),

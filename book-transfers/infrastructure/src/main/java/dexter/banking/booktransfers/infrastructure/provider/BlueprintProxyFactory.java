@@ -3,74 +3,68 @@ package dexter.banking.booktransfers.infrastructure.provider;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.BeanReference;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
 import org.springframework.context.ApplicationContext;
+import org.springframework.util.StringUtils;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.util.Map;
 
-final class BlueprintProxyFactory {
+public final class BlueprintProxyFactory {
 
     private BlueprintProxyFactory() {}
 
     @SuppressWarnings("unchecked")
     public static <T extends JourneyBlueprint> T createProxy(
         Class<T> blueprintInterface,
-        Map<String, Object> config,
+        Object properties, // Backed by a type-safe @ConfigurationProperties object
         ApplicationContext ctx
     ) {
         return (T) Proxy.newProxyInstance(
             blueprintInterface.getClassLoader(),
             new Class<?>[]{blueprintInterface},
-            new BlueprintInvocationHandler(config, ctx)
+            new BlueprintInvocationHandler(properties, ctx)
         );
     }
 
     private static class BlueprintInvocationHandler implements InvocationHandler {
-        private final Map<String, Object> config;
+        private final Object properties;
         private final ApplicationContext ctx;
 
-        public BlueprintInvocationHandler(Map<String, Object> config, ApplicationContext ctx) {
-            this.config = config;
+        public BlueprintInvocationHandler(Object properties, ApplicationContext ctx) {
+            this.properties = properties;
             this.ctx = ctx;
         }
 
         @Override
-        public Object invoke(Object proxy, Method method, Object[] args) {
-            String key = method.getName();
-            Object value = config.get(key);
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             Class<?> returnType = method.getReturnType();
 
-            if (value == null) {
-                throw new IllegalStateException(String.format(
-                    "Configuration key '%s' not found in journey config for blueprint '%s'",
-                    key, method.getDeclaringClass().getSimpleName()
-                ));
-            }
-
+            // 1. If the return type is a nested blueprint, create a recursive proxy.
             if (JourneyBlueprint.class.isAssignableFrom(returnType)) {
-                // This logic for nested blueprints remains correct.
-                return createProxy(
-                    (Class<? extends JourneyBlueprint>) returnType,
-                    (Map<String, Object>) value,
-                    ctx
-                );
-            } else if (method.isAnnotationPresent(BeanReference.class)) {
-                if (!(value instanceof String)) {
+                Method propertiesGetter = properties.getClass().getMethod(method.getName());
+                Object nestedProperties = propertiesGetter.invoke(properties);
+                if (nestedProperties == null) {
                     throw new IllegalStateException(String.format(
-                        "Configuration error: Key '%s' is marked as @BeanReference but value is not a string.", key
+                        "Configuration missing for nested blueprint '%s' in journey", method.getName()
                     ));
                 }
-                String beanName = (String) value;
-                if (!ctx.containsBean(beanName)) {
-                     throw new IllegalStateException(String.format(
-                        "Configuration error: Bean with name '%s' referenced by key '%s' does not exist.",
-                        beanName, key
-                     ));
+                return createProxy((Class<? extends JourneyBlueprint>) returnType, nestedProperties, ctx);
+            }
+            // 2. If the method is a bean reference, resolve the bean from the context.
+            else if (method.isAnnotationPresent(BeanReference.class)) {
+                Method propertiesGetter = properties.getClass().getMethod(method.getName());
+                String beanName = (String) propertiesGetter.invoke(properties);
+                if (!StringUtils.hasText(beanName)) {
+                    throw new IllegalStateException(String.format(
+                        "Configuration key '%s' for @BeanReference is missing or empty.", method.getName()
+                    ));
                 }
                 return ctx.getBean(beanName, returnType);
-            } else {
-                // If no annotation, return the value as a literal.
-                return value;
+            }
+            // 3. Otherwise, it's a simple property. Delegate the call to the backing properties object.
+            else {
+                Method propertiesGetter = properties.getClass().getMethod(method.getName());
+                return propertiesGetter.invoke(properties);
             }
         }
     }

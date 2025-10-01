@@ -1,19 +1,18 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.config;
 
-import lombok.Data;
-
-import jakarta.validation.constraints.NotEmpty;
-import java.math.BigDecimal;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyType;
+import dexter.banking.booktransfers.core.domain.shared.validation.ValidationGroup;
+import lombok.Getter;
+import lombok.Setter;
 import java.util.List;
 
-/**
- * A single, unified DTO representing the configuration for a business journey,
- * loaded from application.yml.
- */
-@Data
-class JourneyProperties {
-    private boolean idempotencyEnabled = false;
-    @NotEmpty
-    private List<String> policies;
-    private BigDecimal complianceThreshold;
+@Getter
+@Setter
+public class JourneyProperties {
+    private JourneyType journeyType;
+    private List<ValidationGroup> validationGroups;
+    private List<String> dataCollectors;
+    private List<String> businessRules;
+    private AdapterRoutingProperties adapterRouting;
+    private OrchestrationProperties orchestration;
 }

@@ -73,10 +73,10 @@ app:
       validationGroups: []
       orchestration:
 #        engine: "standardPaymentStateMachineFactory"
-        engine: ""
+        engine: "asyncTransactionFsmFactory"
       adapterRouting:
-        depositPort: "DEPOSIT_PORT_FEIGN"
-        creditPort: "CREDIT_PORT_FEIGN"
+        depositPort: "DEBIT_PORT_FEIGN"
+        creditCardPort: "CREDIT_PORT_FEIGN"
         limitPort: "LIMIT_PORT_FEIGN"
       dataCollectors: []
 #      dataCollectors: ["customerProfileCollector", "accountBalanceCollector"]

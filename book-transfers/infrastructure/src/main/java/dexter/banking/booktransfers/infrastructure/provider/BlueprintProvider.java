@@ -1,83 +1,100 @@
 package dexter.banking.booktransfers.infrastructure.provider;
 
+import dexter.banking.booktransfers.core.domain.shared.blueprint.BeanReference;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
-import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyType;
 import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
+import dexter.banking.booktransfers.infrastructure.adapter.out.config.ServiceConfigProperties;
 import jakarta.annotation.PostConstruct;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
-@ConfigurationProperties(prefix = "app")
 class BlueprintProvider {
 
     private final ApplicationContext applicationContext;
-    private final Map<String, Map<String, Object>> journeys = new java.util.HashMap<>();
+    private final ServiceConfigProperties serviceConfigProperties;
     private Map<String, JourneySpecification> specifications;
 
-    BlueprintProvider(ApplicationContext applicationContext) {
+    BlueprintProvider(ApplicationContext applicationContext, ServiceConfigProperties serviceConfigProperties) {
         this.applicationContext = applicationContext;
-    }
-
-    public Map<String, Map<String, Object>> getJourneys() {
-        return journeys;
+        this.serviceConfigProperties = serviceConfigProperties;
     }
 
     @PostConstruct
-    void materializeAndValidateBlueprints() {
-        this.specifications = this.journeys.entrySet().stream().collect(Collectors.toUnmodifiableMap(
+    void initialize() {
+        this.specifications = this.serviceConfigProperties.getJourneys().entrySet().stream().collect(Collectors.toUnmodifiableMap(
             Map.Entry::getKey,
             entry -> {
                 String journeyName = entry.getKey();
-                Map<String, Object> rawConfig = entry.getValue();
+                var properties = entry.getValue();
                 try {
-                    JourneyType journeyType = JourneyType.valueOf((String) rawConfig.get("journeyType"));
-                    Class<? extends JourneyBlueprint> blueprintClass = journeyType.getBlueprintClass();
-                    JourneyBlueprint blueprintProxy = BlueprintProxyFactory.createProxy(blueprintClass, rawConfig, applicationContext);
+                    Class<? extends JourneyBlueprint> blueprintInterface = properties.getJourneyType().getBlueprintClass();
 
-                    // EAGER VALIDATION STEP
-                    validateBlueprintProxy(blueprintProxy);
+                    // Create the top-level proxy, now backed by the type-safe properties object.
+                    JourneyBlueprint blueprintProxy = BlueprintProxyFactory.createProxy(
+                        blueprintInterface,
+                        properties,
+                        applicationContext
+                    );
 
-                    return new JourneySpecification(journeyName, journeyType, rawConfig, blueprintProxy);
+                    // Perform deep, scoped validation on the proxy itself.
+                    validateBlueprint(blueprintProxy, blueprintInterface, new HashSet<>());
+
+                    return new JourneySpecification(journeyName, properties.getJourneyType(), blueprintProxy);
                 } catch (Exception e) {
-                    // This catch block now correctly fails application startup.
                     throw new IllegalStateException("Failed to materialize and validate blueprint for journey: '" + journeyName + "'", e);
                 }
             }
         ));
     }
 
-    /**
-     * Recursively traverses a blueprint proxy, invoking every method to ensure
-     * the underlying configuration is valid and complete at startup.
-     */
-    private void validateBlueprintProxy(JourneyBlueprint proxy) {
-        List<Method> methods = Arrays.asList(proxy.getClass().getInterfaces()[0].getDeclaredMethods());
+    private void validateBlueprint(
+        Object blueprintProxy,
+        Class<? extends JourneyBlueprint> blueprintInterface,
+        Set<Class<?>> visited
+    ) {
+        // 1. Prevent infinite loops by tracking visited interfaces.
+        if (visited.contains(blueprintInterface)) {
+            return;
+        }
+        visited.add(blueprintInterface);
 
-        for (Method method : methods) {
-            // We only care about methods with no arguments, which define the properties.
+        // 2. Validate all methods declared on the CURRENT interface level.
+        for (Method method : blueprintInterface.getDeclaredMethods()) {
             if (method.getParameterCount() == 0) {
                 try {
-                    Object result = method.invoke(proxy);
-                    // If the result is a nested blueprint, recurse.
-                    if (result instanceof JourneyBlueprint nestedBlueprint) {
-                        validateBlueprintProxy(nestedBlueprint);
+                    // Invoking the method on the proxy triggers the InvocationHandler.
+                    Object result = method.invoke(blueprintProxy);
+
+                    // 3. THE KEY CHANGE: Recurse DOWN into the nested blueprint.
+                    if (JourneyBlueprint.class.isAssignableFrom(method.getReturnType()) && result != null) {
+                        validateBlueprint(result, (Class<? extends JourneyBlueprint>) method.getReturnType(), visited);
+                    }
+                    // This also implicitly validates @BeanReference methods, as the proxy's handler will throw
+                    // an exception if getBean fails. We add a null check for completeness.
+                    else if (method.isAnnotationPresent(BeanReference.class) && result == null) {
+                        throw new IllegalStateException("Bean reference method returned null.");
                     }
                 } catch (Exception e) {
-                    // Wrap exception to provide a clear path to the configuration error.
                     throw new IllegalStateException(String.format(
                         "Validation failed for blueprint method '%s' on interface '%s'",
-                        method.getName(), method.getDeclaringClass().getSimpleName()
+                        method.getName(), blueprintInterface.getSimpleName()
                     ), e);
                 }
+            }
+        }
+
+        // 4. After validating the current level, recurse UP to parent interfaces.
+        for (Class<?> superInterface : blueprintInterface.getInterfaces()) {
+            if (JourneyBlueprint.class.isAssignableFrom(superInterface)) {
+                validateBlueprint(blueprintProxy, (Class<? extends JourneyBlueprint>) superInterface, visited);
             }
         }
     }

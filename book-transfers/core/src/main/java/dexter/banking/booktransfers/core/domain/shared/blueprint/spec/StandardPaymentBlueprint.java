@@ -5,28 +5,35 @@ import dexter.banking.booktransfers.core.application.payment.orchestration.async
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.BeanReference;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
+import dexter.banking.booktransfers.core.domain.shared.validation.ValidationGroup;
 import dexter.banking.booktransfers.core.port.out.CreditCardPort;
 import dexter.banking.booktransfers.core.port.out.DepositPort;
 import dexter.banking.booktransfers.core.port.out.LimitPort;
 import dexter.banking.statemachine.StateMachineFactory;
 
+import java.util.List;
+
 public interface StandardPaymentBlueprint extends JourneyBlueprint {
-    AdapterRoutingBlueprint adapterRouting();
-    OrchestrationBlueprint orchestration();
+    List<ValidationGroup> getValidationGroups();
+    List<String> getDataCollectors();
+    List<String> getBusinessRules();
 
-    interface AdapterRoutingBlueprint {
+    AdapterRoutingBlueprint getAdapterRouting();
+    OrchestrationBlueprint getOrchestration();
+
+    interface AdapterRoutingBlueprint extends JourneyBlueprint {
         @BeanReference
-        DepositPort depositPort();
+        DepositPort getDepositPort();
 
         @BeanReference
-        CreditCardPort creditCardPort();
+        CreditCardPort getCreditCardPort();
 
         @BeanReference
-        LimitPort limitPort();
+        LimitPort getLimitPort();
     }
 
-    interface OrchestrationBlueprint {
+    interface OrchestrationBlueprint extends JourneyBlueprint {
         @BeanReference
-        StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> engine();
+        StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> getEngine();
     }
 }

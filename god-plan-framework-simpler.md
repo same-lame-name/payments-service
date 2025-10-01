@@ -53,7 +53,7 @@ This section provides the detailed, file-by-file implementation plan. It shows t
     package dexter.banking.booktransfers.infrastructure.provider;
 
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
-    import dexter.banking.booktransfers.infrastructure.adapter.out.config.JourneyProperties;
+    import dexter.banking.booktransfers.infrastructure.adapter.out.config.JourneyPropertiesDeprecated;
     import org.springframework.context.ApplicationContext;
 
     /**
@@ -78,7 +78,7 @@ This section provides the detailed, file-by-file implementation plan. It shows t
     import dexter.banking.booktransfers.core.port.out.DepositPort;
     import dexter.banking.booktransfers.core.port.out.LimitPort;
     import dexter.banking.booktransfers.infrastructure.adapter.out.config.AdapterRoutingProperties;
-    import dexter.banking.booktransfers.infrastructure.adapter.out.config.JourneyProperties;
+    import dexter.banking.booktransfers.infrastructure.adapter.out.config.JourneyPropertiesDeprecated;
     import dexter.banking.booktransfers.infrastructure.adapter.out.config.OrchestrationProperties;
     import dexter.banking.statemachine.StateMachineFactory;
     import lombok.RequiredArgsConstructor;
@@ -191,7 +191,7 @@ This section provides the detailed, file-by-file implementation plan. It shows t
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
     import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyType;
     import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
-    import dexter.banking.booktransfers.infrastructure.adapter.out.config.JourneysProperties;
+    import dexter.banking.booktransfers.infrastructure.adapter.out.config.ServiceConfigProperties;
     import jakarta.annotation.PostConstruct;
     import org.springframework.context.ApplicationContext;
     import org.springframework.stereotype.Component;
@@ -207,13 +207,13 @@ This section provides the detailed, file-by-file implementation plan. It shows t
     class BlueprintProvider {
 
         private final ApplicationContext applicationContext;
-        private final JourneysProperties journeysProperties;
+        private final JourneysProperties serviceConfigProperties;
         private Map<String, JourneySpecificationDeprecated> specifications;
         private Map<Class<? extends JourneyBlueprint>, BlueprintFactory> factoryRegistry;
 
-        BlueprintProvider(ApplicationContext applicationContext, JourneysProperties journeysProperties) {
+        BlueprintProvider(ApplicationContext applicationContext, JourneysProperties serviceConfigProperties) {
             this.applicationContext = applicationContext;
-            this.journeysProperties = journeysProperties;
+            this.serviceConfigProperties = serviceConfigProperties;
         }
 
         @PostConstruct
@@ -252,7 +252,7 @@ This section provides the detailed, file-by-file implementation plan. It shows t
         }
 
         private void materializeAndValidateBlueprints() {
-            this.specifications = this.journeysProperties.getJourneys().entrySet().stream().collect(Collectors.toUnmodifiableMap(
+            this.specifications = this.serviceConfigProperties.getJourneys().entrySet().stream().collect(Collectors.toUnmodifiableMap(
                 Map.Entry::getKey,
                 entry -> {
                     String journeyName = entry.getKey();
