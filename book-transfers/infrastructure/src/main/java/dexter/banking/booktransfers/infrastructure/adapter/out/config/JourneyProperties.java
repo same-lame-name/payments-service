@@ -9,10 +9,16 @@ import java.util.List;
 @Getter
 @Setter
 public class JourneyProperties {
+    // === COMMON & MANDATORY ===
     private JourneyType journeyType;
     private List<ValidationGroup> validationGroups;
     private List<String> dataCollectors;
     private List<String> businessRules;
+
+    // === COMMON & OPTIONAL (with defaults) ===
+    private boolean idempotencyEnabled = true;
+
+    // === SPECIFIC & MANDATORY
     private AdapterRoutingProperties adapterRouting;
     private OrchestrationProperties orchestration;
 }

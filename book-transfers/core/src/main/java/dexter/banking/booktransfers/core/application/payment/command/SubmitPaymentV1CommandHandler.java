@@ -5,9 +5,13 @@ import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.StandardPaymentBlueprint;
+import dexter.banking.booktransfers.core.domain.shared.context.BlueprintAccessor;
+import dexter.banking.booktransfers.core.domain.shared.context.InJourney;
 import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated; // <-- ADDED
 import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.domain.shared.validation.ValidationGroup;
 import dexter.banking.booktransfers.core.port.out.*;
 import dexter.banking.commandbus.CommandHandler;
 import lombok.RequiredArgsConstructor;
@@ -15,10 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
@@ -31,6 +32,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private final PaymentRepositoryPort paymentRepository;
     private final EventDispatcherPort eventDispatcher;
     private final BusinessPolicyFactory policyFactory;
+    private final BlueprintAccessor blueprintAccessor;
+
     @Override
     public boolean matches(PaymentCommand command) {
         return command.getVersion() == ApiVersion.V1;
@@ -105,8 +108,11 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performLimitEarmark(PaymentCommand command, Payment payment) {
+        StandardPaymentBlueprint standardPaymentBlueprint = blueprintAccessor.get(StandardPaymentBlueprint.class);
+        var limitPortFromBlueprint = standardPaymentBlueprint.getAdapterRouting().getLimitPort();
         var request = new LimitPort.EarmarkLimitRequest(payment.getId(), command.getLimitType());
-        LimitEarmarkResult limitResult = limitPort.earmarkLimit(request);
+//        LimitEarmarkResult limitResult = limitPort.earmarkLimit(request);
+        LimitEarmarkResult limitResult = limitPortFromBlueprint.earmarkLimit(request);
         payment.recordLimitEarmark(limitResult, buildMetadata(command, payment));
         paymentRepository.update(payment);
 

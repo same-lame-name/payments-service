@@ -19,7 +19,7 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Aspect
 @Configurable
-class WithJourneyContextAspectDeprecated {
+public class WithJourneyContextAspectDeprecated {
 
     private final SpelExpressionParser parser = new SpelExpressionParser();
     private final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();

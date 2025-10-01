@@ -11,7 +11,7 @@ import org.aspectj.lang.reflect.MethodSignature;
 import java.lang.reflect.Parameter;
 
 @Aspect
-class InJourneyParameterAspect {
+public class InJourneyParameterAspect {
 
     @Around("execution(* *(.., @dexter.banking.booktransfers.core.domain.shared.context.InJourney (*), ..))")
     public Object injectJourneyBlueprint(ProceedingJoinPoint pjp) throws Throwable {

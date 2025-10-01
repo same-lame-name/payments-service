@@ -69,19 +69,19 @@ app:
   journeys:
     PAYMENT_SUBMIT_V1:
       journeyType: "STANDARD_PAYMENT"
-#      validationGroups: ["STANDARD_PAYMENT", "WALLET_JOURNEY"]
-      validationGroups: []
+      idempotencyEnabled: false
+      validationGroups: ["STANDARD_PAYMENT", "WALLET_JOURNEY"]
+#      validationGroups: []
       orchestration:
-#        engine: "standardPaymentStateMachineFactory"
         engine: "asyncTransactionFsmFactory"
       adapterRouting:
         depositPort: "DEBIT_PORT_FEIGN"
         creditCardPort: "CREDIT_PORT_FEIGN"
         limitPort: "LIMIT_PORT_FEIGN"
-      dataCollectors: []
-#      dataCollectors: ["customerProfileCollector", "accountBalanceCollector"]
-      businessRules: []
-#      businessRules: ["sufficientFundsRule", "customerStatusRule"]
+#      dataCollectors: []
+      dataCollectors: ["customerProfileCollector", "accountBalanceCollector"]
+#      businessRules: []
+      businessRules: ["sufficientFundsRule", "customerStatusRule"]
 
 logging:
   level:
