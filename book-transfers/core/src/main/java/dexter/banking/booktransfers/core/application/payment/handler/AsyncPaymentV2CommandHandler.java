@@ -28,7 +28,6 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     private final PaymentRepositoryPort paymentRepository;
     private final BusinessPolicyFactory policyFactory;
     private final OrchestrationContextMapper orchestrationContextMapper;
-    private final BlueprintAccessor blueprintAccessor;
 
     @Override
     public boolean matches(PaymentCommand command) {
@@ -38,7 +37,7 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     @Override
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
-        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
+        OrchestratedPaymentBlueprint blueprint = command.getBlueprint();
         BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
 
         UUID transactionId = UUID.randomUUID();

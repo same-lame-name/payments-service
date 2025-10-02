@@ -5,6 +5,14 @@ import org.springframework.stereotype.Component;
 
 @Component
 class ContextBasedBlueprintAccessor implements BlueprintAccessor {
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T extends JourneyBlueprint> T get() {
+        JourneyBlueprint blueprint = JourneyContextManager.getContext().getSpecification().getBlueprint();
+        // The cast is safe because the type is inferred from the calling code's
+        // variable declaration, which is what the developer intends.
+        return (T) blueprint;
+    }
 
     @Override
     public <T extends JourneyBlueprint> T get(Class<T> blueprintType) {

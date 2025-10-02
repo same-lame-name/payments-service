@@ -46,7 +46,7 @@ public class DebitLegAction implements SagaAction<AsyncProcessState, AsyncProces
     }
 
     private TransactionLegPort getTransactionLegPort() {
-        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
+        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get();
 
         return blueprint.getAdapterRouting().getTransactionLegPort();
     }

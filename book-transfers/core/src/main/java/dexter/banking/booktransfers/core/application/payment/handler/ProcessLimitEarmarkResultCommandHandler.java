@@ -31,27 +31,27 @@ public class ProcessLimitEarmarkResultCommandHandler implements CommandHandler<P
     private final PaymentRepositoryPort paymentRepository;
     private final BusinessPolicyFactory policyFactory;
     private final EventDispatcherPort eventDispatcher;
-    private final BlueprintAccessor blueprintAccessor;
 
     private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
 
     @Override
     @Transactional
     public Void handle(ProcessLimitEarmarkResultCommand command) {
-        log.info("Handling limit earmark callback for transactionId: {}", command.transactionId());
+        log.info("Handling limit earmark callback for transactionId: {}", command.getTransactionId());
 
-        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.transactionId())
-                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.transactionId()));
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.getTransactionId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.getTransactionId()));
 
-        Payment payment = rehydratePayment(memento);
-
+        OrchestratedPaymentBlueprint blueprint = command.getBlueprint();
+        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
+        Payment payment =  Payment.rehydrate(memento, policy);
 
         // Universal Routing Logic - V3 does not have async limit earmark, so this only applies to V2.
         String journeyName = memento.journeyName();
         if (journeyName.contains("V2_ASYNC")) {
             resumeV2Orchestration(command, payment);
         } else {
-            log.warn("Received a Limit Earmark callback for a non-V2-Async journey '{}'. Ignoring. TXN_ID: {}", journeyName, command.transactionId());
+            log.warn("Received a Limit Earmark callback for a non-V2-Async journey '{}'. Ignoring. TXN_ID: {}", journeyName, command.getTransactionId());
         }
 
         return null;
@@ -66,22 +66,16 @@ public class ProcessLimitEarmarkResultCommandHandler implements CommandHandler<P
                     metadata.put("realtime", context.getRealtime());
                     metadata.put("transactionReference", payment.getTransactionReference());
                     recordAndPublish(command, payment, metadata);
-                    AsyncProcessEvent event = command.result().status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL ?
+                    AsyncProcessEvent event = command.getResult().status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL ?
                             AsyncProcessEvent.LIMIT_EARMARK_SUCCEEDED : AsyncProcessEvent.LIMIT_EARMARK_FAILED;
                     stateMachine.fire(event);
                 },
-                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.transactionId())
+                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.getTransactionId())
         );
     }
 
-    private Payment rehydratePayment(Payment.PaymentMemento memento) {
-        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
-        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
-        return Payment.rehydrate(memento, policy);
-    }
-
     private void recordAndPublish(ProcessLimitEarmarkResultCommand command, Payment payment, Map<String, Object> metadata) {
-        payment.recordLimitEarmark(command.result(), metadata);
+        payment.recordLimitEarmark(command.getResult(), metadata);
 
         paymentRepository.update(payment);
         eventDispatcher.dispatch(payment.pullDomainEvents());

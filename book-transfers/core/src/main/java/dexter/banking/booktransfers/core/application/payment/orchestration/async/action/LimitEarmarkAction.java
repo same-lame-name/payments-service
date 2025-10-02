@@ -47,7 +47,7 @@ public class LimitEarmarkAction implements SagaAction<AsyncProcessState, AsyncPr
     }
 
     private TransactionLegPort getTransactionLegPort() {
-        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
+        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get();
 
         return blueprint.getAdapterRouting().getTransactionLegPort();
     }

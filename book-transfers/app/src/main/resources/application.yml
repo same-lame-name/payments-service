@@ -65,6 +65,17 @@ app:
         engine: "asyncTransactionFsmFactory"
       adapterRouting:
         transactionLegPort: "TRANSACTION_LEG_PORT_JMS"
+    PAYMENT_SUBMIT_V2_ASYNC_CALLBACK:
+      journeyType: "ORCHESTRATED_PAYMENT"
+      idempotencyEnabled: false
+      validationGroups: ["STANDARD_PAYMENT"]
+      policies: ["stateTransitionPolicy"]
+      dataCollectors: []
+      businessRules: []
+      orchestration:
+        engine: "asyncTransactionFsmFactory"
+      adapterRouting:
+        transactionLegPort: "TRANSACTION_LEG_PORT_JMS"
 logging:
   level:
     tech: debug

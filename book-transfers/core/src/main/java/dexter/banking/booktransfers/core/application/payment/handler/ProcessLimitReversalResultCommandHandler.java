@@ -31,7 +31,6 @@ public class ProcessLimitReversalResultCommandHandler implements CommandHandler<
     private final PaymentRepositoryPort paymentRepository;
     private final BusinessPolicyFactory policyFactory;
     private final EventDispatcherPort eventDispatcher;
-    private final BlueprintAccessor blueprintAccessor;
 
     private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
 
@@ -39,19 +38,21 @@ public class ProcessLimitReversalResultCommandHandler implements CommandHandler<
     @Override
     @Transactional
     public Void handle(ProcessLimitReversalResultCommand command) {
-        log.info("Handling limit reversal callback for transactionId: {}", command.transactionId());
+        log.info("Handling limit reversal callback for transactionId: {}", command.getTransactionId());
 
-        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.transactionId())
-                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.transactionId()));
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.getTransactionId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.getTransactionId()));
 
-        Payment payment = rehydratePayment(memento);
+        OrchestratedPaymentBlueprint blueprint = command.getBlueprint();
+        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
+        Payment payment =  Payment.rehydrate(memento, policy);
 
         // Universal Routing Logic - V3 does not have async limit reversal, so this only applies to V2.
         String journeyName = memento.journeyName();
         if (journeyName.contains("V2_ASYNC")) {
             resumeV2Orchestration(command, payment);
         } else {
-            log.warn("Received a Limit Reversal callback for a non-V2-Async journey '{}'. Ignoring. TXN_ID: {}", journeyName, command.transactionId());
+            log.warn("Received a Limit Reversal callback for a non-V2-Async journey '{}'. Ignoring. TXN_ID: {}", journeyName, command.getTransactionId());
         }
 
         return null;
@@ -66,22 +67,16 @@ public class ProcessLimitReversalResultCommandHandler implements CommandHandler<
                     metadata.put("realtime", context.getRealtime());
                     metadata.put("transactionReference", payment.getTransactionReference());
                     recordAndPublish(command, payment, metadata);
-                    AsyncProcessEvent event = command.result().status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL ?
+                    AsyncProcessEvent event = command.getResult().status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL ?
                             AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED : AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED;
                     stateMachine.fire(event);
                 },
-                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.transactionId())
+                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.getTransactionId())
         );
     }
 
-    private Payment rehydratePayment(Payment.PaymentMemento memento) {
-        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
-        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
-        return Payment.rehydrate(memento, policy);
-    }
-
     private void recordAndPublish(ProcessLimitReversalResultCommand command, Payment payment, Map<String, Object> metadata) {
-        payment.recordLimitReversal(command.result(), metadata);
+        payment.recordLimitReversal(command.getResult(), metadata);
 
         paymentRepository.update(payment);
         eventDispatcher.dispatch(payment.pullDomainEvents());

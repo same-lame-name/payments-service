@@ -31,26 +31,27 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
     private final PaymentRepositoryPort paymentRepository;
     private final BusinessPolicyFactory policyFactory;
     private final EventDispatcherPort eventDispatcher;
-    private final BlueprintAccessor blueprintAccessor;
 
     private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
 
     @Override
     @Transactional
     public Void handle(ProcessCreditCardResultCommand command) {
-        log.info("Handling credit card callback for transactionId: {}", command.transactionId());
+        log.info("Handling credit card callback for transactionId: {}", command.getTransactionId());
 
-        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.transactionId())
-                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.transactionId()));
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.getTransactionId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.getTransactionId()));
 
-        Payment payment = rehydratePayment(memento);
+        OrchestratedPaymentBlueprint blueprint = command.getBlueprint();
+        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
+        Payment payment =  Payment.rehydrate(memento, policy);
 
         // Universal Routing Logic
         String journeyName = memento.journeyName();
         if (journeyName.contains("V2_ASYNC")) {
             resumeV2Orchestration(command, payment);
         } else {
-            log.error("Unknown journeyName '{}' for callback on transactionId {}", journeyName, command.transactionId());
+            log.error("Unknown journeyName '{}' for callback on transactionId {}", journeyName, command.getTransactionId());
         }
 
         return null;
@@ -65,23 +66,16 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
                     metadata.put("realtime", context.getRealtime());
                     metadata.put("transactionReference", payment.getTransactionReference());
                     recordAndPublish(command, payment, metadata);
-                    AsyncProcessEvent event = command.result().status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
+                    AsyncProcessEvent event = command.getResult().status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
                             AsyncProcessEvent.CREDIT_LEG_SUCCEEDED : AsyncProcessEvent.CREDIT_LEG_FAILED;
                     stateMachine.fire(event);
                 },
-                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.transactionId())
+                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.getTransactionId())
         );
     }
 
-
-    private Payment rehydratePayment(Payment.PaymentMemento memento) {
-        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
-        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
-        return Payment.rehydrate(memento, policy);
-    }
-
     private void recordAndPublish(ProcessCreditCardResultCommand command, Payment payment, Map<String, Object> metadata) {
-        payment.recordCredit(command.result(), metadata);
+        payment.recordCredit(command.getResult(), metadata);
 
         paymentRepository.update(payment);
         eventDispatcher.dispatch(payment.pullDomainEvents());

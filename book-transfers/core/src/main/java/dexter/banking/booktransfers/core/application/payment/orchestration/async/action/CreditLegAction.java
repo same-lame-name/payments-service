@@ -33,7 +33,7 @@ public class CreditLegAction implements SagaAction<AsyncProcessState, AsyncProce
     }
 
     private TransactionLegPort getTransactionLegPort() {
-        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
+        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get();
 
         return blueprint.getAdapterRouting().getTransactionLegPort();
     }

@@ -31,7 +31,6 @@ public class ProcessDebitResultCommandHandler implements CommandHandler<ProcessD
     private final PaymentRepositoryPort paymentRepository;
     private final BusinessPolicyFactory policyFactory;
     private final EventDispatcherPort eventDispatcher;
-    private final BlueprintAccessor blueprintAccessor;
 
     private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
 
@@ -39,19 +38,21 @@ public class ProcessDebitResultCommandHandler implements CommandHandler<ProcessD
     @Override
     @Transactional
     public Void handle(ProcessDebitResultCommand command) {
-        log.info("Handling debit callback for transactionId: {}", command.transactionId());
+        log.info("Handling debit callback for transactionId: {}", command.getTransactionId());
 
-        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.transactionId())
-                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.transactionId()));
+        Payment.PaymentMemento memento = paymentRepository.findMementoById(command.getTransactionId())
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.getTransactionId()));
 
-        Payment payment = rehydratePayment(memento);
+        OrchestratedPaymentBlueprint blueprint = command.getBlueprint();
+        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
+        Payment payment =  Payment.rehydrate(memento, policy);
 
         // Universal Routing Logic
         String journeyName = memento.journeyName();
         if (journeyName.contains("V2_ASYNC")) {
             resumeV2Orchestration(command, payment);
         } else {
-            log.error("Unknown journeyName '{}' for callback on transactionId {}", journeyName, command.transactionId());
+            log.error("Unknown journeyName '{}' for callback on transactionId {}", journeyName, command.getTransactionId());
         }
 
         return null;
@@ -66,22 +67,16 @@ public class ProcessDebitResultCommandHandler implements CommandHandler<ProcessD
                     metadata.put("realtime", context.getRealtime());
                     metadata.put("transactionReference", payment.getTransactionReference());
                     recordAndPublish(command, payment, metadata);
-                    AsyncProcessEvent event = command.result().status() == DebitLegResult.DebitLegStatus.SUCCESSFUL ?
+                    AsyncProcessEvent event = command.getResult().status() == DebitLegResult.DebitLegStatus.SUCCESSFUL ?
                             AsyncProcessEvent.DEBIT_LEG_SUCCEEDED : AsyncProcessEvent.DEBIT_LEG_FAILED;
                     stateMachine.fire(event);
                 },
-                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.transactionId())
+                () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.getTransactionId())
         );
     }
 
-    private Payment rehydratePayment(Payment.PaymentMemento memento) {
-        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
-        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
-        return Payment.rehydrate(memento, policy);
-    }
-
     private void recordAndPublish(ProcessDebitResultCommand command, Payment payment, Map<String, Object> metadata) {
-        payment.recordDebit(command.result(), metadata);
+        payment.recordDebit(command.getResult(), metadata);
 
         paymentRepository.update(payment);
         eventDispatcher.dispatch(payment.pullDomainEvents());

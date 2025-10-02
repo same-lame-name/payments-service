@@ -1,5 +1,7 @@
 package dexter.banking.booktransfers.infrastructure.provider;
 
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
+import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
 import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
 import dexter.banking.commandbus.JourneyAwareCommand;
 import dexter.banking.commandbus.Command;
@@ -17,18 +19,21 @@ class ConfigurationEnrichmentMiddleware implements Middleware {
 
     @Override
     public <R, C extends Command<R>> R invoke(C command, Next<R> next) {
+        String journeyName = command.getIdentifier();
+        JourneySpecification spec = blueprintProvider.findByName(journeyName)
+                .orElseThrow(() -> new IllegalStateException("No journey specification found for command identifier: " + journeyName));
+
         // New logic: Check if the command is journey-aware
         if (command instanceof JourneyAwareCommand) {
-            String journeyName = command.getIdentifier();
-            JourneySpecification spec = blueprintProvider.findByName(journeyName)
-                    .orElseThrow(() -> new IllegalStateException("No journey specification found for command identifier: " + journeyName));
-
             // Attach the blueprint directly to the command
             ((JourneyAwareCommand<?>) command).setBlueprint(spec.getBlueprint());
         }
 
-        // The JourneyContextManager is no longer used.
-        // We simply pass the (potentially modified) command down the chain.
-        return next.invoke();
+        var context = new JourneyContext(spec);
+        try {
+            return JourneyContextManager.runWithContext(context, next::invoke);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 }

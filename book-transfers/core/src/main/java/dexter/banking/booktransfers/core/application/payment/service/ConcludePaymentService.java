@@ -51,7 +51,7 @@ public class ConcludePaymentService implements ConcludePaymentSuccessUseCase, Co
     private void concludePayment(UUID transactionId, Consumer<Payment> recordPaymentAction) {
         Payment.PaymentMemento memento = paymentRepository.findMementoById(transactionId)
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId));
-        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
+        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get();
         BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
         var payment = Payment.rehydrate(memento, policy);
 
