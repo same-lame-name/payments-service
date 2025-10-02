@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * This class encapsulates all the logic and dependencies related to JMS,
  * hiding the JmsTemplate from the application core.
  */
-@Component
+@Component(value = "TRANSACTION_LEG_PORT_JMS")
 @RequiredArgsConstructor
 class JmsTransactionLegAdapter implements TransactionLegPort {
 

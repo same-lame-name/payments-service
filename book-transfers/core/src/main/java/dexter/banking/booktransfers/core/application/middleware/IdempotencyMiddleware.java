@@ -2,9 +2,7 @@ package dexter.banking.booktransfers.core.application.middleware;
 
 import dexter.banking.booktransfers.core.domain.payment.exception.IdempotencyConflictException;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.BaseJourneyBlueprint;
-import dexter.banking.booktransfers.core.domain.shared.context.BlueprintAccessor;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.BlueprintAccessor;
 import dexter.banking.booktransfers.core.domain.shared.idempotency.IdempotencyData;
 import dexter.banking.booktransfers.core.domain.shared.idempotency.IdempotencyStatus;
 import dexter.banking.booktransfers.core.port.out.IdempotencyPort;
@@ -30,14 +28,9 @@ public class IdempotencyMiddleware implements Middleware {
     @Override
     @SuppressWarnings("unchecked")
     public <R, C extends Command<R>> R invoke(C command, Next<R> next) {
-        // This middleware is now pure. It depends only on the core context and core ports.
-        JourneySpecificationDeprecated spec = JourneyContextManagerDeprecated.getContext().specification();
-
         BaseJourneyBlueprint journeyBlueprint = blueprintAccessor.get(BaseJourneyBlueprint.class);
 
-        boolean isIdempotencyEnabled = journeyBlueprint.isIdempotencyEnabled();
-
-        boolean isApplicable = spec.isIdempotencyEnabled();
+        boolean isApplicable = journeyBlueprint.isIdempotencyEnabled();
 
         if (!isApplicable || !(command instanceof IdempotentCommand<?> idempotentCommand)) {
             return next.invoke();

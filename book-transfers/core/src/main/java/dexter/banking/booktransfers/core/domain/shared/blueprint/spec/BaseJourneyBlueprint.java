@@ -16,8 +16,13 @@ import java.util.List;
 public interface BaseJourneyBlueprint extends JourneyBlueprint {
     // === COMMON & MANDATORY ===
     List<ValidationGroup> getValidationGroups();
+
+    @VerifyBean
+    List<String> getPolicies();
+
     @VerifyBean
     List<String> getDataCollectors();
+
     @VerifyBean
     List<String> getBusinessRules();
 

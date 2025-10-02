@@ -5,7 +5,6 @@ import dexter.banking.booktransfers.core.application.payment.query.PaymentView;
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
-import dexter.banking.booktransfers.core.domain.shared.markers.WithJourneyContextDeprecated;
 import dexter.banking.booktransfers.core.port.in.payment.PaymentQueryUseCase;
 import dexter.banking.commandbus.CommandBus;
 import jakarta.validation.Valid;
@@ -47,7 +46,6 @@ class BookTransferController {
     }
 
     @GetMapping({"/v1/book-transfers/payment/{id}", "/v2/book-transfers/payment/{id}"})
-    @WithJourneyContextDeprecated("'PAYMENT_DETAILS_QUERY_V1'")
     public ResponseEntity<PaymentView> getTransactionInfo(@PathVariable UUID id) {
         return paymentQueryUseCase.findById(id)
                 .map(ResponseEntity::ok)

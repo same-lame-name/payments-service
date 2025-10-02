@@ -6,12 +6,8 @@ import dexter.banking.booktransfers.core.domain.payment.valueobject.result.Credi
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.StandardPaymentBlueprint;
-import dexter.banking.booktransfers.core.domain.shared.context.BlueprintAccessor;
-import dexter.banking.booktransfers.core.domain.shared.context.InJourney;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated; // <-- ADDED
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.BlueprintAccessor;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
-import dexter.banking.booktransfers.core.domain.shared.validation.ValidationGroup;
 import dexter.banking.booktransfers.core.port.out.*;
 import dexter.banking.commandbus.CommandHandler;
 import lombok.RequiredArgsConstructor;
@@ -43,9 +39,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
         log.info("▶️ [V1] Starting procedural transaction for Command: {}", command.getTransactionReference());
-        JourneySpecificationDeprecated spec = JourneyContextManagerDeprecated.getContext().specification();
-
-        BusinessPolicy policy = policyFactory.create(spec);
+        StandardPaymentBlueprint blueprint = blueprintAccessor.get(StandardPaymentBlueprint.class);
+        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
 
         UUID transactionId = UUID.randomUUID();
         String journeyName = command.getIdentifier();

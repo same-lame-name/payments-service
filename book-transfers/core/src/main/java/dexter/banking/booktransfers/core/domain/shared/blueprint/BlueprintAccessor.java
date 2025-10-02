@@ -1,6 +1,4 @@
-package dexter.banking.booktransfers.core.domain.shared.context;
-
-import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
+package dexter.banking.booktransfers.core.domain.shared.blueprint;
 
 /**
  * A stateless service that provides safe, typed access to the JourneyBlueprint

@@ -1,8 +1,9 @@
 package dexter.banking.booktransfers.core.port.out;
 
 
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+
+import java.util.List;
 
 /**
  * A driven port defining the contract for an adapter that can construct
@@ -13,9 +14,9 @@ public interface BusinessPolicyFactory {
     /**
      * Creates a composed policy from a specific journey specification.
      *
-     * @param spec The complete, unified configuration for the journey.
+     * @param policies, The complete list of transition policies for this business journey
      * @return The composed BusinessPolicy.
      * @throws IllegalArgumentException if any policy bean name in the spec cannot be resolved.
      */
-    BusinessPolicy create(JourneySpecificationDeprecated spec);
+    BusinessPolicy create(List<String> policies);
 }

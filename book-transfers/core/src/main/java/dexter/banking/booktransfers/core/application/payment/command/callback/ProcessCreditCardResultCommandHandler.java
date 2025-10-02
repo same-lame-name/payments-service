@@ -6,16 +6,16 @@ import dexter.banking.booktransfers.core.application.payment.orchestration.async
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.OrchestratedPaymentBlueprint;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.BlueprintAccessor;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
-import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
 import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
 import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
 import dexter.banking.commandbus.CommandHandler;
 import dexter.banking.statemachine.StateMachineFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,9 +28,9 @@ import java.util.Map;
 public class ProcessCreditCardResultCommandHandler implements CommandHandler<ProcessCreditCardResultCommand, Void> {
 
     private final PaymentRepositoryPort paymentRepository;
-    private final ConfigurationPort configurationPort;
     private final BusinessPolicyFactory policyFactory;
     private final EventDispatcherPort eventDispatcher;
+    private final BlueprintAccessor blueprintAccessor;
 
     private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
 
@@ -74,10 +74,8 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
 
 
     private Payment rehydratePayment(Payment.PaymentMemento memento) {
-        BusinessPolicy policy = configurationPort
-                .findForJourney(memento.journeyName())
-                .map(policyFactory::create)
-                .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
+        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
+        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
         return Payment.rehydrate(memento, policy);
     }
 

@@ -8,8 +8,8 @@ import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.OrchestratedPaymentBlueprint;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.BlueprintAccessor;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
 import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
@@ -31,6 +31,7 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     private final PaymentRepositoryPort paymentRepository;
     private final BusinessPolicyFactory policyFactory;
     private final OrchestrationContextMapper orchestrationContextMapper;
+    private final BlueprintAccessor blueprintAccessor;
 
     @Override
     public boolean matches(PaymentCommand command) {
@@ -40,8 +41,8 @@ public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentComma
     @Override
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
-        JourneySpecificationDeprecated spec = JourneyContextManagerDeprecated.getContext().specification();
-        BusinessPolicy policy = policyFactory.create(spec);
+        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
+        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
 
         UUID transactionId = UUID.randomUUID();
         String journeyName = command.getIdentifier();

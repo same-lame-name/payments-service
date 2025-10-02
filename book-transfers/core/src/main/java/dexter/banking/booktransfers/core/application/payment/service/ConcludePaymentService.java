@@ -1,14 +1,14 @@
 package dexter.banking.booktransfers.core.application.payment.service;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.OrchestratedPaymentBlueprint;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.BlueprintAccessor;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.in.payment.ConcludePaymentFailedUseCase;
 import dexter.banking.booktransfers.core.port.in.payment.ConcludePaymentParams;
 import dexter.banking.booktransfers.core.port.in.payment.ConcludePaymentRemediationUseCase;
 import dexter.banking.booktransfers.core.port.in.payment.ConcludePaymentSuccessUseCase;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
-import dexter.banking.booktransfers.core.port.out.ConfigurationPort;
 import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
 import dexter.banking.booktransfers.core.port.out.PaymentRepositoryPort;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class ConcludePaymentService implements ConcludePaymentSuccessUseCase, Co
     private final PaymentRepositoryPort paymentRepository;
     private final EventDispatcherPort eventDispatcher;
     private final BusinessPolicyFactory policyFactory;
-    private final ConfigurationPort configurationPort;
+    private final BlueprintAccessor blueprintAccessor;
 
     @Override
     public void handleFailure(ConcludePaymentParams params) {
@@ -51,10 +51,8 @@ public class ConcludePaymentService implements ConcludePaymentSuccessUseCase, Co
     private void concludePayment(UUID transactionId, Consumer<Payment> recordPaymentAction) {
         Payment.PaymentMemento memento = paymentRepository.findMementoById(transactionId)
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId));
-        JourneySpecificationDeprecated spec = configurationPort.findForJourney(memento.journeyName())
-                .orElseThrow(() -> new IllegalStateException("No journey configured for identifier: " + memento.journeyName()));
-        BusinessPolicy policy = policyFactory.create(spec);
-
+        OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
+        BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
         var payment = Payment.rehydrate(memento, policy);
 
         recordPaymentAction.accept(payment);

@@ -1,15 +1,16 @@
 package dexter.banking.booktransfers.infrastructure.provider;
 
 import dexter.banking.booktransfers.core.domain.shared.context.*;
+import dexter.banking.booktransfers.core.domain.shared.markers.WithJourneyContext;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.context.expression.MethodBasedEvaluationContext;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
+import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import java.lang.reflect.Method;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Aspect
 class WithJourneyContextAspect {
@@ -24,13 +25,7 @@ class WithJourneyContextAspect {
 
     @Around("@annotation(withJourneyContext)")
     public Object establishAdHocContext(ProceedingJoinPoint pjp, WithJourneyContext withJourneyContext) throws Throwable {
-        Method method = ((MethodSignature) pjp.getSignature()).getMethod();
-        MethodBasedEvaluationContext evaluationContext = new MethodBasedEvaluationContext(pjp.getTarget(), method, pjp.getArgs(), parameterNameDiscoverer);
-        String journeyName = (String) expressionParser.parseExpression(withJourneyContext.journeyIdentifier()).getValue(evaluationContext);
-
-        if (journeyName == null) {
-            throw new IllegalStateException("SpEL expression for @WithJourneyContext resolved to null.");
-        }
+        String journeyName = resolveJourneyName(pjp, withJourneyContext.journeyIdentifier());
 
         JourneySpecification spec = blueprintProvider.findByName(journeyName)
             .orElseThrow(() -> new IllegalStateException("No journey specification found for identifier: " + journeyName));
@@ -52,6 +47,25 @@ class WithJourneyContextAspect {
             // Unwrap and rethrow the original throwable to be fully transparent
             throw e.getCause();
         }
+    }
+
+    private String resolveJourneyName(ProceedingJoinPoint pjp, String expression) {
+        MethodSignature signature = (MethodSignature) pjp.getSignature();
+        String[] paramNames = parameterNameDiscoverer.getParameterNames(signature.getMethod());
+        Object[] args = pjp.getArgs();
+
+        EvaluationContext context = new StandardEvaluationContext();
+        if (paramNames != null) {
+            for (int i = 0; i < args.length; i++) {
+                context.setVariable(paramNames[i], args[i]);
+            }
+        }
+
+        String journeyName = expressionParser.parseExpression(expression).getValue(context, String.class);
+        if (journeyName == null) {
+            throw new IllegalStateException("SpEL expression '" + expression + "' evaluated to null. Cannot begin journey.");
+        }
+        return journeyName;
     }
 
     // Private wrapper exception for transparently handling Throwables in lambdas

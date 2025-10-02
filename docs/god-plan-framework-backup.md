@@ -417,7 +417,7 @@ This provides a flexible entry point for queries and other non-command scenarios
         import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextDeprecated;
         import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManagerDeprecated;
         import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
-        import dexter.banking.booktransfers.core.domain.shared.context.WithJourneyContext;
+        import dexter.banking.booktransfers.core.domain.shared.markers.WithJourneyContext;
         import org.aspectj.lang.ProceedingJoinPoint;
         import org.aspectj.lang.annotation.Around;
         import org.aspectj.lang.annotation.Aspect;

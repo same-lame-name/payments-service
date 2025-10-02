@@ -9,4 +9,5 @@ public class AdapterRoutingProperties {
     private String depositPort;
     private String creditCardPort;
     private String limitPort;
+    private String transactionLegPort;
 }

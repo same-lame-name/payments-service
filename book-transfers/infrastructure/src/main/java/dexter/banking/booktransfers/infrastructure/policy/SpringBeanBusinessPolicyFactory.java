@@ -1,6 +1,5 @@
 package dexter.banking.booktransfers.infrastructure.policy;
 
-import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecificationDeprecated;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
 import lombok.RequiredArgsConstructor;
@@ -8,7 +7,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * The concrete Driven Adapter for the BusinessPolicyFactory.
@@ -18,19 +16,15 @@ import java.util.Optional;
 @Component
 @RequiredArgsConstructor
 class SpringBeanBusinessPolicyFactory implements BusinessPolicyFactory {
-
     private final ApplicationContext applicationContext;
 
     @Override
-    public BusinessPolicy create(JourneySpecificationDeprecated spec) {
-
-        List<BusinessPolicy> policies = Optional.of(spec)
-                .map(JourneySpecificationDeprecated::policies)
+    public BusinessPolicy create(List<String> policies) {
+        List<BusinessPolicy> businessPolicies = policies
                 .stream()
-                .flatMap(List::stream)
                 .map(beanName -> applicationContext.getBean(beanName, BusinessPolicy.class))
                 .toList();
 
-        return new CompositeBusinessPolicy(policies);
+        return new CompositeBusinessPolicy(businessPolicies);
     }
 }

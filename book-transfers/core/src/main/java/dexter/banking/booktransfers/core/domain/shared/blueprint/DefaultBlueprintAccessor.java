@@ -1,7 +1,5 @@
-package dexter.banking.booktransfers.infrastructure.provider;
+package dexter.banking.booktransfers.core.domain.shared.blueprint;
 
-import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
-import dexter.banking.booktransfers.core.domain.shared.context.BlueprintAccessor;
 import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
 import org.springframework.stereotype.Component;
 
