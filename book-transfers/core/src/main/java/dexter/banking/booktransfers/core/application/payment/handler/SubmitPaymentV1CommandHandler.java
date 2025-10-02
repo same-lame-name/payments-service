@@ -1,13 +1,16 @@
-package dexter.banking.booktransfers.core.application.payment.command;
+package dexter.banking.booktransfers.core.application.payment.handler;
+
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
-import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.StandardPaymentBlueprint;
-import dexter.banking.booktransfers.core.domain.shared.blueprint.BlueprintAccessor;
+import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.BaseJourneyBlueprint; // Use BaseJourneyBlueprint for casting
+import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.StandardPaymentBlueprint; // Specific blueprint for this handler
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.CustomerProfileFragment;
 import dexter.banking.booktransfers.core.port.out.*;
 import dexter.banking.commandbus.CommandHandler;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +18,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -25,7 +31,6 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private final PaymentRepositoryPort paymentRepository;
     private final EventDispatcherPort eventDispatcher;
     private final BusinessPolicyFactory policyFactory;
-    private final BlueprintAccessor blueprintAccessor;
 
     @Override
     public boolean matches(PaymentCommand command) {
@@ -36,7 +41,9 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     @Transactional
     public PaymentResult handle(PaymentCommand command) {
         log.info("▶️ [V1] Starting procedural transaction for Command: {}", command.getTransactionReference());
-        StandardPaymentBlueprint blueprint = blueprintAccessor.get(StandardPaymentBlueprint.class);
+
+        // Get blueprint directly from the command object
+        BaseJourneyBlueprint blueprint = command.getBlueprint(); // Using the type-inferred getter
         BusinessPolicy policy = policyFactory.create(blueprint.getPolicies());
 
         UUID transactionId = UUID.randomUUID();
@@ -77,7 +84,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performCreditLeg(PaymentCommand command, Payment payment) {
-        CreditCardPort creditCardPort = getCreditCardPort();
+        // Get port directly from blueprint on command
+        CreditCardPort creditCardPort = command.getBlueprint(StandardPaymentBlueprint.class).getAdapterRouting().getCreditCardPort();
         var request = new CreditCardPort.SubmitCreditCardPaymentRequest(payment.getId(), command.getCardNumber());
         CreditLegResult creditResult = creditCardPort.submitCreditCardPayment(request);
         payment.recordCredit(creditResult, buildMetadata(command, payment));
@@ -90,7 +98,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performDebitLeg(PaymentCommand command, Payment payment) {
-        DepositPort depositPort = getDepositPort();
+        // Get port directly from blueprint on command
+        DepositPort depositPort = command.getBlueprint(StandardPaymentBlueprint.class).getAdapterRouting().getDepositPort();
         var request = new DepositPort.SubmitDepositRequest(payment.getId(), command.getAccountNumber());
         DebitLegResult debitResult = depositPort.submitDeposit(request);
         payment.recordDebit(debitResult, buildMetadata(command, payment));
@@ -102,7 +111,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performLimitEarmark(PaymentCommand command, Payment payment) {
-        var limitPort = getLimitPort();
+        // Get port directly from blueprint on command
+        LimitPort limitPort = command.getBlueprint(StandardPaymentBlueprint.class).getAdapterRouting().getLimitPort();
         var request = new LimitPort.EarmarkLimitRequest(payment.getId(), command.getLimitType());
         LimitEarmarkResult limitResult = limitPort.earmarkLimit(request);
         payment.recordLimitEarmark(limitResult, buildMetadata(command, payment));
@@ -131,7 +141,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private void compensateDebitLeg(Payment payment, PaymentCommand command) {
         log.warn("  [COMPENSATION] Reversing Debit Leg for TXN_ID: {}...", payment.getId());
         try {
-            DepositPort depositPort = getDepositPort();
+            // Get port directly from blueprint on command
+            DepositPort depositPort = command.getBlueprint(StandardPaymentBlueprint.class).getAdapterRouting().getDepositPort();
             var request = new DepositPort.SubmitDepositReversalRequest(payment.getId(), payment.getDebitLegResult().depositId());
             DebitLegResult reversalResult = depositPort.submitDepositReversal(request);
 
@@ -156,7 +167,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
         log.warn("  [COMPENSATION] Reversing Limit Earmark for TXN_ID: {}...", payment.getId());
         try {
             var request = new LimitPort.ReverseLimitEarmarkRequest(payment.getId(), payment.getLimitEarmarkResult().limitId());
-            LimitPort limitPort = getLimitPort();
+            // Get port directly from blueprint on command
+            LimitPort limitPort = command.getBlueprint(StandardPaymentBlueprint.class).getAdapterRouting().getLimitPort();
             LimitEarmarkResult reversalResult = limitPort.reverseLimitEarmark(request);
             payment.recordLimitReversal(reversalResult, buildMetadata(command, payment));
         } catch (Exception e) {
@@ -170,6 +182,8 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private Map<String, Object> buildMetadata(PaymentCommand command, Payment payment) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("transactionReference", payment.getTransactionReference());
+        // Example of accessing enrichment data if needed
+         command.get(CustomerProfileFragment.class).ifPresent(f -> metadata.put("customerName", f.name()));
         return metadata;
     }
 
@@ -177,22 +191,6 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
         public StepFailedException(String message) {
             super(message);
         }
-    }
-
-
-    private LimitPort getLimitPort() {
-        StandardPaymentBlueprint standardPaymentBlueprint = blueprintAccessor.get(StandardPaymentBlueprint.class);
-        return standardPaymentBlueprint.getAdapterRouting().getLimitPort();
-    }
-
-    private DepositPort getDepositPort() {
-        StandardPaymentBlueprint standardPaymentBlueprint = blueprintAccessor.get(StandardPaymentBlueprint.class);
-        return standardPaymentBlueprint.getAdapterRouting().getDepositPort();
-    }
-
-    private CreditCardPort getCreditCardPort() {
-        StandardPaymentBlueprint standardPaymentBlueprint = blueprintAccessor.get(StandardPaymentBlueprint.class);
-        return standardPaymentBlueprint.getAdapterRouting().getCreditCardPort();
     }
 
 }

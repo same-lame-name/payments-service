@@ -1,5 +1,6 @@
-package dexter.banking.booktransfers.core.application.payment.command;
+package dexter.banking.booktransfers.core.application.payment.handler;
 
+import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.OrchestrationContextMapper;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;

@@ -13,7 +13,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Aspect
-class WithJourneyContextAspect {
+public class WithJourneyContextAspect {
 
     private final BlueprintProvider blueprintProvider;
     private final SpelExpressionParser expressionParser = new SpelExpressionParser();

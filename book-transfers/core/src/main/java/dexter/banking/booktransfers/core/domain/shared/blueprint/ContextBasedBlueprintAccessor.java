@@ -4,7 +4,7 @@ import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextMan
 import org.springframework.stereotype.Component;
 
 @Component
-class DefaultBlueprintAccessor implements BlueprintAccessor {
+class ContextBasedBlueprintAccessor implements BlueprintAccessor {
 
     @Override
     public <T extends JourneyBlueprint> T get(Class<T> blueprintType) {

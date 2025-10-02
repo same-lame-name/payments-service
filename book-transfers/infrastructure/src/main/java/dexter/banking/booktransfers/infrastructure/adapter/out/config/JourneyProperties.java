@@ -22,5 +22,20 @@ public class JourneyProperties {
     // === OPTIONAL (with defaults) ===
     private boolean idempotencyEnabled = true;
     private List<String> policies = Collections.emptyList();
+
+    @Getter
+    @Setter
+    public static class AdapterRoutingProperties {
+        private String depositPort;
+        private String creditCardPort;
+        private String limitPort;
+        private String transactionLegPort;
+    }
+
+    @Getter
+    @Setter
+    public static class OrchestrationProperties {
+        private String engine;
+    }
 }
 

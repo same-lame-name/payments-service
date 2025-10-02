@@ -48,7 +48,7 @@ app:
       journeyType: "STANDARD_PAYMENT"
       validationGroups: ["STANDARD_PAYMENT"]
       policies: ["stateTransitionPolicy"]
-      dataCollectors: []
+      dataCollectors: ["accountBalanceDataCollector", "customerProfileDataCollector"]
       businessRules: []
       adapterRouting:
         depositPort: "DEBIT_PORT_FEIGN"
@@ -59,7 +59,7 @@ app:
       idempotencyEnabled: false
       validationGroups: ["STANDARD_PAYMENT"]
       policies: ["stateTransitionPolicy"]
-      dataCollectors: []
+      dataCollectors: ["accountBalanceDataCollector", "customerProfileDataCollector"]
       businessRules: []
       orchestration:
         engine: "asyncTransactionFsmFactory"

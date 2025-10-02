@@ -1,5 +1,6 @@
-package dexter.banking.booktransfers.core.application.payment.command.callback;
+package dexter.banking.booktransfers.core.application.payment.handler;
 
+import dexter.banking.booktransfers.core.application.payment.command.callback.ProcessDebitResultCommand;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;

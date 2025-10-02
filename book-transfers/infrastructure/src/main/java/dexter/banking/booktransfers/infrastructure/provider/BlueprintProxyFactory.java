@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-public final class BlueprintProxyFactory {
+final class BlueprintProxyFactory {
 
     private BlueprintProxyFactory() {
     }

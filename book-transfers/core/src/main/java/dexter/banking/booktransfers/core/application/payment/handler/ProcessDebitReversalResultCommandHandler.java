@@ -1,11 +1,12 @@
-package dexter.banking.booktransfers.core.application.payment.command.callback;
+package dexter.banking.booktransfers.core.application.payment.handler;
 
+import dexter.banking.booktransfers.core.application.payment.command.callback.ProcessDebitReversalResultCommand;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.OrchestratedPaymentBlueprint;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.BlueprintAccessor;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
@@ -25,7 +26,7 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ProcessCreditCardResultCommandHandler implements CommandHandler<ProcessCreditCardResultCommand, Void> {
+public class ProcessDebitReversalResultCommandHandler implements CommandHandler<ProcessDebitReversalResultCommand, Void> {
 
     private final PaymentRepositoryPort paymentRepository;
     private final BusinessPolicyFactory policyFactory;
@@ -36,8 +37,8 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
 
     @Override
     @Transactional
-    public Void handle(ProcessCreditCardResultCommand command) {
-        log.info("Handling credit card callback for transactionId: {}", command.transactionId());
+    public Void handle(ProcessDebitReversalResultCommand command) {
+        log.info("Handling debit reversal callback for transactionId: {}", command.transactionId());
 
         Payment.PaymentMemento memento = paymentRepository.findMementoById(command.transactionId())
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.transactionId()));
@@ -55,7 +56,9 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
         return null;
     }
 
-    private void resumeV2Orchestration(ProcessCreditCardResultCommand command, Payment payment) {
+
+
+    private void resumeV2Orchestration(ProcessDebitReversalResultCommand command, Payment payment) {
         v2StateMachineFactory.acquireStateMachine(payment.getId().toString()).ifPresentOrElse(
                 stateMachine -> {
                     var context = stateMachine.getContext();
@@ -64,14 +67,13 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
                     metadata.put("realtime", context.getRealtime());
                     metadata.put("transactionReference", payment.getTransactionReference());
                     recordAndPublish(command, payment, metadata);
-                    AsyncProcessEvent event = command.result().status() == CreditLegResult.CreditLegStatus.SUCCESSFUL ?
-                            AsyncProcessEvent.CREDIT_LEG_SUCCEEDED : AsyncProcessEvent.CREDIT_LEG_FAILED;
+                    AsyncProcessEvent event = command.result().status() == DebitLegResult.DebitLegStatus.REVERSAL_SUCCESSFUL ?
+                            AsyncProcessEvent.DEBIT_LEG_REVERSAL_SUCCEEDED : AsyncProcessEvent.DEBIT_LEG_REVERSAL_FAILED;
                     stateMachine.fire(event);
                 },
                 () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.transactionId())
         );
     }
-
 
     private Payment rehydratePayment(Payment.PaymentMemento memento) {
         OrchestratedPaymentBlueprint blueprint = blueprintAccessor.get(OrchestratedPaymentBlueprint.class);
@@ -79,10 +81,11 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
         return Payment.rehydrate(memento, policy);
     }
 
-    private void recordAndPublish(ProcessCreditCardResultCommand command, Payment payment, Map<String, Object> metadata) {
-        payment.recordCredit(command.result(), metadata);
+    private void recordAndPublish(ProcessDebitReversalResultCommand command, Payment payment, Map<String, Object> metadata) {
+        payment.recordDebitReversal(command.result(), metadata);
 
         paymentRepository.update(payment);
         eventDispatcher.dispatch(payment.pullDomainEvents());
     }
+
 }

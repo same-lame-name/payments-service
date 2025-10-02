@@ -2,12 +2,11 @@ package dexter.banking.booktransfers.core.application.middleware;
 
 import dexter.banking.booktransfers.core.domain.payment.exception.IdempotencyConflictException;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.BaseJourneyBlueprint;
-import dexter.banking.booktransfers.core.domain.shared.blueprint.BlueprintAccessor;
 import dexter.banking.booktransfers.core.domain.shared.idempotency.IdempotencyData;
 import dexter.banking.booktransfers.core.domain.shared.idempotency.IdempotencyStatus;
+import dexter.banking.commandbus.IdempotentCommand;
 import dexter.banking.booktransfers.core.port.out.IdempotencyPort;
 import dexter.banking.commandbus.Command;
-import dexter.banking.commandbus.IdempotentCommand;
 import dexter.banking.commandbus.Middleware;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,27 +15,35 @@ import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
-@Order(3)
+@Order(2)
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class IdempotencyMiddleware implements Middleware {
 
     private final IdempotencyPort idempotencyPort;
-    private final BlueprintAccessor blueprintAccessor;
 
     @Override
     @SuppressWarnings("unchecked")
     public <R, C extends Command<R>> R invoke(C command, Next<R> next) {
-        BaseJourneyBlueprint journeyBlueprint = blueprintAccessor.get(BaseJourneyBlueprint.class);
+        // Check if the command has opted into the new idempotency contract.
+        if (!(command instanceof IdempotentCommand<?> idempotentCommand)) {
+            return next.invoke();
+        }
 
-        boolean isApplicable = journeyBlueprint.isIdempotencyEnabled();
+        // Get blueprint directly from the command object.
+        var blueprint = (BaseJourneyBlueprint) idempotentCommand.getBlueprint();
 
-        if (!isApplicable || !(command instanceof IdempotentCommand<?> idempotentCommand)) {
+        // If the blueprint isn't set or idempotency is disabled, pass through.
+        if (blueprint == null || !blueprint.isIdempotencyEnabled()) {
             return next.invoke();
         }
 
         UUID key = idempotentCommand.getIdempotencyKey();
+        if (key == null) {
+            log.warn("Idempotent command {} has a null idempotency key.", command.getClass().getSimpleName());
+            return next.invoke();
+        }
 
         // Step 1: Attempt to acquire the lock. This is the hot path for new requests.
         if (idempotencyPort.tryAcquireLock(key)) {

@@ -1,5 +1,6 @@
-package dexter.banking.booktransfers.core.application.payment.command.callback;
+package dexter.banking.booktransfers.core.application.payment.handler;
 
+import dexter.banking.booktransfers.core.application.payment.command.callback.ProcessLimitEarmarkResultCommand;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
 import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
@@ -25,7 +26,7 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ProcessLimitReversalResultCommandHandler implements CommandHandler<ProcessLimitReversalResultCommand, Void> {
+public class ProcessLimitEarmarkResultCommandHandler implements CommandHandler<ProcessLimitEarmarkResultCommand, Void> {
 
     private final PaymentRepositoryPort paymentRepository;
     private final BusinessPolicyFactory policyFactory;
@@ -34,29 +35,29 @@ public class ProcessLimitReversalResultCommandHandler implements CommandHandler<
 
     private final StateMachineFactory<AsyncProcessState, AsyncProcessEvent, AsyncTransactionContext> v2StateMachineFactory;
 
-
     @Override
     @Transactional
-    public Void handle(ProcessLimitReversalResultCommand command) {
-        log.info("Handling limit reversal callback for transactionId: {}", command.transactionId());
+    public Void handle(ProcessLimitEarmarkResultCommand command) {
+        log.info("Handling limit earmark callback for transactionId: {}", command.transactionId());
 
         Payment.PaymentMemento memento = paymentRepository.findMementoById(command.transactionId())
                 .orElseThrow(() -> new TransactionNotFoundException("Transaction not found for ID: " + command.transactionId()));
 
         Payment payment = rehydratePayment(memento);
 
-        // Universal Routing Logic - V3 does not have async limit reversal, so this only applies to V2.
+
+        // Universal Routing Logic - V3 does not have async limit earmark, so this only applies to V2.
         String journeyName = memento.journeyName();
         if (journeyName.contains("V2_ASYNC")) {
             resumeV2Orchestration(command, payment);
         } else {
-            log.warn("Received a Limit Reversal callback for a non-V2-Async journey '{}'. Ignoring. TXN_ID: {}", journeyName, command.transactionId());
+            log.warn("Received a Limit Earmark callback for a non-V2-Async journey '{}'. Ignoring. TXN_ID: {}", journeyName, command.transactionId());
         }
 
         return null;
     }
 
-    private void resumeV2Orchestration(ProcessLimitReversalResultCommand command, Payment payment) {
+    private void resumeV2Orchestration(ProcessLimitEarmarkResultCommand command, Payment payment) {
         v2StateMachineFactory.acquireStateMachine(payment.getId().toString()).ifPresentOrElse(
                 stateMachine -> {
                     var context = stateMachine.getContext();
@@ -65,8 +66,8 @@ public class ProcessLimitReversalResultCommandHandler implements CommandHandler<
                     metadata.put("realtime", context.getRealtime());
                     metadata.put("transactionReference", payment.getTransactionReference());
                     recordAndPublish(command, payment, metadata);
-                    AsyncProcessEvent event = command.result().status() == LimitEarmarkResult.LimitEarmarkStatus.REVERSAL_SUCCESSFUL ?
-                            AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_SUCCEEDED : AsyncProcessEvent.LIMIT_EARMARK_REVERSAL_FAILED;
+                    AsyncProcessEvent event = command.result().status() == LimitEarmarkResult.LimitEarmarkStatus.SUCCESSFUL ?
+                            AsyncProcessEvent.LIMIT_EARMARK_SUCCEEDED : AsyncProcessEvent.LIMIT_EARMARK_FAILED;
                     stateMachine.fire(event);
                 },
                 () -> log.error("Could not acquire V2 state machine for transaction id: {}", command.transactionId())
@@ -79,8 +80,8 @@ public class ProcessLimitReversalResultCommandHandler implements CommandHandler<
         return Payment.rehydrate(memento, policy);
     }
 
-    private void recordAndPublish(ProcessLimitReversalResultCommand command, Payment payment, Map<String, Object> metadata) {
-        payment.recordLimitReversal(command.result(), metadata);
+    private void recordAndPublish(ProcessLimitEarmarkResultCommand command, Payment payment, Map<String, Object> metadata) {
+        payment.recordLimitEarmark(command.result(), metadata);
 
         paymentRepository.update(payment);
         eventDispatcher.dispatch(payment.pullDomainEvents());
