@@ -42,29 +42,6 @@ eureka:
     serviceUrl:
       defaultZone: http://eurekaUser:eurekaPassword@localhost:8761/eureka/
 
-# Business process configuration is preserved
-service-config:
-  journeys:
-    PAYMENT_SUBMIT_V1:
-      idempotencyEnabled: true
-      policies:
-        - "stateTransitionPolicy"
-    PAYMENT_SUBMIT_V2_SYNC:
-      idempotencyEnabled: true
-      policies:
-        - "stateTransitionPolicy"
-    PAYMENT_SUBMIT_V2_ASYNC:
-      idempotencyEnabled: false
-      policies:
-        - "stateTransitionPolicy"
-    PAYMENT_SUBMIT_V3:
-      idempotencyEnabled: true
-      policies:
-        - "stateTransitionPolicy"
-      complianceThreshold: 10000.00
-    PAYMENT_DETAILS_QUERY_V1:
-      policies:
-        - "stateTransitionPolicy"
 app:
   journeys:
     PAYMENT_SUBMIT_V1:

@@ -22,9 +22,6 @@ import java.util.*;
 @Slf4j
 public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentCommand, PaymentResult> {
 
-    private final CreditCardPort creditCardPort;
-    private final DepositPort depositPort;
-    private final LimitPort limitPort;
     private final PaymentRepositoryPort paymentRepository;
     private final EventDispatcherPort eventDispatcher;
     private final BusinessPolicyFactory policyFactory;
@@ -80,6 +77,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performCreditLeg(PaymentCommand command, Payment payment) {
+        CreditCardPort creditCardPort = getCreditCardPort();
         var request = new CreditCardPort.SubmitCreditCardPaymentRequest(payment.getId(), command.getCardNumber());
         CreditLegResult creditResult = creditCardPort.submitCreditCardPayment(request);
         payment.recordCredit(creditResult, buildMetadata(command, payment));
@@ -92,6 +90,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performDebitLeg(PaymentCommand command, Payment payment) {
+        DepositPort depositPort = getDepositPort();
         var request = new DepositPort.SubmitDepositRequest(payment.getId(), command.getAccountNumber());
         DebitLegResult debitResult = depositPort.submitDeposit(request);
         payment.recordDebit(debitResult, buildMetadata(command, payment));
@@ -103,11 +102,9 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     }
 
     private void performLimitEarmark(PaymentCommand command, Payment payment) {
-        StandardPaymentBlueprint standardPaymentBlueprint = blueprintAccessor.get(StandardPaymentBlueprint.class);
-        var limitPortFromBlueprint = standardPaymentBlueprint.getAdapterRouting().getLimitPort();
+        var limitPort = getLimitPort();
         var request = new LimitPort.EarmarkLimitRequest(payment.getId(), command.getLimitType());
-//        LimitEarmarkResult limitResult = limitPort.earmarkLimit(request);
-        LimitEarmarkResult limitResult = limitPortFromBlueprint.earmarkLimit(request);
+        LimitEarmarkResult limitResult = limitPort.earmarkLimit(request);
         payment.recordLimitEarmark(limitResult, buildMetadata(command, payment));
         paymentRepository.update(payment);
 
@@ -115,6 +112,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
             throw new StepFailedException("Limit Earmark failed");
         }
     }
+
 
     private void compensate(Payment payment, PaymentCommand command) {
         switch (payment.getState()) {
@@ -133,6 +131,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
     private void compensateDebitLeg(Payment payment, PaymentCommand command) {
         log.warn("  [COMPENSATION] Reversing Debit Leg for TXN_ID: {}...", payment.getId());
         try {
+            DepositPort depositPort = getDepositPort();
             var request = new DepositPort.SubmitDepositReversalRequest(payment.getId(), payment.getDebitLegResult().depositId());
             DebitLegResult reversalResult = depositPort.submitDepositReversal(request);
 
@@ -157,6 +156,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
         log.warn("  [COMPENSATION] Reversing Limit Earmark for TXN_ID: {}...", payment.getId());
         try {
             var request = new LimitPort.ReverseLimitEarmarkRequest(payment.getId(), payment.getLimitEarmarkResult().limitId());
+            LimitPort limitPort = getLimitPort();
             LimitEarmarkResult reversalResult = limitPort.reverseLimitEarmark(request);
             payment.recordLimitReversal(reversalResult, buildMetadata(command, payment));
         } catch (Exception e) {
@@ -178,4 +178,21 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
             super(message);
         }
     }
+
+
+    private LimitPort getLimitPort() {
+        StandardPaymentBlueprint standardPaymentBlueprint = blueprintAccessor.get(StandardPaymentBlueprint.class);
+        return standardPaymentBlueprint.getAdapterRouting().getLimitPort();
+    }
+
+    private DepositPort getDepositPort() {
+        StandardPaymentBlueprint standardPaymentBlueprint = blueprintAccessor.get(StandardPaymentBlueprint.class);
+        return standardPaymentBlueprint.getAdapterRouting().getDepositPort();
+    }
+
+    private CreditCardPort getCreditCardPort() {
+        StandardPaymentBlueprint standardPaymentBlueprint = blueprintAccessor.get(StandardPaymentBlueprint.class);
+        return standardPaymentBlueprint.getAdapterRouting().getCreditCardPort();
+    }
+
 }
