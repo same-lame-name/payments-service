@@ -9,6 +9,7 @@ import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNot
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.OrchestratedPaymentBlueprint;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.BlueprintAccessor;
+import dexter.banking.booktransfers.core.domain.shared.markers.WithJourneyContext;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
 import dexter.banking.booktransfers.core.port.out.EventDispatcherPort;
@@ -57,6 +58,7 @@ public class ProcessCreditCardResultCommandHandler implements CommandHandler<Pro
         return null;
     }
 
+    @WithJourneyContext(journeyIdentifier = "#command.getIdentifier()")
     private void resumeV2Orchestration(ProcessCreditCardResultCommand command, Payment payment) {
         v2StateMachineFactory.acquireStateMachine(payment.getId().toString()).ifPresentOrElse(
                 stateMachine -> {

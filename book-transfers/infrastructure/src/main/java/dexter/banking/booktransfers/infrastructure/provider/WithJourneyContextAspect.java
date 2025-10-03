@@ -6,6 +6,8 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.expression.EvaluationContext;
@@ -13,15 +15,14 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Aspect
+@Configurable
 public class WithJourneyContextAspect {
 
-    private final BlueprintProvider blueprintProvider;
+    @Autowired
+    private BlueprintProvider blueprintProvider;
     private final SpelExpressionParser expressionParser = new SpelExpressionParser();
     private final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
 
-    WithJourneyContextAspect(BlueprintProvider blueprintProvider) {
-        this.blueprintProvider = blueprintProvider;
-    }
 
     @Around("@annotation(withJourneyContext)")
     public Object establishAdHocContext(ProceedingJoinPoint pjp, WithJourneyContext withJourneyContext) throws Throwable {
