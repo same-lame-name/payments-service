@@ -2,16 +2,16 @@ package dexter.banking.booktransfers.core.application.payment.command.callback;
 
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
 import dexter.banking.commandbus.AbstractEnrichableCommand;
-import lombok.Getter; // For generating getters for final fields
-import lombok.RequiredArgsConstructor; // For generating constructor for final fields
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 import java.util.UUID;
 
 /**
  * A dedicated, internal command to process the result of a debit leg callback.
  */
-@RequiredArgsConstructor // Generates constructor for all final fields
-@Getter // Generates getters for all final fields
+@RequiredArgsConstructor
+@Getter
 public class ProcessDebitResultCommand extends AbstractEnrichableCommand<Void> { // Extend the abstract base class
 
     private final UUID transactionId;

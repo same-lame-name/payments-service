@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.config;
+package dexter.banking.booktransfers.infrastructure.provider;
 
 import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyType;
 import dexter.banking.booktransfers.core.domain.shared.validation.ValidationGroup;
@@ -10,7 +10,7 @@ import java.util.List;
 
 @Getter
 @Setter
-public class JourneyProperties {
+class JourneyProperties {
     // === MANDATORY ===
     private JourneyType journeyType;
     private List<ValidationGroup> validationGroups;

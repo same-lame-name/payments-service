@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.adapter.out.config;
+package dexter.banking.booktransfers.infrastructure.provider;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -12,6 +12,6 @@ import java.util.HashMap;
 @Setter
 @Configuration
 @ConfigurationProperties(prefix = "app")
-public class ServiceConfigProperties {
+class ServiceConfigProperties {
     private Map<String, JourneyProperties> journeys = new HashMap<>();
 }

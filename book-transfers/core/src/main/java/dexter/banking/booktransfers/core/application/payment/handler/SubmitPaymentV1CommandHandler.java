@@ -183,7 +183,7 @@ public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentComm
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("transactionReference", payment.getTransactionReference());
         // Example of accessing enrichment data if needed
-         command.get(CustomerProfileFragment.class).ifPresent(f -> metadata.put("customerName", f.name()));
+        command.get(CustomerProfileFragment.class).ifPresent(f -> metadata.put("customerName", f.name()));
         return metadata;
     }
 

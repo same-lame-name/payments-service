@@ -2,7 +2,6 @@ package dexter.banking.booktransfers.infrastructure.provider;
 
 import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
 import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
-import dexter.banking.booktransfers.infrastructure.adapter.out.config.ServiceConfigProperties;
 import jakarta.annotation.PostConstruct;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;

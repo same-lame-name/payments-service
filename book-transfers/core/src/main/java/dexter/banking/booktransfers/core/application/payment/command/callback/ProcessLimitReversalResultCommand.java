@@ -10,8 +10,8 @@ import java.util.UUID;
 /**
  * A dedicated, internal command to process the result of a limit earmark reversal callback.
  */
-@RequiredArgsConstructor // Generates constructor for all final fields
-@Getter // Generates getters for all final fields
+@RequiredArgsConstructor
+@Getter
 public class ProcessLimitReversalResultCommand extends AbstractEnrichableCommand<Void> { // Extend the abstract base class
 
     private final UUID transactionId;
@@ -23,6 +23,6 @@ public class ProcessLimitReversalResultCommand extends AbstractEnrichableCommand
      */
     @Override
     public String getIdentifier() {
-        return "PAYMENT_SUBMIT_V2_ASYNC_CALLBACK"; // Keep the existing identifier logic
+        return "PAYMENT_SUBMIT_V2_ASYNC_CALLBACK";
     }
 }

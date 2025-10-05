@@ -10,8 +10,8 @@ import java.util.UUID;
 /**
  * A dedicated, internal command to process the result of a limit earmark callback.
  */
-@RequiredArgsConstructor // Generates constructor for all final fields
-@Getter // Generates getters for all final fields
+@RequiredArgsConstructor
+@Getter
 public class ProcessLimitEarmarkResultCommand extends AbstractEnrichableCommand<Void> { // Extend the abstract base class
 
     private final UUID transactionId;
@@ -23,6 +23,6 @@ public class ProcessLimitEarmarkResultCommand extends AbstractEnrichableCommand<
      */
     @Override
     public String getIdentifier() {
-        return "PAYMENT_SUBMIT_V2_ASYNC_CALLBACK"; // Keep the existing identifier logic
+        return "PAYMENT_SUBMIT_V2_ASYNC_CALLBACK";
     }
 }

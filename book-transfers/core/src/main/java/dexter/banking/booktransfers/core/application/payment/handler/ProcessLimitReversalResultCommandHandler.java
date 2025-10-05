@@ -8,7 +8,6 @@ import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
 import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.OrchestratedPaymentBlueprint;
-import dexter.banking.booktransfers.core.domain.shared.blueprint.BlueprintAccessor;
 import dexter.banking.booktransfers.core.domain.shared.markers.WithJourneyContext;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.port.out.BusinessPolicyFactory;
