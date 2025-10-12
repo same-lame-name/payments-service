@@ -18,7 +18,7 @@ import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@Order(3) // Runs after IdempotencyMiddleware
+@Order(5) // Runs after IdempotencyMiddleware
 @Component
 @RequiredArgsConstructor
 public class EnrichmentMiddleware implements Middleware {

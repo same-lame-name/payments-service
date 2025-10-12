@@ -65,6 +65,10 @@ app:
         engine: "asyncTransactionFsmFactory"
       adapterRouting:
         transactionLegPort: "TRANSACTION_LEG_PORT_JMS"
+      feature-flag:
+        enabled: true
+        pilot-groups:
+          - BETA_TESTERS_WAVE_1
     PAYMENT_SUBMIT_V2_ASYNC_CALLBACK:
       journeyType: "ORCHESTRATED_PAYMENT"
       idempotencyEnabled: false

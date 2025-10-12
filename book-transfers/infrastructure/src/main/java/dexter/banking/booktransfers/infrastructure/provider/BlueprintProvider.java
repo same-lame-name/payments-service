@@ -36,7 +36,6 @@ class BlueprintProvider {
                         Class<? extends JourneyBlueprint> blueprintInterface = properties.getJourneyType().getBlueprintClass();
 
                         // STEP 1: Eagerly construct the entire proxy graph.
-                        // The constructor of the InvocationHandler now does all the recursive work.
                         JourneyBlueprint blueprintProxy = BlueprintProxyFactory.createProxy(
                                 blueprintInterface,
                                 properties,
@@ -46,7 +45,14 @@ class BlueprintProvider {
                         // STEP 2: Perform a pure validation test-drive on the completed graph.
                         validateBlueprint(blueprintProxy, blueprintInterface, new HashSet<>());
 
-                        return new JourneySpecification(journeyName, properties.getJourneyType(), blueprintProxy);
+                        // STEP 3: Construct the FeatureFlag domain object from properties.
+                        var propsFeatureFlag = properties.getFeatureFlag();
+                        var domainFeatureFlag = new JourneySpecification.FeatureFlag(
+                                propsFeatureFlag.isEnabled(),
+                                propsFeatureFlag.getPilotGroups()
+                        );
+
+                        return new JourneySpecification(journeyName, properties.getJourneyType(), blueprintProxy, domainFeatureFlag);
                     } catch (Exception e) {
                         throw new IllegalStateException("Failed to materialize and validate blueprint for journey: '" + journeyName + "'", e);
                     }

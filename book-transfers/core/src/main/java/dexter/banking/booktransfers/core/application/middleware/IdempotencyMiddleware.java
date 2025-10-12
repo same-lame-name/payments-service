@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.UUID;
 
-@Order(2)
+@Order(4)
 @Component
 @RequiredArgsConstructor
 @Slf4j
