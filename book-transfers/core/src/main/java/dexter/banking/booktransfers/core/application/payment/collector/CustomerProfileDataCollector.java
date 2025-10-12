@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
  */
 @Component("customerProfileDataCollector") // Spring bean name for configuration
 @Slf4j
-public class CustomerProfileDataCollector implements DataCollector<PaymentCommand, CustomerProfileFragment> {
+class CustomerProfileDataCollector implements DataCollector<PaymentCommand, CustomerProfileFragment> {
 
     @Override
     public CustomerProfileFragment collect(PaymentCommand command) {

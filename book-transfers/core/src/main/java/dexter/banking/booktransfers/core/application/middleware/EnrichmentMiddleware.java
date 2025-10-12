@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @Order(5) // Runs after IdempotencyMiddleware
 @Component
 @RequiredArgsConstructor
-public class EnrichmentMiddleware implements Middleware {
+class EnrichmentMiddleware implements Middleware {
 
     private final ApplicationContext applicationContext;
     private final Executor dataCollectorExecutor; // A dedicated thread pool for I/O

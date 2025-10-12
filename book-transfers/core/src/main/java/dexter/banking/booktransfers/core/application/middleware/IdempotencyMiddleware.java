@@ -19,7 +19,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class IdempotencyMiddleware implements Middleware {
+class IdempotencyMiddleware implements Middleware {
 
     private final IdempotencyPort idempotencyPort;
 

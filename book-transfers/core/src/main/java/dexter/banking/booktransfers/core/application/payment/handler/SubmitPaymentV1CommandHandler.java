@@ -4,9 +4,9 @@ import dexter.banking.booktransfers.core.application.payment.command.PaymentComm
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.BaseJourneyBlueprint; // Use BaseJourneyBlueprint for casting
 import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.StandardPaymentBlueprint; // Specific blueprint for this handler
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
@@ -26,7 +26,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentCommand, PaymentResult> {
+class SubmitPaymentV1CommandHandler implements CommandHandler<PaymentCommand, PaymentResult> {
 
     private final PaymentRepositoryPort paymentRepository;
     private final EventDispatcherPort eventDispatcher;

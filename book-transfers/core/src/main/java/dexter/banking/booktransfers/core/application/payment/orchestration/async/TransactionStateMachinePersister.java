@@ -1,9 +1,8 @@
-package dexter.banking.booktransfers.core.application.payment.orchestration.async.component;
+package dexter.banking.booktransfers.core.application.payment.orchestration.async;
 
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
 import dexter.banking.booktransfers.core.port.out.OrchestrationContextRepositoryPort;
 import dexter.banking.statemachine.contract.StateMachinePersister;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +16,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class TransactionStateMachinePersister implements StateMachinePersister<AsyncProcessState, AsyncTransactionContext> {
+class TransactionStateMachinePersister implements StateMachinePersister<AsyncProcessState, AsyncTransactionContext> {
 
     private final OrchestrationContextRepositoryPort contextRepository;
     private final ObjectMapper objectMapper;

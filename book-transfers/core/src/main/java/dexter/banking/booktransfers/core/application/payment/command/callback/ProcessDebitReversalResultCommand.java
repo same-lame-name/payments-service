@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.core.application.payment.command.callback;
 
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.DebitLegResult;
 import dexter.banking.commandbus.AbstractEnrichableCommand;
 import lombok.Getter; // For generating getters for final fields
 import lombok.RequiredArgsConstructor; // For generating constructor for final fields

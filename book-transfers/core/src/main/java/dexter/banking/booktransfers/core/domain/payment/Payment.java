@@ -6,9 +6,9 @@ import dexter.banking.booktransfers.core.domain.payment.event.PaymentFailedEvent
 import dexter.banking.booktransfers.core.domain.payment.event.PaymentInProgressEvent;
 import dexter.banking.booktransfers.core.domain.payment.event.PaymentRequiresComplianceCheck;
 import dexter.banking.booktransfers.core.domain.payment.event.PaymentSuccessfulEvent;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.LimitEarmarkResult;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessAction;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.domain.shared.policy.PolicyEvaluationContext;

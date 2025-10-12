@@ -1,7 +1,7 @@
 package dexter.banking.booktransfers.core.port.out;
 
 
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.LimitEarmarkResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.LimitEarmarkResult;
 
 import java.util.UUID;
 

@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.http.payment.feign;
 
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.CreditLegResult;
 import dexter.banking.booktransfers.core.port.out.CreditCardPort;
 import dexter.banking.model.ApiConstants;
 import dexter.banking.model.CreditCardBankingRequest;

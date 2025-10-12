@@ -11,7 +11,7 @@ import java.util.Arrays;
 import java.util.Date;
 
 @Configuration
-public class MongoConfig {
+class MongoConfig {
 
     @Bean
     public MongoCustomConversions mongoCustomConversions() {

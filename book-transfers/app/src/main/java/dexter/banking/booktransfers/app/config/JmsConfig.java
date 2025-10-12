@@ -8,7 +8,7 @@ import org.springframework.jms.support.converter.MessageConverter;
 import org.springframework.jms.support.converter.MessageType;
 
 @Configuration
-public class JmsConfig {
+class JmsConfig {
     public static final String TYPE_PROP_NAME = "_type";
 
     @Bean

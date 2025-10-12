@@ -71,8 +71,6 @@ app:
         transactionLegPort: "TRANSACTION_LEG_PORT_JMS"
       feature-flag:
         enabled: true
-        pilot-groups:
-          - BETA_TESTERS
     PAYMENT_SUBMIT_V2_ASYNC_CALLBACK:
       journeyType: "ORCHESTRATED_PAYMENT"
       idempotencyEnabled: false

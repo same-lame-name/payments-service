@@ -1,7 +1,7 @@
 package dexter.banking.booktransfers.core.port.out;
 
 
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.CreditLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.CreditLegResult;
 
 import java.util.UUID;
 

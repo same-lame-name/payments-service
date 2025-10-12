@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.core.domain.payment.valueobject.result;
+package dexter.banking.booktransfers.core.domain.payment.valueobject;
 import dexter.banking.booktransfers.core.domain.shared.primitives.ValueObject;
 
 import java.util.UUID;

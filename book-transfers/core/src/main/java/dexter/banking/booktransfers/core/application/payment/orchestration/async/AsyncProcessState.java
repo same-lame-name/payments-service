@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.core.application.payment.orchestration.async.model;
+package dexter.banking.booktransfers.core.application.payment.orchestration.async;
 
 /**
  * Defines the possible states a transaction orchestration can be in during its lifecycle.

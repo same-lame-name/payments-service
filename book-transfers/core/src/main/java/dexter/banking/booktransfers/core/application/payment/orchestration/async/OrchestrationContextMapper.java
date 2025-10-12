@@ -1,7 +1,6 @@
-package dexter.banking.booktransfers.core.application.payment.orchestration.async.component;
+package dexter.banking.booktransfers.core.application.payment.orchestration.async;
 
 import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

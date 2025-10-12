@@ -1,12 +1,12 @@
 package dexter.banking.booktransfers.core.application.payment.handler;
 
 import dexter.banking.booktransfers.core.application.payment.command.callback.ProcessDebitReversalResultCommand;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.AsyncTransactionContext;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.AsyncProcessState;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
 import dexter.banking.booktransfers.core.domain.payment.exception.TransactionNotFoundException;
-import dexter.banking.booktransfers.core.domain.payment.valueobject.result.DebitLegResult;
+import dexter.banking.booktransfers.core.domain.payment.valueobject.DebitLegResult;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.spec.OrchestratedPaymentBlueprint;
 import dexter.banking.booktransfers.core.domain.shared.markers.WithJourneyContext;
 import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
@@ -26,7 +26,7 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ProcessDebitReversalResultCommandHandler implements CommandHandler<ProcessDebitReversalResultCommand, Void> {
+class ProcessDebitReversalResultCommandHandler implements CommandHandler<ProcessDebitReversalResultCommand, Void> {
 
     private final PaymentRepositoryPort paymentRepository;
     private final BusinessPolicyFactory policyFactory;

@@ -21,7 +21,7 @@ import java.util.function.Consumer;
 
 @Component
 @RequiredArgsConstructor
-public class ConcludePaymentService implements ConcludePaymentSuccessUseCase, ConcludePaymentRemediationUseCase, ConcludePaymentFailedUseCase {
+class ConcludePaymentService implements ConcludePaymentSuccessUseCase, ConcludePaymentRemediationUseCase, ConcludePaymentFailedUseCase {
     private final PaymentRepositoryPort paymentRepository;
     private final EventDispatcherPort eventDispatcher;
     private final BusinessPolicyFactory policyFactory;

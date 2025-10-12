@@ -1,13 +1,6 @@
 package dexter.banking.booktransfers.core.application.payment.orchestration.async;
 
 
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.action.TransactionFailAction;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.action.TransactionRemediationAction;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.action.TransactionSuccessAction;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.AsyncTransactionContext;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.TransactionStateMachinePersister;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
 import dexter.banking.statemachine.StateMachineBuilder;
 import dexter.banking.statemachine.StateMachineConfig;
 import dexter.banking.statemachine.StateMachineFactory;
@@ -21,7 +14,7 @@ import java.util.EnumSet;
 
 @Configuration
 @RequiredArgsConstructor
-public class AsyncStateMachineConfig {
+class AsyncStateMachineConfig {
 
     private final TransactionStateMachinePersister persister;
 

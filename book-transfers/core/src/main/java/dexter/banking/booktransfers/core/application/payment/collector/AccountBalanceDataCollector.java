@@ -13,7 +13,7 @@ import java.math.BigDecimal;
  */
 @Component("accountBalanceDataCollector") // Spring bean name for configuration
 @Slf4j
-public class AccountBalanceDataCollector implements DataCollector<PaymentCommand, AccountBalanceFragment> {
+class AccountBalanceDataCollector implements DataCollector<PaymentCommand, AccountBalanceFragment> {
 
     @Override
     public AccountBalanceFragment collect(PaymentCommand command) {

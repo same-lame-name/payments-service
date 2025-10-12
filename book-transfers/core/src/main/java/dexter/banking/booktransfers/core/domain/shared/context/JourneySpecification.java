@@ -18,7 +18,7 @@ public class JourneySpecification {
 
     public record FeatureFlag(boolean enabled, Set<UserGroup> pilotGroups) {
         public FeatureFlag {
-            pilotGroups = (pilotGroups == null) ? Set.of() : pilotGroups;
+            pilotGroups = (pilotGroups == null) ? Set.of(UserGroup.PUBLIC) : pilotGroups;
         }
     }
 }

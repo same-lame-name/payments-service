@@ -1,10 +1,9 @@
-package dexter.banking.booktransfers.core.application.payment.orchestration.async.component;
+package dexter.banking.booktransfers.core.application.payment.orchestration.async;
 
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessState;
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.statemachine.contract.StateMachineContext;

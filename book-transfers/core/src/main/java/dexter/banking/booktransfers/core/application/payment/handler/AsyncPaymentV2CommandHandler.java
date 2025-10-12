@@ -1,8 +1,8 @@
 package dexter.banking.booktransfers.core.application.payment.handler;
 
 import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.component.OrchestrationContextMapper;
-import dexter.banking.booktransfers.core.application.payment.orchestration.async.model.AsyncProcessEvent;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.OrchestrationContextMapper;
+import dexter.banking.booktransfers.core.application.payment.orchestration.async.AsyncProcessEvent;
 import dexter.banking.booktransfers.core.domain.payment.ApiVersion;
 import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.payment.Payment;
@@ -23,7 +23,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentCommand, PaymentResult> {
+class AsyncPaymentV2CommandHandler implements CommandHandler<PaymentCommand, PaymentResult> {
 
     private final PaymentRepositoryPort paymentRepository;
     private final BusinessPolicyFactory policyFactory;

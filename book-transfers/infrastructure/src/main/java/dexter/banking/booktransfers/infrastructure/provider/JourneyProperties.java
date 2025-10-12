@@ -44,7 +44,7 @@ class JourneyProperties {
     @Getter
     @Setter
     public static class FeatureFlag {
-        private boolean enabled = false;
-        private Set<UserGroup> pilotGroups = Collections.emptySet();
+        private boolean enabled = true;
+        private Set<UserGroup> pilotGroups = Set.of(UserGroup.PUBLIC);
     }
 }

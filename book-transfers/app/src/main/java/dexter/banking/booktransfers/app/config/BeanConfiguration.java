@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Primary;
 import java.util.List;
 
 @Configuration
-public class BeanConfiguration {
+class BeanConfiguration {
 
     @Bean
     public CommandBus commandBus(List<CommandHandler<?, ?>> commandHandlers,
