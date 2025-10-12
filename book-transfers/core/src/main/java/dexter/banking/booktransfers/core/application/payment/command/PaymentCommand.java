@@ -5,6 +5,7 @@ import dexter.banking.booktransfers.core.domain.payment.ModeOfTransfer;
 import dexter.banking.booktransfers.core.domain.payment.PaymentResult;
 import dexter.banking.commandbus.AbstractEnrichableCommand;
 import dexter.banking.commandbus.IdempotentCommand;
+import dexter.banking.commandbus.UserAwareCommand;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 
@@ -15,7 +16,7 @@ import java.util.UUID;
 
 @RequiredArgsConstructor
 @Data
-public class PaymentCommand extends AbstractEnrichableCommand<PaymentResult> implements IdempotentCommand<PaymentResult> {
+public class PaymentCommand extends AbstractEnrichableCommand<PaymentResult> implements IdempotentCommand<PaymentResult>, UserAwareCommand {
     @NotNull
     private final UUID idempotencyKey;
     @NotBlank
@@ -42,5 +43,10 @@ public class PaymentCommand extends AbstractEnrichableCommand<PaymentResult> imp
             return "PAYMENT_SUBMIT_V2_" + this.modeOfTransfer.name();
         }
         return "PAYMENT_SUBMIT_" + this.version.name();
+    }
+
+    @Override
+    public String getUserId() {
+        return this.accountNumber;
     }
 }

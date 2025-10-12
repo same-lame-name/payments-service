@@ -4,6 +4,7 @@ import dexter.banking.booktransfers.core.application.featureflag.UserContextMana
 import dexter.banking.booktransfers.core.domain.featureflag.User;
 import dexter.banking.commandbus.Command;
 import dexter.banking.commandbus.Middleware;
+import dexter.banking.commandbus.UserAwareCommand;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -15,18 +16,18 @@ public class SecurityContextMiddleware implements Middleware {
 
     public <R, C extends Command<R>> R invoke(C command, Next<R> next) {
         // In a real application, this would come from a JWT or security context.
-        // For this MVP, we will hardcode a userId.
-        String userId = "user-123";
+        // Check if the command is user-aware.
+        if (command instanceof UserAwareCommand userAwareCommand) {
+            String userId = userAwareCommand.getUserId();
 
-        // Create a PARTIALLY hydrated user object (no groups yet).
-        var partialUser = new User(userId);
-
-        // Run the rest of the command chain within this user's context.
-        try {
-            return UserContextManager.runWithUser(partialUser, next::invoke);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            // If a userId is present, set up the context and execute the rest of the chain within it.
+            if (userId != null && !userId.isBlank()) {
+                var partialUser = new User(userId);
+                return UserContextManager.callWith(partialUser, next::invoke);
+            }
         }
 
+        // If the command is not user-aware, or has no user, proceed without context.
+        return next.invoke();
     }
 }

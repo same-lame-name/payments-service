@@ -1,7 +1,6 @@
 package dexter.banking.booktransfers.core.application.featureflag;
 
 import dexter.banking.booktransfers.core.domain.featureflag.User;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneyContext;
 import org.springframework.stereotype.Component;
 
 import java.util.function.Supplier;
@@ -14,17 +13,22 @@ public class UserContextManager {
         ScopedValue.where(UserContextManager.user, user).run(runnable);
     }
 
-    /**
-     * Executes a standard Supplier within a context scope.
-     * @param user The User to set for the operation.
-     * @param operation The operation to execute.
-     * @return The result of the operation.
-     */
-    public static <R> R runWithUser(User user, Supplier<R> operation) throws Exception {
-        return ScopedValue.where(UserContextManager.user, user).call(operation::get);
+    public static <R> R callWith(User user, Supplier<R> supplier) {
+        try {
+            return ScopedValue.where(UserContextManager.user, user).call(supplier::get);
+        } catch (Exception e) {
+            // It's generally better to let the specific middleware or handler deal with exceptions.
+            // Wrapping in a RuntimeException simplifies the method signature for the middleware.
+            throw new RuntimeException(e);
+        }
     }
 
     public User get() {
+        // Return null if not bound, to avoid ScopedValue throwing an exception
+        // when no user context is set (e.g., for non-user-aware commands).
+        if (!user.isBound()) {
+            return null;
+        }
         return user.get();
     }
 }

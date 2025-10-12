@@ -2,12 +2,9 @@ package dexter.banking.booktransfers.infrastructure.provider;
 
 import dexter.banking.booktransfers.core.application.featureflag.UserContextManager;
 import dexter.banking.booktransfers.core.application.featureflag.ValidationRuleRegistry;
-import dexter.banking.booktransfers.core.application.payment.command.PaymentCommand;
 import dexter.banking.booktransfers.core.domain.featureflag.User;
 import dexter.banking.booktransfers.core.domain.featureflag.UserGroup;
-import dexter.banking.booktransfers.core.domain.featureflag.exception.FeatureDisabledException;
 import dexter.banking.booktransfers.core.domain.featureflag.exception.FeatureNotAvailableForUserException;
-import dexter.banking.booktransfers.core.domain.shared.context.JourneyContextManager;
 import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
 import dexter.banking.booktransfers.core.port.out.NamedGroupProviderPort;
 import dexter.banking.commandbus.Command;
@@ -43,7 +40,6 @@ public class FeatureFlagMiddleware implements Middleware {
             return next.invoke();
         }
         // Get the partial user from the context.
-
         User partialUser = userContextManager.get();
 
         // LAZY LOADING: Get the user's groups. This should be a cache hit.

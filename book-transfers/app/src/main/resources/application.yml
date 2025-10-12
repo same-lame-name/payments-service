@@ -80,6 +80,16 @@ app:
         engine: "asyncTransactionFsmFactory"
       adapterRouting:
         transactionLegPort: "TRANSACTION_LEG_PORT_JMS"
+
+  feature-flags:
+    group-assignments:
+      BETA_TESTERS_WAVE_1:
+        - "user-123"
+      INTERNAL_AUDITORS:
+        - "user-456"
+      APP_V2_USERS:
+        - "user-456"
+
 logging:
   level:
     tech: debug

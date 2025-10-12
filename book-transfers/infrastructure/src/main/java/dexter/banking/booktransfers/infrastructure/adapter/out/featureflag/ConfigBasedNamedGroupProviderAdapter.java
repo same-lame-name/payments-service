@@ -12,8 +12,8 @@ public class ConfigBasedNamedGroupProviderAdapter implements NamedGroupProviderP
     // This adapter would typically load from a config file or a database.
     // For this MVP, we will use a hardcoded map to represent the data source.
     private static final Map<String, Set<UserGroup>> USER_DATA = Map.of(
-            "user-1234", Set.of(UserGroup.BETA_TESTERS_WAVE_1),
-            "user-456", Set.of(UserGroup.INTERNAL_AUDITORS, UserGroup.APP_V2_USERS)
+            "1312134", Set.of(UserGroup.BETA_TESTERS_WAVE_1),
+            "1312133", Set.of(UserGroup.INTERNAL_AUDITORS, UserGroup.APP_V2_USERS, UserGroup.BETA_TESTERS_WAVE_1)
     );
 
     @Override
