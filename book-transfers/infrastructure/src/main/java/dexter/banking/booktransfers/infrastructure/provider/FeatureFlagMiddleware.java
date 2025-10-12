@@ -18,7 +18,7 @@ import java.util.Set;
 @Component
 @Order(3) // Executes after SecurityContextMiddleware (2) and ConfigurationEnrichmentMiddleware (1)
 @RequiredArgsConstructor
-public class FeatureFlagMiddleware implements Middleware {
+class FeatureFlagMiddleware implements Middleware {
 
     private final UserContextManager userContextManager;
     private final NamedGroupProviderPort namedGroupProvider;

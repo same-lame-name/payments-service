@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Order(1)
 @Component
 @RequiredArgsConstructor
-class ConfigurationEnrichmentMiddleware implements Middleware {
+class ConfigurationMiddleware implements Middleware {
 
     private final BlueprintProvider blueprintProvider;
 

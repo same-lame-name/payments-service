@@ -54,6 +54,10 @@ app:
         depositPort: "DEBIT_PORT_FEIGN"
         creditCardPort: "CREDIT_PORT_FEIGN"
         limitPort: "LIMIT_PORT_FEIGN"
+      feature-flag:
+        enabled: true
+        pilot-groups:
+          - BETA_TESTERS
     PAYMENT_SUBMIT_V2_ASYNC:
       journeyType: "ORCHESTRATED_PAYMENT"
       idempotencyEnabled: false
@@ -68,7 +72,7 @@ app:
       feature-flag:
         enabled: true
         pilot-groups:
-          - BETA_TESTERS_WAVE_1
+          - BETA_TESTERS
     PAYMENT_SUBMIT_V2_ASYNC_CALLBACK:
       journeyType: "ORCHESTRATED_PAYMENT"
       idempotencyEnabled: false
@@ -81,14 +85,15 @@ app:
       adapterRouting:
         transactionLegPort: "TRANSACTION_LEG_PORT_JMS"
 
-  feature-flags:
-    group-assignments:
-      BETA_TESTERS_WAVE_1:
-        - "user-123"
-      INTERNAL_AUDITORS:
-        - "user-456"
-      APP_V2_USERS:
-        - "user-456"
+feature-flags:
+  group-assignments:
+    BETA_TESTERS:
+      - "1312133"
+      - "1312134"
+    INTERNAL_AUDITORS:
+      - "1312134"
+    ADS_USERS:
+      - "1312134"
 
 logging:
   level:

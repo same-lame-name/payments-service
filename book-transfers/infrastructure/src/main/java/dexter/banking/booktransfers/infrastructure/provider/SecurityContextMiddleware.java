@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Order(2)
-public class SecurityContextMiddleware implements Middleware {
+class SecurityContextMiddleware implements Middleware {
 
     @Override
 

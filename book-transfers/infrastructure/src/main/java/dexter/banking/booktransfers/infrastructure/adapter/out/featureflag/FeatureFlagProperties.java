@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.infrastructure.provider;
+package dexter.banking.booktransfers.infrastructure.adapter.out.featureflag;
 
 import dexter.banking.booktransfers.core.domain.featureflag.UserGroup;
 import lombok.Getter;
@@ -11,9 +11,9 @@ import java.util.Map;
 import java.util.Set;
 
 @Component
-@ConfigurationProperties(prefix = "app.feature-flags")
+@ConfigurationProperties(prefix = "feature-flags")
 @Getter
 @Setter
-public class FeatureFlagProperties {
+class FeatureFlagProperties {
     private Map<UserGroup, Set<String>> groupAssignments = Collections.emptyMap();
 }

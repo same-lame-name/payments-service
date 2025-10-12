@@ -4,27 +4,59 @@ import dexter.banking.booktransfers.core.domain.featureflag.UserGroup;
 import dexter.banking.booktransfers.core.port.out.NamedGroupProviderPort;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component
-public class ConfigBasedNamedGroupProviderAdapter implements NamedGroupProviderPort {
-    // This adapter would typically load from a config file or a database.
-    // For this MVP, we will use a hardcoded map to represent the data source.
-    private static final Map<String, Set<UserGroup>> USER_DATA = Map.of(
-            "1312134", Set.of(UserGroup.BETA_TESTERS_WAVE_1),
-            "1312133", Set.of(UserGroup.INTERNAL_AUDITORS, UserGroup.APP_V2_USERS, UserGroup.BETA_TESTERS_WAVE_1)
-    );
+class ConfigBasedNamedGroupProviderAdapter implements NamedGroupProviderPort {
+
+    private final FeatureFlagProperties featureFlagProperties;
+    private final Map<String, Set<UserGroup>> userToGroups;
+
+    public ConfigBasedNamedGroupProviderAdapter(FeatureFlagProperties featureFlagProperties) {
+        this.featureFlagProperties = featureFlagProperties;
+        this.userToGroups = invertGroupAssignments(featureFlagProperties.getGroupAssignments());
+    }
+
+    /**
+     * Inverts the group-to-user map from properties into a user-to-group map
+     * for efficient lookups. This is a one-time cost at startup.
+     */
+    private Map<String, Set<UserGroup>> invertGroupAssignments(Map<UserGroup, Set<String>> groupAssignments) {
+        if (groupAssignments == null || groupAssignments.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, Set<UserGroup>> invertedMap = new HashMap<>();
+        groupAssignments.forEach((group, userIds) -> {
+            if (userIds != null) {
+                userIds.forEach(userId -> {
+                    invertedMap.computeIfAbsent(userId, k -> new HashSet<>()).add(group);
+                });
+            }
+        });
+        return Collections.unmodifiableMap(invertedMap);
+    }
 
     @Override
     public Set<UserGroup> getGroupsForUser(String userId) {
-        return USER_DATA.getOrDefault(userId, Set.of());
+        return this.userToGroups.getOrDefault(userId, Collections.emptySet());
     }
 
     @Override
     public Map<UserGroup, Set<String>> getUsersForGroups(Set<UserGroup> groupNames) {
-        // This would be an inverse lookup from the data source.
-        // Later to be moved to a cache.
-        return Map.of(); // Placeholder for now
+        // This method is used by the cache warmer.
+        // It filters the main assignments to return only the data for the requested groups.
+        if (featureFlagProperties.getGroupAssignments() == null) {
+            return Collections.emptyMap();
+        }
+        return this.featureFlagProperties.getGroupAssignments()
+                .entrySet()
+                .stream()
+                .filter(entry -> groupNames.contains(entry.getKey()))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 }
