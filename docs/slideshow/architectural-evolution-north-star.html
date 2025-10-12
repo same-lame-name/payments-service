@@ -109,7 +109,8 @@
         "6.statemachine.jpg": "./6.statemachine.png",
         "7.durable-statemachine.jpg": "./7.durable-statemachine.png",
         "8.idempotency.jpg": "./8.idempotency.png",
-        "9.command-bus.png": "./9.command-bus.png"
+        "9.command-bus.png": "./9.command-bus.png",
+        "10.config-over-code.png": "./10.config-over-code.png"
     };
 
     const slidesData = [
@@ -316,6 +317,22 @@
             challenges: [
                 '<span class="font-semibold">Effort:</span> Requires more upfront design effort.',
                 '<span class="font-semibold">Challenge:</span> Correctly identifying and formulating policies can be challenging, team must refrain from creating anemic models (getters & setters should be avoided)'
+            ]
+        },
+        {
+            type: 'decision',
+            title: 'Decision #10: Configuration-over-Code',
+            problem: 'Business rules and workflow variations are configured, however not validated. A simple change, like mis-typing the name or field, human error, Entire deployment fails at runtime, there is no fail-fast mechanism.',
+            solution: 'This diagram shows a request being enriched by a <span class="font-semibold text-purple-400">Journey Blueprint</span> loaded from a YAML file. The blueprint defines the required steps, validations, and policies for a specific journey (e.g., "High-Value Payment"). The <span class="font-semibold">Blueprint Provider</span> validates this configuration on startup, ensuring its integrity. Business logic is now declared in configuration, and is validated at the application startup time, which is fail-fast guarantee',
+            visual: "10.config-over-code.png",
+            benefits: [
+                '<span class="font-semibold">Reduced Deployment Risk:</span> Changes to configuration values are validated against the contract that it must fulfill',
+                '<span class="font-semibold">Compile time safety and runtime assurance:</span> Code will be running against the contract which will be granting compile time safety, and runtime behaviour - like spring bean extraction - will be guaranteed during application startup',
+                '<span class="font-semibold">Self-Documenting:</span> The YAML configuration provides a readable specification of the service\'s behavior for different journeys.'
+            ],
+            challenges: [
+                '<span class="font-semibold">Effort:</span> Requires a robust framework for parsing, validating, and applying the configuration.',
+                '<span class="font-semibold">Challenge:</span> The configuration schema itself becomes a contract that must be versioned and managed carefully.',
             ]
         },
         {
