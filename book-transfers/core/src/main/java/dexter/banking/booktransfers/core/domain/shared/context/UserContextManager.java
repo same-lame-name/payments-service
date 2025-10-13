@@ -1,6 +1,6 @@
-package dexter.banking.booktransfers.core.application.featureflag;
+package dexter.banking.booktransfers.core.domain.shared.context;
 
-import dexter.banking.booktransfers.core.domain.featureflag.User;
+import dexter.banking.booktransfers.core.domain.shared.featureflag.User;
 import org.springframework.stereotype.Component;
 
 import java.util.function.Supplier;

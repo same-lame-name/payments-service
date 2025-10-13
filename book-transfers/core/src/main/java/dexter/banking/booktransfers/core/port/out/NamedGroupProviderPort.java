@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.core.port.out;
 
-import dexter.banking.booktransfers.core.domain.featureflag.UserGroup;
+import dexter.banking.booktransfers.core.domain.shared.featureflag.UserGroup;
 
 import java.util.Map;
 import java.util.Set;

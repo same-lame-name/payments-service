@@ -29,4 +29,6 @@ class BookTransferRequest {
 
     @Pattern(regexp = "SYNC|ASYNC", message = "Mode of transfer must be one of DIRECT, SYNC, or ASYNC")
     String modeOfTransfer = "SYNC";
+
+    String userId;
 }

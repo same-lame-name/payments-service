@@ -1,7 +1,7 @@
-package dexter.banking.booktransfers.infrastructure.provider;
+package dexter.banking.booktransfers.core.application.middleware;
 
-import dexter.banking.booktransfers.core.application.featureflag.UserContextManager;
-import dexter.banking.booktransfers.core.domain.featureflag.User;
+import dexter.banking.booktransfers.core.domain.shared.context.UserContextManager;
+import dexter.banking.booktransfers.core.domain.shared.featureflag.User;
 import dexter.banking.commandbus.Command;
 import dexter.banking.commandbus.Middleware;
 import dexter.banking.commandbus.UserAwareCommand;

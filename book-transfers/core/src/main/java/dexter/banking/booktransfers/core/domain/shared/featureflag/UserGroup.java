@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.core.domain.featureflag;
+package dexter.banking.booktransfers.core.domain.shared.featureflag;
 
 public enum UserGroup {
     PUBLIC,

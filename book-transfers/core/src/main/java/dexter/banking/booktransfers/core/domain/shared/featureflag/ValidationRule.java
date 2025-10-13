@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.core.domain.featureflag;
+package dexter.banking.booktransfers.core.domain.shared.featureflag;
 
 import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
 

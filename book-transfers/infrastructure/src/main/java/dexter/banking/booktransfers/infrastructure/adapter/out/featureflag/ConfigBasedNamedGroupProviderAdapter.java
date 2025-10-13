@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.featureflag;
 
-import dexter.banking.booktransfers.core.domain.featureflag.UserGroup;
+import dexter.banking.booktransfers.core.domain.shared.featureflag.UserGroup;
 import dexter.banking.booktransfers.core.port.out.NamedGroupProviderPort;
 import org.springframework.stereotype.Component;
 

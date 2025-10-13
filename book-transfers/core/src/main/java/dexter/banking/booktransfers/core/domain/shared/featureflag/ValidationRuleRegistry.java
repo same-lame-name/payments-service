@@ -1,7 +1,5 @@
-package dexter.banking.booktransfers.core.application.featureflag;
+package dexter.banking.booktransfers.core.domain.shared.featureflag;
 
-import dexter.banking.booktransfers.core.domain.featureflag.UserGroup;
-import dexter.banking.booktransfers.core.domain.featureflag.ValidationRule;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;

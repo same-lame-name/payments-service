@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.core.domain.shared.context;
 
-import dexter.banking.booktransfers.core.domain.featureflag.UserGroup;
+import dexter.banking.booktransfers.core.domain.shared.featureflag.UserGroup;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyBlueprint;
 import dexter.banking.booktransfers.core.domain.shared.blueprint.JourneyType;
 import lombok.Getter;

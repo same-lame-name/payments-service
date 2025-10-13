@@ -1,11 +1,11 @@
 package dexter.banking.booktransfers.infrastructure.provider;
 
-import dexter.banking.booktransfers.core.application.featureflag.UserContextManager;
-import dexter.banking.booktransfers.core.application.featureflag.ValidationRuleRegistry;
-import dexter.banking.booktransfers.core.domain.featureflag.User;
-import dexter.banking.booktransfers.core.domain.featureflag.UserGroup;
-import dexter.banking.booktransfers.core.domain.featureflag.exception.FeatureDisabledException;
-import dexter.banking.booktransfers.core.domain.featureflag.exception.FeatureNotAvailableForUserException;
+import dexter.banking.booktransfers.core.domain.shared.context.UserContextManager;
+import dexter.banking.booktransfers.core.domain.shared.featureflag.ValidationRuleRegistry;
+import dexter.banking.booktransfers.core.domain.shared.featureflag.User;
+import dexter.banking.booktransfers.core.domain.shared.featureflag.UserGroup;
+import dexter.banking.booktransfers.core.domain.shared.featureflag.exception.FeatureDisabledException;
+import dexter.banking.booktransfers.core.domain.shared.featureflag.exception.FeatureNotAvailableForUserException;
 import dexter.banking.booktransfers.core.domain.shared.context.JourneySpecification;
 import dexter.banking.booktransfers.core.port.out.NamedGroupProviderPort;
 import dexter.banking.commandbus.Command;

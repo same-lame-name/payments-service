@@ -1,4 +1,4 @@
-package dexter.banking.booktransfers.core.domain.featureflag.exception;
+package dexter.banking.booktransfers.core.domain.shared.featureflag.exception;
 
 public class FeatureNotAvailableForUserException extends RuntimeException {
     public FeatureNotAvailableForUserException(String journeyName, String userId) {

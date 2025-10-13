@@ -86,12 +86,12 @@ app:
 feature-flags:
   group-assignments:
     BETA_TESTERS:
-      - "1312133"
-      - "1312134"
+      - "beta_123"
+      - "beta_456"
     INTERNAL_AUDITORS:
-      - "1312134"
+      - "aud_123"
     ADS_USERS:
-      - "1312134"
+      - "ads_123"
 
 logging:
   level:

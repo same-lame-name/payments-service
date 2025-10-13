@@ -37,6 +37,8 @@ public class PaymentCommand extends AbstractEnrichableCommand<PaymentResult> imp
     @NotNull
     private final ApiVersion version;
 
+    private final String userId;
+
     @Override
     public String getIdentifier() {
         if (this.version == ApiVersion.V2) {
@@ -47,6 +49,6 @@ public class PaymentCommand extends AbstractEnrichableCommand<PaymentResult> imp
 
     @Override
     public String getUserId() {
-        return this.accountNumber;
+        return userId;
     }
 }

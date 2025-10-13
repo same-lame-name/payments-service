@@ -1,6 +1,6 @@
 package dexter.banking.booktransfers.infrastructure.adapter.out.featureflag;
 
-import dexter.banking.booktransfers.core.domain.featureflag.UserGroup;
+import dexter.banking.booktransfers.core.domain.shared.featureflag.UserGroup;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
