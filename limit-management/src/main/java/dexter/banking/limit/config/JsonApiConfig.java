@@ -17,8 +17,18 @@ import java.util.List;
 @Configuration
 public class JsonApiConfig implements WebMvcConfigurer {
 
+    private final JsonApiArgumentResolver jsonApiArgumentResolver;
+
+    public JsonApiConfig(JsonApiArgumentResolver jsonApiArgumentResolver) {
+        this.jsonApiArgumentResolver = jsonApiArgumentResolver;
+    }
+
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        // Resolver for @JsonApiQuery DomainQuery
+        resolvers.add(jsonApiArgumentResolver);
+
+        // Resolver for standalone Pageable (legacy/simple support)
         JsonApiPageableResolver pageResolver = new JsonApiPageableResolver();
         pageResolver.setPageParameterName("page[number]");
         pageResolver.setSizeParameterName("page[size]");

@@ -4,13 +4,11 @@ import dexter.banking.limit.domain.Payee;
 import dexter.banking.limit.repository.PayeeRepository;
 import dexter.banking.limit.web.dto.PayeeDto;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 
@@ -31,8 +29,8 @@ public class PayeeController {
     }
 
     @GetMapping
-    public ResponseEntity<PagedModel<EntityModel<PayeeDto>>> list(Pageable pageable) {
-        Page<Payee> payees = repository.findAll(pageable);
+    public ResponseEntity<PagedModel<EntityModel<PayeeDto>>> list(@JsonApiQuery DomainQuery query) {
+        Page<Payee> payees = repository.findAll(query);
         
         // Converts Page<Domain> -> PagedModel<Resource> with Links (first, prev, next, last)
         PagedModel<EntityModel<PayeeDto>> pagedModel = pagedResourcesAssembler.toModel(payees, assembler);
