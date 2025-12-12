@@ -1,0 +1,19 @@
+{
+  "id": "6dd81e41-2cb2-436f-bc0f-c2da33018ecc",
+  "transactionReference": "REF-V1-1760425646",
+  "journeyName": "PAYMENT_SUBMIT_V1",
+  "debitLegResult": {
+    "depositId": "e856051a-0f3e-4b88-b5e4-6c65c6276d31",
+    "status": "SUCCESSFUL"
+  },
+  "limitEarmarkResult": {
+    "limitId": "3bde95ae-179e-4a8a-9351-fabd73611260",
+    "status": "SUCCESSFUL"
+  },
+  "creditLegResult": {
+    "creditCardRequestId": "9c9a85ca-4a78-4b4f-88a8-9f0690caf667",
+    "status": "SUCCESSFUL"
+  },
+  "status": "SUCCESSFUL",
+  "state": "SUCCESS"
+}
