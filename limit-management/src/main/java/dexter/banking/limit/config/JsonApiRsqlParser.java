@@ -2,6 +2,7 @@ package dexter.banking.limit.config;
 
 import cz.jirutka.rsql.parser.RSQLParser;
 import cz.jirutka.rsql.parser.ast.Node;
+import cz.jirutka.rsql.parser.ast.RSQLOperators;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -51,13 +52,13 @@ public class JsonApiRsqlParser {
 
     private String mapOperator(String jsonApiOp) {
         return switch (jsonApiOp) {
-            case "gt" -> "=gt=";
-            case "lt" -> "=lt=";
-            case "ge" -> "=ge=";
-            case "le" -> "=le=";
-            case "neq" -> "!=";
-            case "like" -> "=="; // Wildcard handled by value content usually
-            default -> "==";
+            case "gt" -> RSQLOperators.GREATER_THAN.getSymbol();
+            case "lt" -> RSQLOperators.LESS_THAN.getSymbol();
+            case "ge" -> RSQLOperators.GREATER_THAN_OR_EQUAL.getSymbol();
+            case "le" -> RSQLOperators.LESS_THAN_OR_EQUAL.getSymbol();
+            case "neq" -> RSQLOperators.NOT_EQUAL.getSymbol();
+            case "like" -> RSQLOperators.EQUAL.getSymbol(); // Wildcard handled by value content usually
+            default -> RSQLOperators.EQUAL.getSymbol();
         };
     }
 }
