@@ -5,8 +5,10 @@ import dexter.banking.limit.web.DomainQuery;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -47,7 +49,15 @@ public class PayeeRepository {
             filtered = payees.stream().filter(predicate).toList();
         }
 
-        // 2. Paginate
+        // 2. Sort
+        if (pageable.getSort().isSorted()) {
+            Comparator<Payee> comparator = buildComparator(pageable.getSort());
+            if (comparator != null) {
+                filtered = filtered.stream().sorted(comparator).toList();
+            }
+        }
+
+        // 3. Paginate
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), filtered.size());
 
@@ -57,5 +67,25 @@ public class PayeeRepository {
 
         List<Payee> content = filtered.subList(start, end);
         return new PageImpl<>(content, pageable, filtered.size());
+    }
+
+    private Comparator<Payee> buildComparator(Sort sort) {
+        Comparator<Payee> comparator = null;
+        for (Sort.Order order : sort) {
+            Comparator<Payee> current = switch (order.getProperty()) {
+                case "name" -> Comparator.comparing(Payee::getName);
+                case "iban" -> Comparator.comparing(Payee::getIban);
+                case "id" -> Comparator.comparing(Payee::getId);
+                default -> null;
+            };
+
+            if (current != null) {
+                if (order.isDescending()) {
+                    current = current.reversed();
+                }
+                comparator = (comparator == null) ? current : comparator.thenComparing(current);
+            }
+        }
+        return comparator;
     }
 }
