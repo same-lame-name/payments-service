@@ -1,0 +1,379 @@
+{
+	"info": {
+		"_postman_id": "c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f",
+		"name": "Limit Management Service (Comprehensive)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "RFC Compliant (Encoded)",
+			"item": [
+				{
+					"name": "1. Create Payee",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/vnd.api+json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"data\": {\n        \"type\": \"payees\",\n        \"attributes\": {\n            \"name\": \"Postman Payee\",\n            \"iban\": \"CH5604835012345678009\"\n        }\n    }\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/v1/payees",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"payees"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Get All (DB) - Paginated",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8082/api/v1/payees?page%5Bnumber%5D=1&page%5Bsize%5D=5",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"payees"
+							],
+							"query": [
+								{
+									"key": "page%5Bnumber%5D",
+									"value": "1"
+								},
+								{
+									"key": "page%5Bsize%5D",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Get Online (Gateway) - Paginated",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8082/api/v1/payees/online?page%5Bnumber%5D=1&page%5Bsize%5D=5",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"payees",
+								"online"
+							],
+							"query": [
+								{
+									"key": "page%5Bnumber%5D",
+									"value": "1"
+								},
+								{
+									"key": "page%5Bsize%5D",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Filter (DB) - Name",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8082/api/v1/payees?filter%5Bname%5D=Payee%205",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"payees"
+							],
+							"query": [
+								{
+									"key": "filter%5Bname%5D",
+									"value": "Payee 5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Filter (Online) - Name",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8082/api/v1/payees/online?filter%5Bname%5D=Regulator%20Payee%20One",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"payees",
+								"online"
+							],
+							"query": [
+								{
+									"key": "filter%5Bname%5D",
+									"value": "Regulator Payee One"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Sort (DB) - Descending Name",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8082/api/v1/payees?sort=-name",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"payees"
+							],
+							"query": [
+								{
+									"key": "sort",
+									"value": "-name"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Complex Query (DB)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8082/api/v1/payees?filter%5Bname%5D=Payee%201&sort=id&page%5Bnumber%5D=1&page%5Bsize%5D=5",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"payees"
+							],
+							"query": [
+								{
+									"key": "filter%5Bname%5D",
+									"value": "Payee 1"
+								},
+								{
+									"key": "sort",
+									"value": "id"
+								},
+								{
+									"key": "page%5Bnumber%5D",
+									"value": "1"
+								},
+								{
+									"key": "page%5Bsize%5D",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Relaxed (Unencoded) - Will Fail 400",
+			"item": [
+				{
+					"name": "1. Get All (DB) - Paginated",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8082/api/v1/payees?page[number]=1&page[size]=5",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"payees"
+							],
+							"query": [
+								{
+									"key": "page[number]",
+									"value": "1"
+								},
+								{
+									"key": "page[size]",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Filter (DB) - Name",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8082/api/v1/payees?filter[name]=Payee 5",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"payees"
+							],
+							"query": [
+								{
+									"key": "filter[name]",
+									"value": "Payee 5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Complex Query (DB)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/vnd.api+json"
+							}
+						],
+						"url": {
+							"raw": "http://localhost:8082/api/v1/payees?filter[name]=Payee 1&sort=id&page[number]=1&page[size]=5",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"v1",
+								"payees"
+							],
+							"query": [
+								{
+									"key": "filter[name]",
+									"value": "Payee 1"
+								},
+								{
+									"key": "sort",
+									"value": "id"
+								},
+								{
+									"key": "page[number]",
+									"value": "1"
+								},
+								{
+									"key": "page[size]",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

@@ -4,6 +4,7 @@ import cz.jirutka.rsql.parser.ast.Node;
 import dexter.banking.limit.domain.Payee;
 import dexter.banking.limit.gateway.RegulatorGateway;
 import dexter.banking.limit.repository.PayeeRepository;
+import dexter.banking.limit.repository.rsql.InMemoryRsqlVisitor;
 import dexter.banking.limit.repository.rsql.common.FilterConfig;
 import dexter.banking.limit.repository.rsql.jpa.JpaRsqlVisitor;
 import dexter.banking.limit.web.dto.PayeeDto;
@@ -17,8 +18,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 @JsonApiController
 @RequestMapping(path = "/api/v1/payees", produces = "application/vnd.api+json")
@@ -29,59 +32,66 @@ public class PayeeController {
     private final PagedResourcesAssembler<Payee> pagedResourcesAssembler;
     private final RegulatorGateway regulatorGateway;
     private final FilterConfig<String> jpaFilterConfig;
+    private final FilterConfig<Function<Payee, ?>> inMemoryFilterConfig;
 
     public PayeeController(PayeeRepository repository,
                            PayeeAssembler assembler,
                            PagedResourcesAssembler<Payee> pagedResourcesAssembler,
                            RegulatorGateway regulatorGateway,
-                           @Qualifier("payeeJpaFilterConfig") FilterConfig<String> jpaFilterConfig) {
+                           @Qualifier("payeeJpaFilterConfig") FilterConfig<String> jpaFilterConfig,
+                           @Qualifier("payeeInMemoryFilterConfig") FilterConfig<Function<Payee, ?>> inMemoryFilterConfig) {
         this.repository = repository;
         this.assembler = assembler;
         this.pagedResourcesAssembler = pagedResourcesAssembler;
         this.regulatorGateway = regulatorGateway;
         this.jpaFilterConfig = jpaFilterConfig;
+        this.inMemoryFilterConfig = inMemoryFilterConfig;
     }
 
     @GetMapping
     public ResponseEntity<PagedModel<EntityModel<PayeeDto>>> list(
             @JsonApiFilter Node filter,
             @JsonApiSort Sort sort,
-            @JsonApiPage Pageable pageable,
-            @RequestParam(name = "enrich", defaultValue = "false") boolean enrich) {
+            @JsonApiPage Pageable pageable) {
 
-        Page<Payee> payees;
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
-
-        if (enrich) {
-            payees = getEnrichedPayees(pageRequest);
-        } else {
-            Specification<Payee> spec = (filter != null) ? filter.accept(new JpaRsqlVisitor<>(jpaFilterConfig)) : null;
-            payees = repository.findAll(spec, pageRequest);
-        }
+        Specification<Payee> spec = (filter != null) ? filter.accept(new JpaRsqlVisitor<>(jpaFilterConfig)) : null;
+        Page<Payee> payees = repository.findAll(spec, pageRequest);
 
         PagedModel<EntityModel<PayeeDto>> pagedModel = pagedResourcesAssembler.toModel(payees, assembler);
         return ResponseEntity.ok(pagedModel);
     }
 
-    private Page<Payee> getEnrichedPayees(Pageable pageable) {
-        // 1. Fetch data from both sources
-        List<Payee> localPayees = repository.findAll();
-        List<Payee> regulatorPayees = regulatorGateway.fetchPayees();
+    @GetMapping("/online")
+    public ResponseEntity<PagedModel<EntityModel<PayeeDto>>> onlineList(
+            @JsonApiFilter Node filter,
+            @JsonApiSort Sort sort,
+            @JsonApiPage Pageable pageable) {
 
-        // 2. Merge them
-        List<Payee> allPayees = new ArrayList<>(localPayees);
-        allPayees.addAll(regulatorPayees);
+        // 1. Fetch all from downstream
+        List<Payee> onlinePayees = regulatorGateway.fetchPayees();
 
-        // 3. Apply in-memory pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), allPayees.size());
-
-        if (start > allPayees.size()) {
-            return new PageImpl<>(List.of(), pageable, allPayees.size());
+        // 2. Filter in-memory
+        if (filter != null) {
+            Predicate<Payee> predicate = filter.accept(new InMemoryRsqlVisitor<>(inMemoryFilterConfig));
+            onlinePayees = onlinePayees.stream().filter(predicate).toList();
         }
 
-        List<Payee> pageContent = allPayees.subList(start, end);
-        return new PageImpl<>(pageContent, pageable, allPayees.size());
+        // 3. Sort in-memory
+        if (sort.isSorted()) {
+            Comparator<Payee> comparator = buildInMemoryComparator(sort);
+            onlinePayees = onlinePayees.stream().sorted(comparator).toList();
+        }
+
+        // 4. Paginate in-memory
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), onlinePayees.size());
+
+        List<Payee> pageContent = (start > onlinePayees.size()) ? List.of() : onlinePayees.subList(start, end);
+        Page<Payee> payeesPage = new PageImpl<>(pageContent, pageable, onlinePayees.size());
+
+        PagedModel<EntityModel<PayeeDto>> pagedModel = pagedResourcesAssembler.toModel(payeesPage, assembler);
+        return ResponseEntity.ok(pagedModel);
     }
 
     @PostMapping
@@ -101,5 +111,25 @@ public class PayeeController {
                 .map(assembler::toModel)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    private Comparator<Payee> buildInMemoryComparator(Sort sort) {
+        Comparator<Payee> comparator = null;
+        for (Sort.Order order : sort) {
+            Comparator<Payee> current = switch (order.getProperty()) {
+                case "name" -> Comparator.comparing(Payee::getName);
+                case "iban" -> Comparator.comparing(Payee::getIban);
+                case "id" -> Comparator.comparing(Payee::getId);
+                default -> null;
+            };
+
+            if (current != null) {
+                if (order.isDescending()) {
+                    current = current.reversed();
+                }
+                comparator = (comparator == null) ? current : comparator.thenComparing(current);
+            }
+        }
+        return comparator;
     }
 }
