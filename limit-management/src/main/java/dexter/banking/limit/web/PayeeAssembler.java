@@ -25,7 +25,6 @@ public class PayeeAssembler extends RepresentationModelAssemblerSupport<Payee, E
     }
 
     public Payee toDomain(PayeeDto dto) {
-        // Simple manual mapping for POC
         return new Payee(dto.getId(), dto.getName(), dto.getIban());
     }
 }

@@ -1,5 +1,6 @@
 package dexter.banking.limit.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.toedter.spring.hateoas.jsonapi.JsonApiConfiguration;
 import com.toedter.spring.hateoas.jsonapi.JsonApiMediaTypeConfiguration;
 import org.springframework.beans.factory.ObjectProvider;
@@ -11,6 +12,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.web.HateoasPageableHandlerMethodArgumentResolver;
 import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -37,6 +41,19 @@ public class JsonApiConfig implements WebMvcConfigurer {
         pageResolver.setOneIndexedParameters(true); // JSON:API uses 1-based indexing
         pageResolver.setFallbackPageable(PageRequest.of(0, 10)); // Default to page 1 (index 0), size 10
         resolvers.add(pageResolver);
+    }
+
+    @Bean
+    public RestTemplate jsonApiRestTemplate(JsonApiMediaTypeConfiguration jsonApiMediaTypeConfiguration) {
+        RestTemplate restTemplate = new RestTemplate();
+        ObjectMapper objectMapper = new ObjectMapper();
+        jsonApiMediaTypeConfiguration.configureObjectMapper(objectMapper);
+
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter(objectMapper);
+        converter.setSupportedMediaTypes(List.of(MediaType.parseMediaType("application/vnd.api+json")));
+
+        restTemplate.getMessageConverters().add(0, converter);
+        return restTemplate;
     }
 
     @Bean

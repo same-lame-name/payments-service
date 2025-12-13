@@ -39,6 +39,10 @@ public class PayeeRepository {
         return payee;
     }
 
+    public List<Payee> findAll() {
+        return List.copyOf(payees);
+    }
+
     public Page<Payee> findAll(DomainQuery query) {
         Pageable pageable = query.pageable();
         
