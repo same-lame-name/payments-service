@@ -6,6 +6,8 @@ import dexter.banking.limit.gateway.RegulatorGateway;
 import dexter.banking.limit.repository.PayeeRepository;
 import dexter.banking.limit.repository.rsql.InMemoryRsqlVisitor;
 import dexter.banking.limit.repository.rsql.common.FilterConfig;
+import dexter.banking.limit.repository.rsql.common.SortConfig;
+import dexter.banking.limit.repository.rsql.common.SortTranslator;
 import dexter.banking.limit.repository.rsql.jpa.JpaRsqlVisitor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.*;
@@ -25,20 +27,27 @@ public class PayeeServiceImpl implements PayeeService {
     private final RegulatorGateway regulatorGateway;
     private final FilterConfig<String> jpaFilterConfig;
     private final FilterConfig<Function<Payee, ?>> inMemoryFilterConfig;
+    private final SortConfig payeeSortConfig;
+    private final SortTranslator sortTranslator;
 
     public PayeeServiceImpl(PayeeRepository repository,
                             RegulatorGateway regulatorGateway,
                             @Qualifier("payeeJpaFilterConfig") FilterConfig<String> jpaFilterConfig,
-                            @Qualifier("payeeInMemoryFilterConfig") FilterConfig<Function<Payee, ?>> inMemoryFilterConfig) {
+                            @Qualifier("payeeInMemoryFilterConfig") FilterConfig<Function<Payee, ?>> inMemoryFilterConfig,
+                            @Qualifier("payeeSortConfig") SortConfig payeeSortConfig,
+                            SortTranslator sortTranslator) {
         this.repository = repository;
         this.regulatorGateway = regulatorGateway;
         this.jpaFilterConfig = jpaFilterConfig;
         this.inMemoryFilterConfig = inMemoryFilterConfig;
+        this.payeeSortConfig = payeeSortConfig;
+        this.sortTranslator = sortTranslator;
     }
 
     @Override
     public Page<Payee> list(Node filter, Sort sort, Pageable pageable) {
-        Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+        Sort translatedSort = sortTranslator.translate(sort, payeeSortConfig);
+        Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), translatedSort);
         Specification<Payee> spec = (filter != null) ? filter.accept(new JpaRsqlVisitor<>(jpaFilterConfig)) : null;
         return repository.findAll(spec, pageRequest);
     }
@@ -56,7 +65,8 @@ public class PayeeServiceImpl implements PayeeService {
 
         // 3. Sort in-memory
         if (sort.isSorted()) {
-            Comparator<Payee> comparator = buildInMemoryComparator(sort);
+            Sort translatedSort = sortTranslator.translate(sort, payeeSortConfig);
+            Comparator<Payee> comparator = buildInMemoryComparator(translatedSort);
             onlinePayees = onlinePayees.stream().sorted(comparator).toList();
         }
 

@@ -2,6 +2,7 @@ package dexter.banking.limit.config;
 
 import dexter.banking.limit.domain.Payee;
 import dexter.banking.limit.repository.rsql.common.FilterConfig;
+import dexter.banking.limit.repository.rsql.common.SortConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,6 +22,14 @@ public class RsqlFilterConfig {
     @Bean
     public FilterConfig<String> payeeJpaFilterConfig() {
         return new FilterConfig<String>()
+                .with("name", "name")
+                .with("iban", "iban")
+                .with("id", "id");
+    }
+
+    @Bean
+    public SortConfig payeeSortConfig() {
+        return new SortConfig()
                 .with("name", "name")
                 .with("iban", "iban")
                 .with("id", "id");
