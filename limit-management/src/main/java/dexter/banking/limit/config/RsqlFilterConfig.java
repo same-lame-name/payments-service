@@ -28,10 +28,18 @@ public class RsqlFilterConfig {
     }
 
     @Bean
-    public SortConfig payeeSortConfig() {
-        return new SortConfig()
+    public SortConfig<String> payeeJpaSortConfig() {
+        return new SortConfig<String>()
                 .with("name", "name")
                 .with("iban", "iban")
                 .with("id", "id");
+    }
+
+    @Bean
+    public SortConfig<Function<Payee, ? extends Comparable>> payeeInMemorySortConfig() {
+        return new SortConfig<Function<Payee, ? extends Comparable>>()
+                .with("name", Payee::getName)
+                .with("iban", Payee::getIban)
+                .with("id", Payee::getId);
     }
 }

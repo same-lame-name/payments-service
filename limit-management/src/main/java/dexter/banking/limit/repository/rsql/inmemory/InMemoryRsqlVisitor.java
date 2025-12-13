@@ -1,11 +1,10 @@
-package dexter.banking.limit.repository.rsql;
+package dexter.banking.limit.repository.rsql.inmemory;
 
 import cz.jirutka.rsql.parser.ast.AndNode;
 import cz.jirutka.rsql.parser.ast.ComparisonNode;
 import cz.jirutka.rsql.parser.ast.NoArgRSQLVisitorAdapter;
 import cz.jirutka.rsql.parser.ast.OrNode;
 import cz.jirutka.rsql.parser.ast.RSQLOperators;
-import dexter.banking.limit.config.JsonApiConstants;
 import dexter.banking.limit.repository.rsql.common.FilterConfig;
 import dexter.banking.limit.repository.rsql.common.FilterableProperty;
 import lombok.RequiredArgsConstructor;

@@ -4,10 +4,11 @@ import cz.jirutka.rsql.parser.ast.Node;
 import dexter.banking.limit.domain.Payee;
 import dexter.banking.limit.gateway.RegulatorGateway;
 import dexter.banking.limit.repository.PayeeRepository;
-import dexter.banking.limit.repository.rsql.InMemoryRsqlVisitor;
+import dexter.banking.limit.repository.rsql.inmemory.InMemoryRsqlVisitor;
+import dexter.banking.limit.repository.rsql.inmemory.InMemorySortBuilder;
 import dexter.banking.limit.repository.rsql.common.FilterConfig;
 import dexter.banking.limit.repository.rsql.common.SortConfig;
-import dexter.banking.limit.repository.rsql.common.SortTranslator;
+import dexter.banking.limit.repository.rsql.jpa.SortTranslator;
 import dexter.banking.limit.repository.rsql.jpa.JpaRsqlVisitor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.*;
@@ -27,26 +28,32 @@ public class PayeeServiceImpl implements PayeeService {
     private final RegulatorGateway regulatorGateway;
     private final FilterConfig<String> jpaFilterConfig;
     private final FilterConfig<Function<Payee, ?>> inMemoryFilterConfig;
-    private final SortConfig payeeSortConfig;
+    private final SortConfig<String> jpaSortConfig;
+    private final SortConfig<Function<Payee, ? extends Comparable>> inMemorySortConfig;
     private final SortTranslator sortTranslator;
+    private final InMemorySortBuilder inMemorySortBuilder;
 
     public PayeeServiceImpl(PayeeRepository repository,
                             RegulatorGateway regulatorGateway,
                             @Qualifier("payeeJpaFilterConfig") FilterConfig<String> jpaFilterConfig,
                             @Qualifier("payeeInMemoryFilterConfig") FilterConfig<Function<Payee, ?>> inMemoryFilterConfig,
-                            @Qualifier("payeeSortConfig") SortConfig payeeSortConfig,
-                            SortTranslator sortTranslator) {
+                            @Qualifier("payeeJpaSortConfig") SortConfig<String> jpaSortConfig,
+                            @Qualifier("payeeInMemorySortConfig") SortConfig<Function<Payee, ? extends Comparable>> inMemorySortConfig,
+                            SortTranslator sortTranslator,
+                            InMemorySortBuilder inMemorySortBuilder) {
         this.repository = repository;
         this.regulatorGateway = regulatorGateway;
         this.jpaFilterConfig = jpaFilterConfig;
         this.inMemoryFilterConfig = inMemoryFilterConfig;
-        this.payeeSortConfig = payeeSortConfig;
+        this.jpaSortConfig = jpaSortConfig;
+        this.inMemorySortConfig = inMemorySortConfig;
         this.sortTranslator = sortTranslator;
+        this.inMemorySortBuilder = inMemorySortBuilder;
     }
 
     @Override
     public Page<Payee> list(Node filter, Sort sort, Pageable pageable) {
-        Sort translatedSort = sortTranslator.translate(sort, payeeSortConfig);
+        Sort translatedSort = sortTranslator.translate(sort, jpaSortConfig);
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), translatedSort);
         Specification<Payee> spec = (filter != null) ? filter.accept(new JpaRsqlVisitor<>(jpaFilterConfig)) : null;
         return repository.findAll(spec, pageRequest);
@@ -65,8 +72,7 @@ public class PayeeServiceImpl implements PayeeService {
 
         // 3. Sort in-memory
         if (sort.isSorted()) {
-            Sort translatedSort = sortTranslator.translate(sort, payeeSortConfig);
-            Comparator<Payee> comparator = buildInMemoryComparator(translatedSort);
+            Comparator<Payee> comparator = inMemorySortBuilder.build(sort, inMemorySortConfig);
             onlinePayees = onlinePayees.stream().sorted(comparator).toList();
         }
 
@@ -86,25 +92,5 @@ public class PayeeServiceImpl implements PayeeService {
     @Override
     public Optional<Payee> getOne(String id) {
         return repository.findById(id);
-    }
-
-    private Comparator<Payee> buildInMemoryComparator(Sort sort) {
-        Comparator<Payee> comparator = null;
-        for (Sort.Order order : sort) {
-            Comparator<Payee> current = switch (order.getProperty()) {
-                case "name" -> Comparator.comparing(Payee::getName);
-                case "iban" -> Comparator.comparing(Payee::getIban);
-                case "id" -> Comparator.comparing(Payee::getId);
-                default -> null;
-            };
-
-            if (current != null) {
-                if (order.isDescending()) {
-                    current = current.reversed();
-                }
-                comparator = (comparator == null) ? current : comparator.thenComparing(current);
-            }
-        }
-        return comparator;
     }
 }

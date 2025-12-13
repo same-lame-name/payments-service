@@ -7,16 +7,16 @@ import java.util.Map;
 import java.util.Optional;
 
 @Getter
-public class SortConfig {
+public class SortConfig<M> {
 
-    private final Map<String, String> mapping = new HashMap<>();
+    private final Map<String, SortableProperty<M>> mapping = new HashMap<>();
 
-    public SortConfig with(String apiName, String domainAttribute) {
-        mapping.put(apiName, domainAttribute);
+    public SortConfig<M> with(String apiName, M metadata) {
+        mapping.put(apiName, new SortableProperty<>(metadata));
         return this;
     }
 
-    public Optional<String> getDomainAttribute(String apiName) {
+    public Optional<SortableProperty<M>> getProperty(String apiName) {
         return Optional.ofNullable(mapping.get(apiName));
     }
 }
