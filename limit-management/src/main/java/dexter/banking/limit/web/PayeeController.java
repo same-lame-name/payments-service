@@ -4,8 +4,12 @@ import cz.jirutka.rsql.parser.ast.Node;
 import dexter.banking.limit.domain.Payee;
 import dexter.banking.limit.gateway.RegulatorGateway;
 import dexter.banking.limit.repository.PayeeRepository;
+import dexter.banking.limit.repository.rsql.common.FilterConfig;
+import dexter.banking.limit.repository.rsql.jpa.JpaRsqlVisitor;
 import dexter.banking.limit.web.dto.PayeeDto;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.*;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
@@ -24,15 +28,18 @@ public class PayeeController {
     private final PayeeAssembler assembler;
     private final PagedResourcesAssembler<Payee> pagedResourcesAssembler;
     private final RegulatorGateway regulatorGateway;
+    private final FilterConfig<String> jpaFilterConfig;
 
     public PayeeController(PayeeRepository repository,
                            PayeeAssembler assembler,
                            PagedResourcesAssembler<Payee> pagedResourcesAssembler,
-                           RegulatorGateway regulatorGateway) {
+                           RegulatorGateway regulatorGateway,
+                           @Qualifier("payeeJpaFilterConfig") FilterConfig<String> jpaFilterConfig) {
         this.repository = repository;
         this.assembler = assembler;
         this.pagedResourcesAssembler = pagedResourcesAssembler;
         this.regulatorGateway = regulatorGateway;
+        this.jpaFilterConfig = jpaFilterConfig;
     }
 
     @GetMapping
@@ -48,7 +55,8 @@ public class PayeeController {
         if (enrich) {
             payees = getEnrichedPayees(pageRequest);
         } else {
-            payees = repository.findAll(filter, pageRequest);
+            Specification<Payee> spec = (filter != null) ? filter.accept(new JpaRsqlVisitor<>(jpaFilterConfig)) : null;
+            payees = repository.findAll(spec, pageRequest);
         }
 
         PagedModel<EntityModel<PayeeDto>> pagedModel = pagedResourcesAssembler.toModel(payees, assembler);
@@ -89,6 +97,9 @@ public class PayeeController {
 
     @GetMapping("/{id}")
     public ResponseEntity<EntityModel<PayeeDto>> getOne(@PathVariable String id) {
-        return ResponseEntity.notFound().build();
+        return repository.findById(id)
+                .map(assembler::toModel)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 }
