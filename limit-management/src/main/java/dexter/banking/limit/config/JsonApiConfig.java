@@ -5,6 +5,8 @@ import com.toedter.spring.hateoas.jsonapi.JsonApiConfiguration;
 import com.toedter.spring.hateoas.jsonapi.JsonApiMediaTypeConfiguration;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
+import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.web.HateoasPageableHandlerMethodArgumentResolver;
@@ -75,5 +77,12 @@ public class JsonApiConfig implements WebMvcConfigurer {
     @Bean
     public PagedResourcesAssembler<?> pagedResourcesAssembler(HateoasPageableHandlerMethodArgumentResolver resolver) {
         return new PagedResourcesAssembler<>(resolver, null);
+    }
+
+    @Bean
+    public WebServerFactoryCustomizer<TomcatServletWebServerFactory> tomcatCustomizer() {
+        return factory -> factory.addConnectorCustomizers(connector -> {
+            connector.setProperty("relaxedQueryChars", "[]");
+        });
     }
 }

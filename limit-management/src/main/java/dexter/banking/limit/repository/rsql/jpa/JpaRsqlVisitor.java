@@ -50,7 +50,7 @@ public class JpaRsqlVisitor<T> extends NoArgRSQLVisitorAdapter<Specification<T>>
         if (node.getOperator().equals(RSQLOperators.IN)) {
             return (root, query, builder) -> root.get(jpaAttribute).in(arguments);
         }
-        // This is where you would add support for other operators like GT, LT, etc.
+        // This is where we would add support for other operators like GT, LT, etc.
         // by converting the 'value' string to the appropriate type (e.g., Integer, BigDecimal)
         // and using builder.greaterThan(), builder.lessThan(), etc.
 
