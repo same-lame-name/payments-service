@@ -13,8 +13,8 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 public class JsonApiPageableArgumentResolver extends PageableHandlerMethodArgumentResolver {
 
     public JsonApiPageableArgumentResolver() {
-        this.setPageParameterName("page[number]");
-        this.setSizeParameterName("page[size]");
+        this.setPageParameterName(JsonApiConstants.PAGE_NUMBER);
+        this.setSizeParameterName(JsonApiConstants.PAGE_SIZE);
         this.setOneIndexedParameters(true);
     }
 

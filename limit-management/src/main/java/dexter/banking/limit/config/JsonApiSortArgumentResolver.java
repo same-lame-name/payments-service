@@ -25,7 +25,7 @@ public class JsonApiSortArgumentResolver implements HandlerMethodArgumentResolve
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mav,
                                   NativeWebRequest webRequest, WebDataBinderFactory binder) {
 
-        String sortParam = webRequest.getParameter("sort");
+        String sortParam = webRequest.getParameter(JsonApiConstants.SORT);
         if (sortParam == null || sortParam.isBlank()) {
             return Sort.unsorted();
         }

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.web.HateoasPageableHandlerMethodArgumentResolver;
+import org.springframework.data.web.HateoasSortHandlerMethodArgumentResolver;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -44,20 +45,15 @@ public class JsonApiConfig implements WebMvcConfigurer {
         RestTemplate restTemplate = new RestTemplate();
         ObjectMapper objectMapper = new ObjectMapper();
         
-        // Use the explicit bean to configure our client-side ObjectMapper
         jsonApiMediaTypeConfiguration.configureObjectMapper(objectMapper);
 
         MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter(objectMapper);
-        converter.setSupportedMediaTypes(List.of(MediaType.parseMediaType("application/vnd.api+json")));
+        converter.setSupportedMediaTypes(List.of(MediaType.parseMediaType(JsonApiConstants.MEDIA_TYPE)));
 
         restTemplate.getMessageConverters().add(0, converter);
         return restTemplate;
     }
 
-    /**
-     * This bean is required to make the JSON:API configuration available for both
-     * server-side rendering (via spring.factories) and client-side RestTemplate configuration (via injection).
-     */
     @Bean
     public JsonApiMediaTypeConfiguration jsonApiMediaTypeConfiguration(
             ObjectProvider<JsonApiConfiguration> configuration,
@@ -65,14 +61,15 @@ public class JsonApiConfig implements WebMvcConfigurer {
         return new JsonApiMediaTypeConfiguration(configuration, beanFactory);
     }
 
-    /**
-     * Provides a custom resolver for generating HATEOAS links (next, prev, etc.)
-     * that conform to the JSON:API specification for pagination and sorting parameters.
-     * This bean is picked up by the auto-configured PagedResourcesAssembler.
-     */
     @Bean
-    public HateoasPageableHandlerMethodArgumentResolver hateoasPageableHandlerMethodArgumentResolver() {
-        return new JsonApiHateoasPageableHandlerMethodArgumentResolver();
+    public HateoasSortHandlerMethodArgumentResolver jsonApiHateoasSortHandlerMethodArgumentResolver() {
+        return new JsonApiHateoasSortHandlerMethodArgumentResolver();
+    }
+
+    @Bean
+    public HateoasPageableHandlerMethodArgumentResolver hateoasPageableHandlerMethodArgumentResolver(
+            HateoasSortHandlerMethodArgumentResolver sortResolver) {
+        return new JsonApiHateoasPageableHandlerMethodArgumentResolver(sortResolver);
     }
 
     @Bean

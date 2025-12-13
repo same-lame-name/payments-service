@@ -1,64 +1,50 @@
 package dexter.banking.limit.config;
 
-import cz.jirutka.rsql.parser.RSQLParser;
+import cz.jirutka.rsql.parser.ast.AndNode;
+import cz.jirutka.rsql.parser.ast.ComparisonNode;
 import cz.jirutka.rsql.parser.ast.Node;
-import cz.jirutka.rsql.parser.ast.RSQLOperators;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Component
 public class JsonApiRsqlParser {
 
-    private final RSQLParser rsqlParser = new RSQLParser();
+    // Regex to capture: 1=attribute, 2=operator (optional), 3=value
+    private static final Pattern FILTER_PATTERN = Pattern.compile(JsonApiConstants.FILTER + "\\[([a-zA-Z0-9_]+)](\\[([a-zA-Z]+)])?");
 
     public Node parse(Map<String, String> params) {
-        // Filter map for keys starting with "filter" and join them with RSQL AND (;)
-        String rsqlString = params.entrySet().stream()
-                .filter(e -> e.getKey().startsWith("filter"))
-                .map(this::toRsqlFragment)
-                .collect(Collectors.joining(";"));
+        List<Node> nodes = params.entrySet().stream()
+                .map(entry -> {
+                    Matcher matcher = FILTER_PATTERN.matcher(entry.getKey());
+                    if (matcher.matches()) {
+                        String attribute = matcher.group(1);
+                        String jsonApiOp = matcher.group(3); // Can be null for simple equality
+                        String value = entry.getValue();
 
-        if (rsqlString == null || rsqlString.isBlank()) {
+                        JsonApiConstants.JsonApiOperator operator = (jsonApiOp != null)
+                                ? JsonApiConstants.JsonApiOperator.fromString(jsonApiOp)
+                                : JsonApiConstants.JsonApiOperator.EQUALS;
+
+                        if (operator != null) {
+                            return new ComparisonNode(operator.getRsqlOp(), attribute, List.of(value));
+                        }
+                    }
+                    return null;
+                })
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+
+        if (nodes.isEmpty()) {
             return null;
         }
-        return rsqlParser.parse(rsqlString);
-    }
-
-    private String toRsqlFragment(Map.Entry<String, String> entry) {
-        String key = entry.getKey();
-        String value = entry.getValue();
-
-        // Parse: filter[amount][gt] -> amount
-        int firstBracket = key.indexOf('[');
-        int secondBracket = key.indexOf(']');
-        String field = key.substring(firstBracket + 1, secondBracket);
-
-        // Parse Operator: [gt]
-        String op = "=="; // Default
-        int thirdBracket = key.indexOf('[', secondBracket + 1);
-        if (thirdBracket > 0) {
-            int fourthBracket = key.indexOf(']', thirdBracket + 1);
-            String opCode = key.substring(thirdBracket + 1, fourthBracket);
-            op = mapOperator(opCode);
+        if (nodes.size() == 1) {
+            return nodes.get(0);
         }
-
-        // Quote value to handle spaces safely in RSQL
-        String safeValue = value.contains(" ") ? "'" + value + "'" : value;
-
-        return field + op + safeValue;
-    }
-
-    private String mapOperator(String jsonApiOp) {
-        return switch (jsonApiOp) {
-            case "gt" -> RSQLOperators.GREATER_THAN.getSymbol();
-            case "lt" -> RSQLOperators.LESS_THAN.getSymbol();
-            case "ge" -> RSQLOperators.GREATER_THAN_OR_EQUAL.getSymbol();
-            case "le" -> RSQLOperators.LESS_THAN_OR_EQUAL.getSymbol();
-            case "neq" -> RSQLOperators.NOT_EQUAL.getSymbol();
-            case "like" -> RSQLOperators.EQUAL.getSymbol(); // Wildcard handled by value content usually
-            default -> RSQLOperators.EQUAL.getSymbol();
-        };
+        return new AndNode(nodes);
     }
 }
