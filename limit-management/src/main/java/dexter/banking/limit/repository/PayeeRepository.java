@@ -2,6 +2,8 @@ package dexter.banking.limit.repository;
 
 import cz.jirutka.rsql.parser.ast.Node;
 import dexter.banking.limit.domain.Payee;
+import dexter.banking.limit.repository.rsql.FilterConfig;
+import dexter.banking.limit.repository.rsql.GenericRsqlVisitor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -19,8 +21,10 @@ import java.util.stream.IntStream;
 public class PayeeRepository {
 
     private final List<Payee> payees = new CopyOnWriteArrayList<>();
+    private final FilterConfig<Payee> filterConfig;
 
-    public PayeeRepository() {
+    public PayeeRepository(FilterConfig<Payee> filterConfig) {
+        this.filterConfig = filterConfig;
         // Initialize with dummy data for pagination testing
         IntStream.rangeClosed(1, 55).forEach(i -> {
             payees.add(new Payee(
@@ -47,7 +51,7 @@ public class PayeeRepository {
         // 1. Filter
         List<Payee> filtered = payees;
         if (filterNode != null) {
-            Predicate<Payee> predicate = filterNode.accept(new RsqlPredicateVisitor());
+            Predicate<Payee> predicate = filterNode.accept(new GenericRsqlVisitor<>(filterConfig));
             filtered = payees.stream().filter(predicate).toList();
         }
 
