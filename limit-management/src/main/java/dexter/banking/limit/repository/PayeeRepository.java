@@ -1,7 +1,7 @@
 package dexter.banking.limit.repository;
 
+import cz.jirutka.rsql.parser.ast.Node;
 import dexter.banking.limit.domain.Payee;
-import dexter.banking.limit.web.DomainQuery;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -43,13 +43,11 @@ public class PayeeRepository {
         return List.copyOf(payees);
     }
 
-    public Page<Payee> findAll(DomainQuery query) {
-        Pageable pageable = query.pageable();
-        
+    public Page<Payee> findAll(Node filterNode, Pageable pageable) {
         // 1. Filter
         List<Payee> filtered = payees;
-        if (query.filterNode() != null) {
-            Predicate<Payee> predicate = query.filterNode().accept(new RsqlPredicateVisitor());
+        if (filterNode != null) {
+            Predicate<Payee> predicate = filterNode.accept(new RsqlPredicateVisitor());
             filtered = payees.stream().filter(predicate).toList();
         }
 

@@ -1,12 +1,11 @@
 package dexter.banking.limit.web;
 
+import cz.jirutka.rsql.parser.ast.Node;
 import dexter.banking.limit.domain.Payee;
 import dexter.banking.limit.gateway.RegulatorGateway;
 import dexter.banking.limit.repository.PayeeRepository;
 import dexter.banking.limit.web.dto.PayeeDto;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.*;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
@@ -38,14 +37,18 @@ public class PayeeController {
 
     @GetMapping
     public ResponseEntity<PagedModel<EntityModel<PayeeDto>>> list(
-            @JsonApiQuery DomainQuery query,
+            @JsonApiFilter Node filter,
+            @JsonApiSort Sort sort,
+            @JsonApiPage Pageable pageable,
             @RequestParam(name = "enrich", defaultValue = "false") boolean enrich) {
 
         Page<Payee> payees;
+        Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+
         if (enrich) {
-            payees = getEnrichedPayees(query.pageable());
+            payees = getEnrichedPayees(pageRequest);
         } else {
-            payees = repository.findAll(query);
+            payees = repository.findAll(filter, pageRequest);
         }
 
         PagedModel<EntityModel<PayeeDto>> pagedModel = pagedResourcesAssembler.toModel(payees, assembler);

@@ -12,11 +12,18 @@ import java.util.List;
 public class JsonApiHateoasPageableHandlerMethodArgumentResolver extends HateoasPageableHandlerMethodArgumentResolver {
 
     public JsonApiHateoasPageableHandlerMethodArgumentResolver() {
+        // Configure the resolver to recognize JSON:API style pagination parameters
+        // This helps in correctly identifying the current page from the request.
         setPageParameterName("page[number]");
         setSizeParameterName("page[size]");
         setOneIndexedParameters(true);
     }
 
+    /**
+     * Overrides the default enhancement to build JSON:API compliant URLs.
+     * The default implementation would create links like "?page=1&size=10&sort=name,asc",
+     * which is not what we want.
+     */
     @Override
     public void enhance(UriComponentsBuilder builder, MethodParameter parameter, Object value) {
         if (!(value instanceof Pageable pageable)) {
@@ -25,18 +32,11 @@ public class JsonApiHateoasPageableHandlerMethodArgumentResolver extends Hateoas
 
         // 1. Handle Pagination (page[number], page[size])
         if (pageable.isPaged()) {
-            int pageNumber = pageable.getPageNumber() + (isOneIndexedParameters() ? 1 : 0);
-            builder.replaceQueryParam(getPageParameterName(), pageNumber);
+            builder.replaceQueryParam(getPageParameterName(), pageable.getPageNumber());
             builder.replaceQueryParam(getSizeParameterName(), pageable.getPageSize());
-            // Remove legacy Spring defaults if they differ
-            builder.replaceQueryParam("page");
-            builder.replaceQueryParam("size");
-            // Remove encoded variants that might be treated as distinct keys
-            builder.replaceQueryParam("page%5Bnumber%5D");
-            builder.replaceQueryParam("page%5Bsize%5D");
         }
 
-        // 2. Handle Sort (JSON:API style: -name,created)
+        // 2. Add Sort Parameters
         Sort sort = pageable.getSort();
         if (sort.isSorted()) {
             List<String> sortParams = new ArrayList<>();
@@ -45,8 +45,6 @@ public class JsonApiHateoasPageableHandlerMethodArgumentResolver extends Hateoas
                 sortParams.add(prefix + order.getProperty());
             }
             builder.replaceQueryParam("sort", String.join(",", sortParams));
-        } else {
-            builder.replaceQueryParam("sort");
         }
     }
 }

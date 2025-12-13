@@ -1,0 +1,223 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-4a5b-8c7d-9e8f7a6b5c4d",
+		"name": "Limit Management Service (RFC Compliant)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Create Payee",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/vnd.api+json"
+					},
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"data\": {\n        \"type\": \"payees\",\n        \"attributes\": {\n            \"name\": \"Postman Payee\",\n            \"iban\": \"CH5604835012345678009\"\n        }\n    }\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2. Get Paginated List",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?page%5Bnumber%5D=2&page%5Bsize%5D=5",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "page%5Bnumber%5D",
+							"value": "2"
+						},
+						{
+							"key": "page%5Bsize%5D",
+							"value": "5"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3. Filter by Name (Exact Match)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?filter%5Bname%5D=Payee%205",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "filter%5Bname%5D",
+							"value": "Payee 5"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4. Sort by Name (Descending)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?sort=-name",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "sort",
+							"value": "-name"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "5. Get Enriched List",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?enrich=true&page%5Bsize%5D=60",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "enrich",
+							"value": "true"
+						},
+						{
+							"key": "page%5Bsize%5D",
+							"value": "60"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "6. Complex Query (Filter, Sort, Page)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?filter%5Bname%5D=Payee%201&sort=id&page%5Bnumber%5D=1&page%5Bsize%5D=5",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "filter%5Bname%5D",
+							"value": "Payee 1"
+						},
+						{
+							"key": "sort",
+							"value": "id"
+						},
+						{
+							"key": "page%5Bnumber%5D",
+							"value": "1"
+						},
+						{
+							"key": "page%5Bsize%5D",
+							"value": "5"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

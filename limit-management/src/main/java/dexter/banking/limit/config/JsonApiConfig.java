@@ -5,11 +5,8 @@ import com.toedter.spring.hateoas.jsonapi.JsonApiConfiguration;
 import com.toedter.spring.hateoas.jsonapi.JsonApiMediaTypeConfiguration;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
-import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
-import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.web.HateoasPageableHandlerMethodArgumentResolver;
 import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.http.MediaType;
@@ -23,30 +20,31 @@ import java.util.List;
 @Configuration
 public class JsonApiConfig implements WebMvcConfigurer {
 
-    private final JsonApiArgumentResolver jsonApiArgumentResolver;
+    private final JsonApiFilterArgumentResolver filterArgumentResolver;
+    private final JsonApiSortArgumentResolver sortArgumentResolver;
+    private final JsonApiPageableArgumentResolver pageableArgumentResolver;
 
-    public JsonApiConfig(JsonApiArgumentResolver jsonApiArgumentResolver) {
-        this.jsonApiArgumentResolver = jsonApiArgumentResolver;
+    public JsonApiConfig(JsonApiFilterArgumentResolver filterArgumentResolver,
+                         JsonApiSortArgumentResolver sortArgumentResolver,
+                         JsonApiPageableArgumentResolver pageableArgumentResolver) {
+        this.filterArgumentResolver = filterArgumentResolver;
+        this.sortArgumentResolver = sortArgumentResolver;
+        this.pageableArgumentResolver = pageableArgumentResolver;
     }
 
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-        // Resolver for @JsonApiQuery DomainQuery
-        resolvers.add(jsonApiArgumentResolver);
-
-        // Resolver for standalone Pageable (legacy/simple support)
-        JsonApiPageableResolver pageResolver = new JsonApiPageableResolver();
-        pageResolver.setPageParameterName("page[number]");
-        pageResolver.setSizeParameterName("page[size]");
-        pageResolver.setOneIndexedParameters(true); // JSON:API uses 1-based indexing
-        pageResolver.setFallbackPageable(PageRequest.of(0, 10)); // Default to page 1 (index 0), size 10
-        resolvers.add(pageResolver);
+        resolvers.add(filterArgumentResolver);
+        resolvers.add(sortArgumentResolver);
+        resolvers.add(pageableArgumentResolver);
     }
 
     @Bean
     public RestTemplate jsonApiRestTemplate(JsonApiMediaTypeConfiguration jsonApiMediaTypeConfiguration) {
         RestTemplate restTemplate = new RestTemplate();
         ObjectMapper objectMapper = new ObjectMapper();
+        
+        // Use the explicit bean to configure our client-side ObjectMapper
         jsonApiMediaTypeConfiguration.configureObjectMapper(objectMapper);
 
         MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter(objectMapper);
@@ -56,6 +54,10 @@ public class JsonApiConfig implements WebMvcConfigurer {
         return restTemplate;
     }
 
+    /**
+     * This bean is required to make the JSON:API configuration available for both
+     * server-side rendering (via spring.factories) and client-side RestTemplate configuration (via injection).
+     */
     @Bean
     public JsonApiMediaTypeConfiguration jsonApiMediaTypeConfiguration(
             ObjectProvider<JsonApiConfiguration> configuration,
@@ -63,13 +65,11 @@ public class JsonApiConfig implements WebMvcConfigurer {
         return new JsonApiMediaTypeConfiguration(configuration, beanFactory);
     }
 
-    @Bean
-    public WebServerFactoryCustomizer<TomcatServletWebServerFactory> tomcatCustomizer() {
-        return factory -> factory.addConnectorCustomizers(connector -> {
-            connector.setProperty("relaxedQueryChars", "[]");
-        });
-    }
-
+    /**
+     * Provides a custom resolver for generating HATEOAS links (next, prev, etc.)
+     * that conform to the JSON:API specification for pagination and sorting parameters.
+     * This bean is picked up by the auto-configured PagedResourcesAssembler.
+     */
     @Bean
     public HateoasPageableHandlerMethodArgumentResolver hateoasPageableHandlerMethodArgumentResolver() {
         return new JsonApiHateoasPageableHandlerMethodArgumentResolver();
