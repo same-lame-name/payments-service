@@ -30,6 +30,7 @@ public final class JsonApiConstants {
         GREATER_THAN_OR_EQUAL("ge", RSQLOperators.GREATER_THAN_OR_EQUAL),
         LESS_THAN_OR_EQUAL("le", RSQLOperators.LESS_THAN_OR_EQUAL),
         NOT_EQUAL("neq", RSQLOperators.NOT_EQUAL),
+        IN("in", RSQLOperators.IN),
         LIKE("like", RSQLOperators.EQUAL), // RSQL doesn't have a native 'like', often mapped to '==' with wildcards
         EQUALS("eq", RSQLOperators.EQUAL);
 

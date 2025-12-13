@@ -9,6 +9,8 @@ import dexter.banking.limit.repository.rsql.common.FilterConfig;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.util.List;
+
 @RequiredArgsConstructor
 public class JpaRsqlVisitor<T> extends NoArgRSQLVisitorAdapter<Specification<T>> {
 
@@ -37,13 +39,16 @@ public class JpaRsqlVisitor<T> extends NoArgRSQLVisitorAdapter<Specification<T>>
                 .orElseThrow(() -> new IllegalArgumentException("Unsupported filter field: " + apiName))
                 .getMetadata();
         
-        String value = node.getArguments().get(0);
+        List<String> arguments = node.getArguments();
 
         if (node.getOperator().equals(RSQLOperators.EQUAL)) {
-            return (root, query, builder) -> builder.equal(root.get(jpaAttribute), value);
+            return (root, query, builder) -> builder.equal(root.get(jpaAttribute), arguments.get(0));
         }
         if (node.getOperator().equals(RSQLOperators.NOT_EQUAL)) {
-            return (root, query, builder) -> builder.notEqual(root.get(jpaAttribute), value);
+            return (root, query, builder) -> builder.notEqual(root.get(jpaAttribute), arguments.get(0));
+        }
+        if (node.getOperator().equals(RSQLOperators.IN)) {
+            return (root, query, builder) -> root.get(jpaAttribute).in(arguments);
         }
         // This is where you would add support for other operators like GT, LT, etc.
         // by converting the 'value' string to the appropriate type (e.g., Integer, BigDecimal)

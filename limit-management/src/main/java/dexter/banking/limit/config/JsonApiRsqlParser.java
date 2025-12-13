@@ -5,6 +5,7 @@ import cz.jirutka.rsql.parser.ast.ComparisonNode;
 import cz.jirutka.rsql.parser.ast.Node;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -31,7 +32,13 @@ public class JsonApiRsqlParser {
                                 : JsonApiConstants.JsonApiOperator.EQUALS;
 
                         if (operator != null) {
-                            return new ComparisonNode(operator.getRsqlOp(), attribute, List.of(value));
+                            // Strict Protocol: Only split by comma if the operator is explicitly IN
+                            if (operator == JsonApiConstants.JsonApiOperator.IN) {
+                                List<String> values = Arrays.asList(value.split(","));
+                                return new ComparisonNode(operator.getRsqlOp(), attribute, values);
+                            } else {
+                                return new ComparisonNode(operator.getRsqlOp(), attribute, List.of(value));
+                            }
                         }
                     }
                     return null;

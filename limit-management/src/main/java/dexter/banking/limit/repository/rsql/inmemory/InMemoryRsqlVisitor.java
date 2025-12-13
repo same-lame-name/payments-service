@@ -9,8 +9,10 @@ import dexter.banking.limit.repository.rsql.common.FilterConfig;
 import dexter.banking.limit.repository.rsql.common.FilterableProperty;
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
 public class InMemoryRsqlVisitor<T> extends NoArgRSQLVisitorAdapter<Predicate<T>> {
@@ -38,16 +40,21 @@ public class InMemoryRsqlVisitor<T> extends NoArgRSQLVisitorAdapter<Predicate<T>
         FilterableProperty<Function<T, ?>> property = filterConfig.getProperty(node.getSelector())
                 .orElseThrow(() -> new IllegalArgumentException("Unsupported filter field: " + node.getSelector()));
 
-        Object argument = convert(node.getArguments().get(0), property.getType());
+        List<Object> arguments = node.getArguments().stream()
+                .map(arg -> convert(arg, property.getType()))
+                .collect(Collectors.toList());
 
         return entity -> {
             Object entityValue = property.getMetadata().apply(entity);
 
             if (node.getOperator().equals(RSQLOperators.EQUAL)) {
-                return entityValue != null && entityValue.equals(argument);
+                return entityValue != null && entityValue.equals(arguments.get(0));
             }
             if (node.getOperator().equals(RSQLOperators.NOT_EQUAL)) {
-                return entityValue != null && !entityValue.equals(argument);
+                return entityValue != null && !entityValue.equals(arguments.get(0));
+            }
+            if (node.getOperator().equals(RSQLOperators.IN)) {
+                return entityValue != null && arguments.contains(entityValue);
             }
             // Add more operators here (GT, LT, etc.) for numeric/date types
             
