@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
-public class SortTranslator {
+public class JpaSortTranslator {
 
     public Sort translate(Sort input, SortConfig<String> config) {
         if (input.isUnsorted()) {

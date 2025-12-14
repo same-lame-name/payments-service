@@ -1,4 +1,4 @@
-package dexter.banking.limit.repository.rsql.jpa.builder;
+package dexter.banking.limit.repository.rsql.jpa;
 
 import cz.jirutka.rsql.parser.ast.ComparisonOperator;
 import jakarta.persistence.criteria.CriteriaBuilder;
