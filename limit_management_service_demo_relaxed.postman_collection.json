@@ -1,0 +1,223 @@
+{
+	"info": {
+		"_postman_id": "d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8g",
+		"name": "Limit Management Service (Demo Relaxed)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Create Payee",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/vnd.api+json"
+					},
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"data\": {\n        \"type\": \"payees\",\n        \"attributes\": {\n            \"name\": \"Postman Payee\",\n            \"iban\": \"CH5604835012345678009\",\n            \"city\": \"Berlin\",\n            \"zip\": \"10115\"\n        }\n    }\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2. Get All (DB) - Paginated",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?page[number]=1&page[size]=5",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "page[number]",
+							"value": "1"
+						},
+						{
+							"key": "page[size]",
+							"value": "5"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3. Filter by Nested Field (city)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?filter[city]=London",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "filter[city]",
+							"value": "London"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4. Filter with IN operator",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?filter[name][in]=Payee 1,Payee 5,Payee 10",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "filter[name][in]",
+							"value": "Payee 1,Payee 5,Payee 10"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "5. Sort by Nested Field (city)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?sort=-city",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "sort",
+							"value": "-city"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "6. Complex Query (Filter, Sort, Page)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?filter[city]=Paris&filter[name][in]=Payee 2,Payee 6&sort=-name&page[number]=1&page[size]=5",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "filter[city]",
+							"value": "Paris"
+						},
+						{
+							"key": "filter[name][in]",
+							"value": "Payee 2,Payee 6"
+						},
+						{
+							"key": "sort",
+							"value": "-name"
+						},
+						{
+							"key": "page[number]",
+							"value": "1"
+						},
+						{
+							"key": "page[size]",
+							"value": "5"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
