@@ -19,6 +19,11 @@ spring:
     serialization:
       write-dates-as-timestamps: false
       write-date-timestamps-as-nanoseconds: true
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
 
 management:
   tracing:
@@ -37,3 +42,5 @@ eureka:
 logging:
   level:
     tech: debug
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

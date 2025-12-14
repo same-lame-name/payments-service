@@ -25,8 +25,8 @@ public class JsonApiHateoasPageableHandlerMethodArgumentResolver extends Hateoas
         // 1. Clean up existing pagination params (both encoded and unencoded variants)
         builder.replaceQueryParam(JsonApiConstants.PAGE_NUMBER);
         builder.replaceQueryParam(JsonApiConstants.PAGE_SIZE);
-        builder.replaceQueryParam("page%5Bnumber%5D"); // The encoded key
-        builder.replaceQueryParam("page%5Bsize%5D");   // The encoded key
+        builder.replaceQueryParam(JsonApiConstants.PAGE_NUMBER_ENCODED); // The encoded key
+        builder.replaceQueryParam(JsonApiConstants.PAGE_SIZE_ENCODED);   // The encoded key
 
         // 2. Let the parent add the new ones (it uses the unencoded names we set in constructor)
         super.enhance(builder, parameter, value);

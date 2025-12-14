@@ -16,7 +16,8 @@ public class RsqlFilterConfig {
         return new FilterConfig<Function<Payee, ?>>()
                 .with("name", Payee::getName)
                 .with("iban", Payee::getIban)
-                .with("id", Payee::getId);
+                .with("id", Payee::getId)
+                .with("city", payee -> payee.getAddress().getCity()); // Nested for in-memory
     }
 
     @Bean
@@ -24,7 +25,9 @@ public class RsqlFilterConfig {
         return new FilterConfig<String>()
                 .with("name", "name")
                 .with("iban", "iban")
-                .with("id", "id");
+                .with("id", "id")
+                .with("city", "address.city") // Map flat 'city' to nested 'address.city'
+                .with("zip", "address.zip");
     }
 
     @Bean
@@ -32,7 +35,8 @@ public class RsqlFilterConfig {
         return new SortConfig<String>()
                 .with("name", "name")
                 .with("iban", "iban")
-                .with("id", "id");
+                .with("id", "id")
+                .with("city", "address.city"); // Allow sorting by city
     }
 
     @Bean
@@ -40,6 +44,7 @@ public class RsqlFilterConfig {
         return new SortConfig<Function<Payee, ? extends Comparable>>()
                 .with("name", Payee::getName)
                 .with("iban", Payee::getIban)
-                .with("id", Payee::getId);
+                .with("id", Payee::getId)
+                .with("city", payee -> payee.getAddress().getCity());
     }
 }

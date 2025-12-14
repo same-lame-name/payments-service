@@ -1,5 +1,6 @@
 package dexter.banking.limit.domain;
 
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -18,4 +19,7 @@ public class Payee {
     private String id;
     private String name;
     private String iban;
+
+    @Embedded
+    private Address address;
 }

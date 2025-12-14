@@ -16,4 +16,6 @@ public class PayeeDto extends RepresentationModel<PayeeDto> {
     private String id;
     private String name;
     private String iban;
+    private String city;
+    private String zip;
 }
