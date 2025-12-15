@@ -23,6 +23,8 @@ public class PayeeAssembler extends RepresentationModelAssemblerSupport<Payee, E
         dto.setId(entity.getId());
         dto.setName(entity.getName());
         dto.setIban(entity.getIban());
+        dto.setDob(entity.getDob());
+        dto.setCreatedAt(entity.getCreatedAt());
         if (entity.getAddress() != null) {
             dto.setCity(entity.getAddress().getCity());
             dto.setZip(entity.getAddress().getZip());
@@ -34,6 +36,6 @@ public class PayeeAssembler extends RepresentationModelAssemblerSupport<Payee, E
 
     public Payee toDomain(PayeeDto dto) {
         Address address = new Address(dto.getCity(), dto.getZip());
-        return new Payee(dto.getId(), dto.getName(), dto.getIban(), address);
+        return new Payee(dto.getId(), dto.getName(), dto.getIban(), dto.getDob(), dto.getCreatedAt(), address);
     }
 }

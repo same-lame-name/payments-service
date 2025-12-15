@@ -9,6 +9,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+
 @Entity
 @Data
 @AllArgsConstructor
@@ -19,6 +22,8 @@ public class Payee {
     private String id;
     private String name;
     private String iban;
+    private LocalDate dob;
+    private OffsetDateTime createdAt;
 
     @Embedded
     private Address address;

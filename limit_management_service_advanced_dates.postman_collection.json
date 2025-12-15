@@ -1,0 +1,183 @@
+{
+	"info": {
+		"_postman_id": "e4f5a6b7-c8d9-0e1f-2a3b-4c5d6e7f8g9h",
+		"name": "Limit Management Service (Advanced Dates)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Create Payee with Dates",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/vnd.api+json"
+					},
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"data\": {\n        \"type\": \"payees\",\n        \"attributes\": {\n            \"name\": \"Date Test Payee\",\n            \"iban\": \"CH5604835012345678009\",\n            \"city\": \"Berlin\",\n            \"zip\": \"10115\",\n            \"dob\": \"1995-05-15\",\n            \"createdAt\": \"2023-10-27T14:30:00Z\"\n        }\n    }\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2. Filter by DOB (Greater Than)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?filter[dob][gt]=1990-01-01",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "filter[dob][gt]",
+							"value": "1990-01-01"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3. Filter by CreatedAt (Less Than)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?filter[createdAt][lt]=2023-10-27T12:00:00Z",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "filter[createdAt][lt]",
+							"value": "2023-10-27T12:00:00Z"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4. Sort by DOB (Descending)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?sort=-dob",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "sort",
+							"value": "-dob"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "5. Complex Date Query",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/vnd.api+json"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8082/api/v1/payees?filter[dob][gt]=1980-01-01&filter[createdAt][gt]=2023-01-01T00:00:00Z&sort=createdAt&page[size]=5",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8082",
+					"path": [
+						"api",
+						"v1",
+						"payees"
+					],
+					"query": [
+						{
+							"key": "filter[dob][gt]",
+							"value": "1980-01-01"
+						},
+						{
+							"key": "filter[createdAt][gt]",
+							"value": "2023-01-01T00:00:00Z"
+						},
+						{
+							"key": "sort",
+							"value": "createdAt"
+						},
+						{
+							"key": "page[size]",
+							"value": "5"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

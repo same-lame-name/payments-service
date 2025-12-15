@@ -1,6 +1,7 @@
 package dexter.banking.limit.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.toedter.spring.hateoas.jsonapi.JsonApiConfiguration;
 import com.toedter.spring.hateoas.jsonapi.JsonApiMediaTypeConfiguration;
 import org.springframework.beans.factory.ObjectProvider;
@@ -40,6 +41,15 @@ public class JsonApiConfig implements WebMvcConfigurer {
         resolvers.add(filterArgumentResolver);
         resolvers.add(sortArgumentResolver);
         resolvers.add(pageableArgumentResolver);
+    }
+
+    @Bean
+    public JsonApiConfiguration jsonApiConfiguration() {
+        return new JsonApiConfiguration()
+                .withObjectMapperCustomizer(objectMapper -> {
+                    objectMapper.findAndRegisterModules();
+                    objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+                });
     }
 
     @Bean

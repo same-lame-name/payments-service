@@ -9,6 +9,10 @@ import dexter.banking.limit.repository.rsql.common.FilterConfig;
 import dexter.banking.limit.repository.rsql.common.FilterableProperty;
 import lombok.RequiredArgsConstructor;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -36,6 +40,7 @@ public class InMemoryRsqlVisitor<T> extends NoArgRSQLVisitorAdapter<Predicate<T>
     }
 
     @Override
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public Predicate<T> visit(ComparisonNode node) {
         FilterableProperty<Function<T, ?>> property = filterConfig.getProperty(node.getSelector())
                 .orElseThrow(() -> new IllegalArgumentException("Unsupported filter field: " + node.getSelector()));
@@ -43,20 +48,36 @@ public class InMemoryRsqlVisitor<T> extends NoArgRSQLVisitorAdapter<Predicate<T>
         List<Object> arguments = node.getArguments().stream()
                 .map(arg -> convert(arg, property.getType()))
                 .collect(Collectors.toList());
+        
+        Object argument = arguments.get(0);
 
         return entity -> {
             Object entityValue = property.getMetadata().apply(entity);
+            if (entityValue == null) {
+                return false;
+            }
 
             if (node.getOperator().equals(RSQLOperators.EQUAL)) {
-                return entityValue != null && entityValue.equals(arguments.get(0));
+                return entityValue.equals(argument);
             }
             if (node.getOperator().equals(RSQLOperators.NOT_EQUAL)) {
-                return entityValue != null && !entityValue.equals(arguments.get(0));
+                return !entityValue.equals(argument);
             }
             if (node.getOperator().equals(RSQLOperators.IN)) {
-                return entityValue != null && arguments.contains(entityValue);
+                return arguments.contains(entityValue);
             }
-            // Add more operators here (GT, LT, etc.) for numeric/date types
+            if (node.getOperator().equals(RSQLOperators.GREATER_THAN)) {
+                return ((Comparable) entityValue).compareTo(argument) > 0;
+            }
+            if (node.getOperator().equals(RSQLOperators.GREATER_THAN_OR_EQUAL)) {
+                return ((Comparable) entityValue).compareTo(argument) >= 0;
+            }
+            if (node.getOperator().equals(RSQLOperators.LESS_THAN)) {
+                return ((Comparable) entityValue).compareTo(argument) < 0;
+            }
+            if (node.getOperator().equals(RSQLOperators.LESS_THAN_OR_EQUAL)) {
+                return ((Comparable) entityValue).compareTo(argument) <= 0;
+            }
             
             return false;
         };
@@ -65,11 +86,23 @@ public class InMemoryRsqlVisitor<T> extends NoArgRSQLVisitorAdapter<Predicate<T>
     private Object convert(String value, Class<?> type) {
         if (type.equals(String.class)) {
             return value;
-        }
-        if (type.equals(Integer.class) || type.equals(int.class)) {
+        } else if (type.equals(Integer.class) || type.equals(int.class)) {
             return Integer.parseInt(value);
+        } else if (type.equals(Long.class) || type.equals(long.class)) {
+            return Long.parseLong(value);
+        } else if (type.equals(Double.class) || type.equals(double.class)) {
+            return Double.parseDouble(value);
+        } else if (type.equals(BigDecimal.class)) {
+            return new BigDecimal(value);
+        } else if (type.equals(LocalDate.class)) {
+            return LocalDate.parse(value);
+        } else if (type.equals(LocalDateTime.class)) {
+            return LocalDateTime.parse(value);
+        } else if (type.equals(OffsetDateTime.class)) {
+            return OffsetDateTime.parse(value);
+        } else if (type.equals(Boolean.class) || type.equals(boolean.class)) {
+            return Boolean.parseBoolean(value);
         }
-        // Add more type conversions as needed (Long, BigDecimal, LocalDate, etc.)
         throw new IllegalArgumentException("Unsupported property type: " + type.getName());
     }
 }

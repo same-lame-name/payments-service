@@ -9,11 +9,13 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +36,7 @@ public class RSQLSpecification<T> implements Specification<T> {
         List<Object> args = castArguments(path);
         Object argument = args.get(0);
 
-        switch (RSQLSearchOperation.getSimpleOperator(operator)) {
+        switch (RsqlSearchOperation.getSimpleOperator(operator)) {
             case EQUAL:
                 return builder.equal(path, argument);
             case NOT_EQUAL:
@@ -83,6 +85,8 @@ public class RSQLSpecification<T> implements Specification<T> {
                 return LocalDate.parse(arg);
             } else if (type.equals(LocalDateTime.class)) {
                 return LocalDateTime.parse(arg);
+            } else if (type.equals(OffsetDateTime.class)) {
+                return OffsetDateTime.parse(arg);
             } else if (type.equals(Boolean.class) || type.equals(boolean.class)) {
                 return Boolean.parseBoolean(arg);
             } else {
@@ -91,10 +95,9 @@ public class RSQLSpecification<T> implements Specification<T> {
         }).collect(Collectors.toList());
     }
 
-    @AllArgsConstructor
+    @RequiredArgsConstructor
     @Getter
-    private enum RSQLSearchOperation {
-
+    private enum RsqlSearchOperation {
         EQUAL(RSQLOperators.EQUAL),
         NOT_EQUAL(RSQLOperators.NOT_EQUAL),
         GREATER_THAN(RSQLOperators.GREATER_THAN),
@@ -106,11 +109,12 @@ public class RSQLSpecification<T> implements Specification<T> {
 
         private final ComparisonOperator operator;
 
-        private static final Map<ComparisonOperator, RSQLSearchOperation> OPERATOR_MAP =
-                Arrays.stream(values()).collect(Collectors.toMap(RSQLSearchOperation::getOperator, Function.identity()));
+        private static final Map<ComparisonOperator, RsqlSearchOperation> OPERATOR_MAP =
+                Arrays.stream(values()).collect(Collectors.toMap(RsqlSearchOperation::getOperator, Function.identity()));
 
-        public static RSQLSearchOperation getSimpleOperator(ComparisonOperator operator) {
-            RSQLSearchOperation operation = OPERATOR_MAP.get(operator);
+
+        public static RsqlSearchOperation getSimpleOperator(ComparisonOperator operator) {
+            RsqlSearchOperation operation = OPERATOR_MAP.get(operator);
             if (operation == null) {
                 throw new IllegalArgumentException("Unsupported operator: " + operator.getSymbol());
             }

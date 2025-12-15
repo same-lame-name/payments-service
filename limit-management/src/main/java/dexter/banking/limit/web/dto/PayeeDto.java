@@ -7,6 +7,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.hateoas.RepresentationModel;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,4 +21,6 @@ public class PayeeDto extends RepresentationModel<PayeeDto> {
     private String iban;
     private String city;
     private String zip;
+    private LocalDate dob;
+    private OffsetDateTime createdAt;
 }

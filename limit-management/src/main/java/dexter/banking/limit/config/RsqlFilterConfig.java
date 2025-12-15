@@ -6,6 +6,8 @@ import dexter.banking.limit.repository.rsql.common.SortConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.function.Function;
 
 @Configuration
@@ -17,7 +19,9 @@ public class RsqlFilterConfig {
                 .with("name", Payee::getName)
                 .with("iban", Payee::getIban)
                 .with("id", Payee::getId)
-                .with("city", payee -> payee.getAddress().getCity()); // Nested for in-memory
+                .with("city", payee -> payee.getAddress().getCity())
+                .with("dob", Payee::getDob, LocalDate.class)
+                .with("createdAt", Payee::getCreatedAt, OffsetDateTime.class);
     }
 
     @Bean
@@ -26,8 +30,10 @@ public class RsqlFilterConfig {
                 .with("name", "name")
                 .with("iban", "iban")
                 .with("id", "id")
-                .with("city", "address.city") // Map flat 'city' to nested 'address.city'
-                .with("zip", "address.zip");
+                .with("city", "address.city")
+                .with("zip", "address.zip")
+                .with("dob", "dob")
+                .with("createdAt", "createdAt");
     }
 
     @Bean
@@ -36,7 +42,9 @@ public class RsqlFilterConfig {
                 .with("name", "name")
                 .with("iban", "iban")
                 .with("id", "id")
-                .with("city", "address.city"); // Allow sorting by city
+                .with("city", "address.city")
+                .with("dob", "dob")
+                .with("createdAt", "createdAt");
     }
 
     @Bean
@@ -45,6 +53,8 @@ public class RsqlFilterConfig {
                 .with("name", Payee::getName)
                 .with("iban", Payee::getIban)
                 .with("id", Payee::getId)
-                .with("city", payee -> payee.getAddress().getCity());
+                .with("city", payee -> payee.getAddress().getCity())
+                .with("dob", Payee::getDob)
+                .with("createdAt", Payee::getCreatedAt);
     }
 }
