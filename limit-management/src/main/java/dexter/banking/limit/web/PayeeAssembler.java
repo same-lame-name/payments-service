@@ -3,6 +3,7 @@ package dexter.banking.limit.web;
 import dexter.banking.limit.domain.Address;
 import dexter.banking.limit.domain.Payee;
 import dexter.banking.limit.web.dto.PayeeDto;
+import dexter.banking.limit.web.link.LinkToggleService;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.mvc.RepresentationModelAssemblerSupport;
 import org.springframework.stereotype.Component;
@@ -13,8 +14,11 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @Component
 public class PayeeAssembler extends RepresentationModelAssemblerSupport<Payee, EntityModel<PayeeDto>> {
 
-    public PayeeAssembler() {
+    private final LinkToggleService linkToggleService;
+
+    public PayeeAssembler(LinkToggleService linkToggleService) {
         super(PayeeController.class, (Class<EntityModel<PayeeDto>>) (Class<?>) EntityModel.class);
+        this.linkToggleService = linkToggleService;
     }
 
     @Override
@@ -30,8 +34,13 @@ public class PayeeAssembler extends RepresentationModelAssemblerSupport<Payee, E
             dto.setZip(entity.getAddress().getZip());
         }
         
-        return EntityModel.of(dto,
-                linkTo(methodOn(PayeeController.class).getOne(entity.getId())).withSelfRel());
+        EntityModel<PayeeDto> model = EntityModel.of(dto);
+
+        if (linkToggleService.isLinksEnabled()) {
+            model.add(linkTo(methodOn(PayeeController.class).getOne(entity.getId())).withSelfRel());
+        }
+
+        return model;
     }
 
     public Payee toDomain(PayeeDto dto) {

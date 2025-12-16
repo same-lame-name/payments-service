@@ -44,3 +44,8 @@ logging:
     tech: debug
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+
+jsonapi:
+  links:
+    enabled: true
