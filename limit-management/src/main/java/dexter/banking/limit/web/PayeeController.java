@@ -44,21 +44,11 @@ public class PayeeController {
             @JsonApiPage Pageable pageable) {
 
         Page<Payee> payees = service.list(filter, sort, pageable);
-        
-        PagedModel<EntityModel<PayeeDto>> pagedModel;
-        if (linkToggleService.isLinksEnabled()) {
-            pagedModel = pagedResourcesAssembler.toModel(payees, assembler);
-        } else {
-            List<EntityModel<PayeeDto>> content = payees.getContent().stream()
-                    .map(assembler::toModel)
-                    .collect(Collectors.toList());
-            PagedModel.PageMetadata metadata = new PagedModel.PageMetadata(
-                    payees.getSize(), payees.getNumber(), payees.getTotalElements(), payees.getTotalPages());
-            pagedModel = PagedModel.of(content, metadata);
-        }
+        PagedModel<EntityModel<PayeeDto>> pagedModel = getLinkToggleAwarePagedModel(payees);
 
         return ResponseEntity.ok(pagedModel);
     }
+
 
     @GetMapping("/online")
     public ResponseEntity<PagedModel<EntityModel<PayeeDto>>> onlineList(
@@ -67,18 +57,7 @@ public class PayeeController {
             @JsonApiPage Pageable pageable) {
 
         Page<Payee> payees = service.listOnline(filter, sort, pageable);
-        
-        PagedModel<EntityModel<PayeeDto>> pagedModel;
-        if (linkToggleService.isLinksEnabled()) {
-            pagedModel = pagedResourcesAssembler.toModel(payees, assembler);
-        } else {
-            List<EntityModel<PayeeDto>> content = payees.getContent().stream()
-                    .map(assembler::toModel)
-                    .collect(Collectors.toList());
-            PagedModel.PageMetadata metadata = new PagedModel.PageMetadata(
-                    payees.getSize(), payees.getNumber(), payees.getTotalElements(), payees.getTotalPages());
-            pagedModel = PagedModel.of(content, metadata);
-        }
+        PagedModel<EntityModel<PayeeDto>> pagedModel = getLinkToggleAwarePagedModel(payees);
 
         return ResponseEntity.ok(pagedModel);
     }
@@ -107,5 +86,20 @@ public class PayeeController {
                 .map(assembler::toModel)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    private PagedModel<EntityModel<PayeeDto>> getLinkToggleAwarePagedModel(Page<Payee> payees) {
+        PagedModel<EntityModel<PayeeDto>> pagedModel;
+        if (linkToggleService.isLinksEnabled()) {
+            pagedModel = pagedResourcesAssembler.toModel(payees, assembler);
+        } else {
+            List<EntityModel<PayeeDto>> content = payees.getContent().stream()
+                    .map(assembler::toModel)
+                    .collect(Collectors.toList());
+            PagedModel.PageMetadata metadata = new PagedModel.PageMetadata(
+                    payees.getSize(), payees.getNumber(), payees.getTotalElements(), payees.getTotalPages());
+            pagedModel = PagedModel.of(content, metadata);
+        }
+        return pagedModel;
     }
 }
