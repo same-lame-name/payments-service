@@ -4,14 +4,13 @@ import dexter.banking.limit.config.model.ServiceConfig;
 import dexter.banking.limit.pipeline.core.PipelineMiddleware;
 import dexter.banking.limit.web.dto.BankDetails;
 import dexter.banking.limit.web.dto.PayeeDto;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Component
 public class BankEnrichmentMiddleware implements PipelineMiddleware<PayeeDto> {
 
     @Override
-    public void process(PayeeDto request) {
+    public <R> R process(PayeeDto request, Next<R> next) {
         ServiceConfig config = request.getServiceConfig();
 
         if (config.bankEnrichmentEnabled()) {
@@ -20,6 +19,8 @@ public class BankEnrichmentMiddleware implements PipelineMiddleware<PayeeDto> {
             String bic = iban.substring(0, 4) + "XXXX"; // Dummy logic
             request.setEnrichedBankDetails(new BankDetails(bic, "Mock Bank " + bic));
         }
+        
+        return next.invoke();
     }
 
     @Override

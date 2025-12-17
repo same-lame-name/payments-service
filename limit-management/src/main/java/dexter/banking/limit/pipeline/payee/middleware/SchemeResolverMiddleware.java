@@ -9,12 +9,14 @@ import org.springframework.stereotype.Component;
 public class SchemeResolverMiddleware implements PipelineMiddleware<PayeeDto> {
 
     @Override
-    public void process(PayeeDto request) {
+    public <R> R process(PayeeDto request, Next<R> next) {
         if (request.getIban() != null && request.getIban().startsWith("DE")) {
             request.setDerivedScheme("SEPA");
         } else {
             request.setDerivedScheme("SWIFT");
         }
+        
+        return next.invoke();
     }
 
     @Override

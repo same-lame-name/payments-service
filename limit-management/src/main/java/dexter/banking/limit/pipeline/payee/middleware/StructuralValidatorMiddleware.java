@@ -3,14 +3,13 @@ package dexter.banking.limit.pipeline.payee.middleware;
 import dexter.banking.limit.config.model.ServiceConfig;
 import dexter.banking.limit.pipeline.core.PipelineMiddleware;
 import dexter.banking.limit.web.dto.PayeeDto;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Component
 public class StructuralValidatorMiddleware implements PipelineMiddleware<PayeeDto> {
 
     @Override
-    public void process(PayeeDto request) {
+    public <R> R process(PayeeDto request, Next<R> next) {
         ServiceConfig config = request.getServiceConfig();
 
         if (config.ibanValidationEnabled()) {
@@ -19,6 +18,8 @@ public class StructuralValidatorMiddleware implements PipelineMiddleware<PayeeDt
                 throw new IllegalArgumentException("Invalid IBAN format for scheme: " + request.getJourneyIdentifier());
             }
         }
+        
+        return next.invoke();
     }
 
     @Override
