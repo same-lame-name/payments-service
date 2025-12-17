@@ -1,10 +1,9 @@
 package dexter.banking.limit.web;
 
 import cz.jirutka.rsql.parser.ast.Node;
-import dexter.banking.limit.domain.Payee;
-import dexter.banking.limit.service.PayeeService;
+import dexter.banking.limit.pipeline.core.PipelineOrchestrator;
+import dexter.banking.limit.service.PayeeQueryService;
 import dexter.banking.limit.web.dto.PayeeDto;
-import dexter.banking.limit.web.mapper.PayeeMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -19,12 +18,16 @@ import java.net.URI;
 @RequestMapping(path = "/api/v1/payees", produces = "application/vnd.api+json")
 public class PayeeController {
 
-    private final PayeeService service;
+    private final PayeeQueryService service;
     private final PayeeAssembler assembler;
+    private final PipelineOrchestrator<PayeeDto, PayeeDto> orchestrator;
 
-    public PayeeController(PayeeService service, PayeeAssembler assembler) {
+    public PayeeController(PayeeQueryService service,
+                           PayeeAssembler assembler,
+                           PipelineOrchestrator<PayeeDto, PayeeDto> orchestrator) {
         this.service = service;
         this.assembler = assembler;
+        this.orchestrator = orchestrator;
     }
 
     @GetMapping
@@ -50,7 +53,7 @@ public class PayeeController {
     @PostMapping
     public ResponseEntity<EntityModel<PayeeDto>> create(@RequestBody EntityModel<PayeeDto> requestBody) {
         PayeeDto dto = requestBody.getContent();
-        PayeeDto savedPayeeDto = service.create(dto);
+        PayeeDto savedPayeeDto = orchestrator.handle(dto);
         
         EntityModel<PayeeDto> model = assembler.toModel(savedPayeeDto);
         

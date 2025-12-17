@@ -24,7 +24,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 @Service
-public class PayeeServiceImpl implements PayeeService {
+public class PayeeQueryServiceImpl implements PayeeQueryService {
 
     private final PayeeRepository repository;
     private final RegulatorGateway regulatorGateway;
@@ -36,15 +36,15 @@ public class PayeeServiceImpl implements PayeeService {
     private final InMemorySortBuilder inMemorySortBuilder;
     private final PayeeMapper mapper;
 
-    public PayeeServiceImpl(PayeeRepository repository,
-                            RegulatorGateway regulatorGateway,
-                            @Qualifier("payeeJpaFilterConfig") FilterConfig<String> jpaFilterConfig,
-                            @Qualifier("payeeInMemoryFilterConfig") FilterConfig<Function<Payee, ?>> inMemoryFilterConfig,
-                            @Qualifier("payeeJpaSortConfig") SortConfig<String> jpaSortConfig,
-                            @Qualifier("payeeInMemorySortConfig") SortConfig<Function<Payee, ? extends Comparable>> inMemorySortConfig,
-                            JpaSortTranslator sortTranslator,
-                            InMemorySortBuilder inMemorySortBuilder,
-                            PayeeMapper mapper) {
+    public PayeeQueryServiceImpl(PayeeRepository repository,
+                                 RegulatorGateway regulatorGateway,
+                                 @Qualifier("payeeJpaFilterConfig") FilterConfig<String> jpaFilterConfig,
+                                 @Qualifier("payeeInMemoryFilterConfig") FilterConfig<Function<Payee, ?>> inMemoryFilterConfig,
+                                 @Qualifier("payeeJpaSortConfig") SortConfig<String> jpaSortConfig,
+                                 @Qualifier("payeeInMemorySortConfig") SortConfig<Function<Payee, ? extends Comparable>> inMemorySortConfig,
+                                 JpaSortTranslator sortTranslator,
+                                 InMemorySortBuilder inMemorySortBuilder,
+                                 PayeeMapper mapper) {
         this.repository = repository;
         this.regulatorGateway = regulatorGateway;
         this.jpaFilterConfig = jpaFilterConfig;
@@ -93,15 +93,6 @@ public class PayeeServiceImpl implements PayeeService {
         
         return entityPage.map(mapper::toDto);
     }
-
-    @Override
-    public PayeeDto create(PayeeDto payeeDto) {
-        Payee payee = mapper.toDomain(payeeDto);
-        Payee savedPayee = repository.save(payee);
-
-        return mapper.toDto(savedPayee);
-    }
-
     @Override
     public Optional<PayeeDto> getOne(String id) {
         return repository.findById(id).map(mapper::toDto);
