@@ -8,8 +8,10 @@ import dexter.banking.limit.repository.rsql.inmemory.InMemoryRsqlVisitor;
 import dexter.banking.limit.repository.rsql.inmemory.InMemorySortBuilder;
 import dexter.banking.limit.repository.rsql.common.FilterConfig;
 import dexter.banking.limit.repository.rsql.common.SortConfig;
-import dexter.banking.limit.repository.rsql.jpa.JpaSpecificationVisitor;
 import dexter.banking.limit.repository.rsql.jpa.JpaSortTranslator;
+import dexter.banking.limit.repository.rsql.jpa.JpaSpecificationVisitor;
+import dexter.banking.limit.web.dto.PayeeDto;
+import dexter.banking.limit.web.mapper.PayeeMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.domain.Specification;
@@ -30,8 +32,9 @@ public class PayeeServiceImpl implements PayeeService {
     private final FilterConfig<Function<Payee, ?>> inMemoryFilterConfig;
     private final SortConfig<String> jpaSortConfig;
     private final SortConfig<Function<Payee, ? extends Comparable>> inMemorySortConfig;
-    private final JpaSortTranslator jpaSortTranslator;
+    private final JpaSortTranslator sortTranslator;
     private final InMemorySortBuilder inMemorySortBuilder;
+    private final PayeeMapper mapper;
 
     public PayeeServiceImpl(PayeeRepository repository,
                             RegulatorGateway regulatorGateway,
@@ -39,30 +42,33 @@ public class PayeeServiceImpl implements PayeeService {
                             @Qualifier("payeeInMemoryFilterConfig") FilterConfig<Function<Payee, ?>> inMemoryFilterConfig,
                             @Qualifier("payeeJpaSortConfig") SortConfig<String> jpaSortConfig,
                             @Qualifier("payeeInMemorySortConfig") SortConfig<Function<Payee, ? extends Comparable>> inMemorySortConfig,
-                            JpaSortTranslator jpaSortTranslator,
-                            InMemorySortBuilder inMemorySortBuilder) {
+                            JpaSortTranslator sortTranslator,
+                            InMemorySortBuilder inMemorySortBuilder,
+                            PayeeMapper mapper) {
         this.repository = repository;
         this.regulatorGateway = regulatorGateway;
         this.jpaFilterConfig = jpaFilterConfig;
         this.inMemoryFilterConfig = inMemoryFilterConfig;
         this.jpaSortConfig = jpaSortConfig;
         this.inMemorySortConfig = inMemorySortConfig;
-        this.jpaSortTranslator = jpaSortTranslator;
+        this.sortTranslator = sortTranslator;
         this.inMemorySortBuilder = inMemorySortBuilder;
+        this.mapper = mapper;
     }
 
     @Override
-    public Page<Payee> list(Node filter, Sort sort, Pageable pageable) {
-        Sort translatedSort = jpaSortTranslator.translate(sort, jpaSortConfig);
+    public Page<PayeeDto> list(Node filter, Sort sort, Pageable pageable) {
+        Sort translatedSort = sortTranslator.translate(sort, jpaSortConfig);
         Pageable pageRequest = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), translatedSort);
         
         Specification<Payee> spec = (filter != null) ? filter.accept(new JpaSpecificationVisitor<>(jpaFilterConfig)) : null;
         
-        return repository.findAll(spec, pageRequest);
+        Page<Payee> entities = repository.findAll(spec, pageRequest);
+        return entities.map(mapper::toDto);
     }
 
     @Override
-    public Page<Payee> listOnline(Node filter, Sort sort, Pageable pageable) {
+    public Page<PayeeDto> listOnline(Node filter, Sort sort, Pageable pageable) {
         // 1. Fetch all from downstream
         List<Payee> onlinePayees = regulatorGateway.fetchPayees();
 
@@ -83,16 +89,21 @@ public class PayeeServiceImpl implements PayeeService {
         int end = Math.min((start + pageable.getPageSize()), onlinePayees.size());
 
         List<Payee> pageContent = (start > onlinePayees.size()) ? List.of() : onlinePayees.subList(start, end);
-        return new PageImpl<>(pageContent, pageable, onlinePayees.size());
+        Page<Payee> entityPage = new PageImpl<>(pageContent, pageable, onlinePayees.size());
+        
+        return entityPage.map(mapper::toDto);
     }
 
     @Override
-    public Payee create(Payee payee) {
-        return repository.save(payee);
+    public PayeeDto create(PayeeDto payeeDto) {
+        Payee payee = mapper.toDomain(payeeDto);
+        Payee savedPayee = repository.save(payee);
+
+        return mapper.toDto(savedPayee);
     }
 
     @Override
-    public Optional<Payee> getOne(String id) {
-        return repository.findById(id);
+    public Optional<PayeeDto> getOne(String id) {
+        return repository.findById(id).map(mapper::toDto);
     }
 }

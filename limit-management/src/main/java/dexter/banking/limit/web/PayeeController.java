@@ -4,19 +4,16 @@ import cz.jirutka.rsql.parser.ast.Node;
 import dexter.banking.limit.domain.Payee;
 import dexter.banking.limit.service.PayeeService;
 import dexter.banking.limit.web.dto.PayeeDto;
-import dexter.banking.limit.web.link.LinkToggleService;
+import dexter.banking.limit.web.mapper.PayeeMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PagedResourcesAssembler;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @JsonApiController
 @RequestMapping(path = "/api/v1/payees", produces = "application/vnd.api+json")
@@ -24,17 +21,10 @@ public class PayeeController {
 
     private final PayeeService service;
     private final PayeeAssembler assembler;
-    private final PagedResourcesAssembler<Payee> pagedResourcesAssembler;
-    private final LinkToggleService linkToggleService;
 
-    public PayeeController(PayeeService service,
-                           PayeeAssembler assembler,
-                           PagedResourcesAssembler<Payee> pagedResourcesAssembler,
-                           LinkToggleService linkToggleService) {
+    public PayeeController(PayeeService service, PayeeAssembler assembler) {
         this.service = service;
         this.assembler = assembler;
-        this.pagedResourcesAssembler = pagedResourcesAssembler;
-        this.linkToggleService = linkToggleService;
     }
 
     @GetMapping
@@ -43,12 +33,9 @@ public class PayeeController {
             @JsonApiSort Sort sort,
             @JsonApiPage Pageable pageable) {
 
-        Page<Payee> payees = service.list(filter, sort, pageable);
-        PagedModel<EntityModel<PayeeDto>> pagedModel = getLinkToggleAwarePagedModel(payees);
-
-        return ResponseEntity.ok(pagedModel);
+        Page<PayeeDto> payees = service.list(filter, sort, pageable);
+        return ResponseEntity.ok(assembler.toPagedModel(payees));
     }
-
 
     @GetMapping("/online")
     public ResponseEntity<PagedModel<EntityModel<PayeeDto>>> onlineList(
@@ -56,28 +43,22 @@ public class PayeeController {
             @JsonApiSort Sort sort,
             @JsonApiPage Pageable pageable) {
 
-        Page<Payee> payees = service.listOnline(filter, sort, pageable);
-        PagedModel<EntityModel<PayeeDto>> pagedModel = getLinkToggleAwarePagedModel(payees);
-
-        return ResponseEntity.ok(pagedModel);
+        Page<PayeeDto> payees = service.listOnline(filter, sort, pageable);
+        return ResponseEntity.ok(assembler.toPagedModel(payees));
     }
 
     @PostMapping
     public ResponseEntity<EntityModel<PayeeDto>> create(@RequestBody EntityModel<PayeeDto> requestBody) {
         PayeeDto dto = requestBody.getContent();
-        Payee domainToCreate = assembler.toDomain(dto);
+        PayeeDto savedPayeeDto = service.create(dto);
         
-        Payee savedPayee = service.create(domainToCreate);
+        EntityModel<PayeeDto> model = assembler.toModel(savedPayeeDto);
         
-        EntityModel<PayeeDto> model = assembler.toModel(savedPayee);
-        
-        if (linkToggleService.isLinksEnabled()) {
-            return ResponseEntity.created(URI.create(model.getRequiredLink("self").getHref()))
-                    .body(model);
-        } else {
-            return ResponseEntity.created(URI.create("/api/v1/payees/" + savedPayee.getId()))
-                    .body(model);
-        }
+        URI location = model.getLink("self")
+                .map(link -> URI.create(link.getHref()))
+                .orElse(URI.create("/api/v1/payees/" + savedPayeeDto.getId()));
+
+        return ResponseEntity.created(location).body(model);
     }
 
     @GetMapping("/{id}")
@@ -86,20 +67,5 @@ public class PayeeController {
                 .map(assembler::toModel)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    private PagedModel<EntityModel<PayeeDto>> getLinkToggleAwarePagedModel(Page<Payee> payees) {
-        PagedModel<EntityModel<PayeeDto>> pagedModel;
-        if (linkToggleService.isLinksEnabled()) {
-            pagedModel = pagedResourcesAssembler.toModel(payees, assembler);
-        } else {
-            List<EntityModel<PayeeDto>> content = payees.getContent().stream()
-                    .map(assembler::toModel)
-                    .collect(Collectors.toList());
-            PagedModel.PageMetadata metadata = new PagedModel.PageMetadata(
-                    payees.getSize(), payees.getNumber(), payees.getTotalElements(), payees.getTotalPages());
-            pagedModel = PagedModel.of(content, metadata);
-        }
-        return pagedModel;
     }
 }

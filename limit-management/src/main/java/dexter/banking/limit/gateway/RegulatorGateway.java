@@ -3,6 +3,7 @@ package dexter.banking.limit.gateway;
 import dexter.banking.limit.domain.Payee;
 import dexter.banking.limit.web.PayeeAssembler;
 import dexter.banking.limit.web.dto.PayeeDto;
+import dexter.banking.limit.web.mapper.PayeeMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -21,14 +22,14 @@ import java.util.stream.Collectors;
 public class RegulatorGateway {
 
     private final RestTemplate restTemplate;
-    private final PayeeAssembler assembler;
+    private final PayeeMapper payeeMapper;
     private final String regulatorUrl;
 
     public RegulatorGateway(@Qualifier("jsonApiRestTemplate") RestTemplate restTemplate,
-                            PayeeAssembler assembler,
+                            PayeeAssembler assembler, PayeeMapper payeeMapper,
                             @Value("${regulator.api.url:http://localhost:8082/mock/regulator/payees}") String regulatorUrl) {
         this.restTemplate = restTemplate;
-        this.assembler = assembler;
+        this.payeeMapper = payeeMapper;
         this.regulatorUrl = regulatorUrl;
     }
 
@@ -48,7 +49,7 @@ public class RegulatorGateway {
 
             return resources.getContent().stream()
                     .map(EntityModel::getContent)
-                    .map(assembler::toDomain)
+                    .map(payeeMapper::toDomain)
                     .collect(Collectors.toList());
         } catch (Exception e) {
             System.err.println("Error fetching regulator payees: " + e.getMessage());
