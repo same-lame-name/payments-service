@@ -20,7 +20,11 @@ public class IdempotencyMiddleware implements PipelineMiddleware<PayeeDto> {
     private final ObjectMapper objectMapper;
 
     @Override
-    @SuppressWarnings("unchecked")
+    public int getOrder() {
+        return 3;
+    }
+
+    @Override
     public <R> R process(PayeeDto request, Next<R> next) {
         String key = request.getIdempotencyKey();
         ServiceConfig serviceConfig = request.getServiceConfig();
@@ -31,12 +35,12 @@ public class IdempotencyMiddleware implements PipelineMiddleware<PayeeDto> {
         if (idempotencyService.tryAcquireLock(key)) {
             try {
                 R response = next.invoke();
-                
+
                 String responseTypeAlias = typeRegistry.getAlias(response.getClass());
                 String jsonResponse = objectMapper.writeValueAsString(response);
-                
+
                 idempotencyService.markCompleted(key, jsonResponse, responseTypeAlias);
-                
+
                 return response;
             } catch (Exception e) {
                 idempotencyService.releaseLock(key);
@@ -59,10 +63,5 @@ public class IdempotencyMiddleware implements PipelineMiddleware<PayeeDto> {
                 throw new IllegalStateException("Request with key " + key + " is already in progress."); // This should be a custom 409 exception
             }
         }
-    }
-
-    @Override
-    public int getOrder() {
-        return 3;
     }
 }

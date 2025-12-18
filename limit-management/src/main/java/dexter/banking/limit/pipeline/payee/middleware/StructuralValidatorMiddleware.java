@@ -11,14 +11,13 @@ public class StructuralValidatorMiddleware implements PipelineMiddleware<PayeeDt
     @Override
     public <R> R process(PayeeDto request, Next<R> next) {
         ServiceConfig config = request.getServiceConfig();
-
         if (config.ibanValidationEnabled()) {
             String regex = config.validationRegex();
             if (request.getIban() == null || !request.getIban().matches(regex)) {
                 throw new IllegalArgumentException("Invalid IBAN format for scheme: " + request.getJourneyIdentifier());
             }
         }
-        
+
         return next.invoke();
     }
 

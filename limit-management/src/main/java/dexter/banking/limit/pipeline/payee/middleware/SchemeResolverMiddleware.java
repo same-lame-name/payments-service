@@ -8,20 +8,18 @@ import org.springframework.stereotype.Component;
 public class SchemeResolverMiddleware implements PipelineMiddleware<PayeeDto> {
 
     @Override
-    public <R> R process(PayeeDto request, Next<R> next) {
-        //I will generate the ruleId and set it in the DTO
-        // I will obtain values from the trhread-local and set it in the DTO
-        if (request.getIban() != null && request.getIban().startsWith("DE")) {
-            request.setDerivedScheme("SEPA");
-        } else {
-            request.setDerivedScheme("SWIFT");
-        }
-        
-        return next.invoke();
+    public int getOrder() {
+        return 1;
     }
 
     @Override
-    public int getOrder() {
-        return 1;
+    public <R> R process(PayeeDto payeeDto, Next<R> next) {
+        if (payeeDto.getIban() != null && payeeDto.getIban().startsWith("DE")) {
+            payeeDto.setDerivedScheme("SEPA");
+        } else {
+            payeeDto.setDerivedScheme("SWIFT");
+        }
+
+        return next.invoke();
     }
 }

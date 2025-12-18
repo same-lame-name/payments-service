@@ -40,9 +40,6 @@ public class PayeeDto extends BaseRequest<PayeeDto> {
     private BankDetails enrichedBankDetails;
 
     @JsonIgnore
-    private String idempotencyKey;
-
-    @JsonIgnore
     @Override
     public String getJourneyIdentifier() {
          return derivedScheme;

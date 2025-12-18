@@ -4,6 +4,8 @@ import dexter.banking.limit.config.model.RulesConfig;
 import dexter.banking.limit.config.model.ServiceConfig;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
+
 @Component
 public class ConfigurationRepository {
 
@@ -18,10 +20,9 @@ public class ConfigurationRepository {
 
     public RulesConfig findRulesConfig(String scheme) {
         if ("SEPA".equals(scheme)) {
-            return new RulesConfig(true, false);
+            return new RulesConfig(true, false, Set.of("name", "iban", "city", "zip", "dob"));
         } else {
-            // SWIFT - High risk checks required
-            return new RulesConfig(true, true);
+            return new RulesConfig(true, true, Set.of("name", "city", "zip"));
         }
     }
 }

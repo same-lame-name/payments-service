@@ -1,29 +1,29 @@
 package dexter.banking.limit.web.mapper;
 
-import dexter.banking.limit.domain.Address;
 import dexter.banking.limit.domain.Payee;
 import dexter.banking.limit.web.dto.PayeeDto;
-import org.springframework.stereotype.Component;
+import dexter.banking.limit.web.dto.UpdatePayeePatch;
+import org.mapstruct.*;
 
-@Component
-public class PayeeMapper {
+@Mapper(
+    componentModel = "spring",
+    uses = JsonNullableMapper.class,
+    nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
+    nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS
+)
+public interface PayeeMapper {
 
-    public PayeeDto toDto(Payee entity) {
-        PayeeDto dto = new PayeeDto();
-        dto.setId(entity.getId());
-        dto.setName(entity.getName());
-        dto.setIban(entity.getIban());
-        dto.setDob(entity.getDob());
-        dto.setCreatedAt(entity.getCreatedAt());
-        if (entity.getAddress() != null) {
-            dto.setCity(entity.getAddress().getCity());
-            dto.setZip(entity.getAddress().getZip());
-        }
-        return dto;
-    }
+    @Mapping(target = "city", source = "address.city")
+    @Mapping(target = "zip", source = "address.zip")
+    PayeeDto toDto(Payee entity);
 
-    public Payee toDomain(PayeeDto dto) {
-        Address address = new Address(dto.getCity(), dto.getZip());
-        return new Payee(dto.getId(), dto.getName(), dto.getIban(), dto.getDob(), dto.getCreatedAt(), address);
-    }
+    @Mapping(target = "address.city", source = "city")
+    @Mapping(target = "address.zip", source = "zip")
+    Payee toDomain(PayeeDto dto);
+
+    void updateDtoFromPatch(UpdatePayeePatch patch, @MappingTarget PayeeDto dto);
+
+    @Mapping(target = "address.city", source = "city")
+    @Mapping(target = "address.zip", source = "zip")
+    void updateEntityFromPatch(UpdatePayeePatch patch, @MappingTarget Payee entity);
 }

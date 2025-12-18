@@ -17,5 +17,8 @@ public abstract class BaseRequest<T extends BaseRequest<T>> extends Representati
     @JsonIgnore
     private RulesConfig rulesConfig;
 
+    @JsonIgnore
+    private String idempotencyKey;
+
     public abstract String getJourneyIdentifier();
 }
