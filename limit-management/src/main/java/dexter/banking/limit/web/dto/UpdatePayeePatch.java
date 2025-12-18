@@ -19,8 +19,7 @@ public class UpdatePayeePatch extends BaseRequest<UpdatePayeePatch> {
 
     private JsonNullable<String> name = JsonNullable.undefined();
     private JsonNullable<String> iban = JsonNullable.undefined();
-    private JsonNullable<String> city = JsonNullable.undefined();
-    private JsonNullable<String> zip = JsonNullable.undefined();
+    private JsonNullable<AddressPatch> address = JsonNullable.undefined();
     private JsonNullable<LocalDate> dob = JsonNullable.undefined();
 
     @Override

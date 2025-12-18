@@ -20,9 +20,9 @@ public class ConfigurationRepository {
 
     public RulesConfig findRulesConfig(String scheme) {
         if ("SEPA".equals(scheme)) {
-            return new RulesConfig(true, false, Set.of("name", "iban", "city", "zip", "dob"));
+            return new RulesConfig(true, false, Set.of("name", "iban", "address.city", "address.zip", "dob"));
         } else {
-            return new RulesConfig(true, true, Set.of("name", "city", "zip"));
+            return new RulesConfig(true, true, Set.of("name", "address.city", "address.zip"));
         }
     }
 }

@@ -8,58 +8,57 @@ import org.openapitools.jackson.nullable.JsonNullable;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
-import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 
 @Component
 @Slf4j
 public class StrictMergePatchValidator implements PipelineMiddleware<UpdatePayeePatch> {
 
-    private static final List<Field> PATCH_FIELDS;
-
-    static {
-        List<Field> f = new ArrayList<>();
-        ReflectionUtils.doWithFields(UpdatePayeePatch.class, field -> {
-            if (JsonNullable.class.isAssignableFrom(field.getType())) {
-                field.setAccessible(true);
-                f.add(field);
-            }
-        });
-        PATCH_FIELDS = Collections.unmodifiableList(f);
-    }
-
     @Override
     public <R> R process(UpdatePayeePatch request, Next<R> next) {
-
         RulesConfig rules = request.getRulesConfig();
-        if (rules == null) {
-            throw new IllegalStateException("Rules config not loaded for request");
+        if (rules == null) throw new IllegalStateException("Rules config missing");
+
+        Set<String> allowed = rules.editableFields();
+
+        try {
+            validate(request, allowed, null);
+        } catch (IllegalAccessException e) {
+            throw new IllegalStateException("Reflection failed", e);
         }
-
-        Set<String> allowedFields = rules.editableFields();
-
-        for (Field field : PATCH_FIELDS) {
-            try {
-                JsonNullable<?> wrapper = (JsonNullable<?>) field.get(request);
-                if (wrapper != null && wrapper.isPresent()) {
-                    if (!allowedFields.contains(field.getName())) {
-                        log.warn("Client attempted to update locked field: {}", field.getName());
-                        throw new IllegalArgumentException("Field '" + field.getName() + "' is not editable in this context.");
-                    }
-                }
-            } catch (IllegalAccessException e) {
-                throw new IllegalStateException("Failed to access field via reflection", e);
-            }
-        }
-
         return next.invoke();
     }
 
-    @Override
-    public int getOrder() {
-        return 50;
+    private void validate(Object obj, Set<String> allowed, String parent) throws IllegalAccessException {
+        ReflectionUtils.doWithFields(obj.getClass(), field -> {
+            field.setAccessible(true);
+            if (JsonNullable.class.isAssignableFrom(field.getType())) {
+                JsonNullable<?> wrapper = (JsonNullable<?>) field.get(obj);
+
+                if (wrapper != null && wrapper.isPresent()) {
+                    String path = parent == null ? field.getName() : parent + "." + field.getName();
+                    Object val = wrapper.get();
+
+                    if (shouldRecurse(val)) {
+                        validate(val, allowed, path);
+                    } else {
+                        if (!allowed.contains(path)) {
+                             throw new IllegalArgumentException("Field '" + path + "' is not editable.");
+                        }
+                    }
+                }
+            }
+        });
     }
+
+    private boolean shouldRecurse(Object val) {
+        if (val == null) return false;
+        Class<?> c = val.getClass();
+        return !c.getPackageName().startsWith("java.")
+            && !Enum.class.isAssignableFrom(c)
+            && c.getPackageName().startsWith("dexter.banking"); // Only recurse our DTOs
+    }
+
+    @Override
+    public int getOrder() { return 50; }
 }
