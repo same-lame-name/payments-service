@@ -14,6 +14,7 @@ import dexter.banking.booktransfers.core.domain.shared.policy.BusinessPolicy;
 import dexter.banking.booktransfers.core.domain.shared.policy.PolicyEvaluationContext;
 import dexter.banking.booktransfers.core.domain.shared.primitives.AggregateRoot;
 import lombok.Getter;
+import org.springframework.util.SerializationUtils;
 
 import java.util.Map;
 import java.util.UUID;
@@ -142,7 +143,6 @@ public class Payment extends AggregateRoot<UUID> {
                 : BusinessAction.RECORD_DEBIT_FAILURE;
         var context = new PolicyEvaluationContext(this.getMemento(), metadata);
         this.policy.evaluate(context, action);
-
         this.debitLegResult = result;
         PaymentState paymentState = (action == BusinessAction.RECORD_DEBIT_SUCCESS)
                 ? PaymentState.FUNDS_DEBITED

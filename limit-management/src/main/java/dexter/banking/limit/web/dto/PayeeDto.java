@@ -1,6 +1,9 @@
 package dexter.banking.limit.web.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import com.toedter.spring.hateoas.jsonapi.JsonApiId;
 import com.toedter.spring.hateoas.jsonapi.JsonApiTypeForClass;
 import dexter.banking.limit.pipeline.core.BaseRequest;
@@ -23,7 +26,11 @@ public class PayeeDto extends BaseRequest<PayeeDto> {
     private String iban;
     private String city;
     private String zip;
+    
+    @JsonSerialize(using = ToStringSerializer.class)
     private LocalDate dob;
+    
+    @JsonSerialize(using = ToStringSerializer.class)
     private OffsetDateTime createdAt;
 
     @JsonIgnore
@@ -31,6 +38,9 @@ public class PayeeDto extends BaseRequest<PayeeDto> {
 
     @JsonIgnore
     private BankDetails enrichedBankDetails;
+
+    @JsonIgnore
+    private String idempotencyKey;
 
     @JsonIgnore
     @Override

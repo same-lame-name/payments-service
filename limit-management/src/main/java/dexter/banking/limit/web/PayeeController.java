@@ -51,10 +51,36 @@ public class PayeeController {
     }
 
     @PostMapping
-    public ResponseEntity<EntityModel<PayeeDto>> create(@RequestBody EntityModel<PayeeDto> requestBody) {
-        PayeeDto dto = requestBody.getContent();
-        PayeeDto savedPayeeDto = orchestrator.handle(dto);
+    public ResponseEntity<EntityModel<PayeeDto>> create(
+            @RequestBody EntityModel<PayeeDto> requestBody,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         
+        PayeeDto dto = requestBody.getContent();
+        dto.setIdempotencyKey(idempotencyKey);
+        PayeeDto savedPayeeDto = orchestrator.handle(dto);
+        //When I post to the orchestrator.
+        // 1. Runs through all the middlewares in order
+        // 2. It uses the strategy pattern to select and send the rewquest to hte serivce.
+
+        //Controller > Strategy pattern (On basis of request-type, we choose the service) Service
+        // Service =>
+        // 1. We need to copy the values from ThreadLocal (header) to DTO.
+        // 2. Loads the service-config / rules-config
+        // 3. Idempotency check ::
+        //  a. If the idempotency is new :: move forward
+        //  b. if the idempotency is old and encountered then I short circuit and return the cached value
+        // 3. Syntactic validations (Ordered validations)
+        // 4. Data-collectors :: May or may not :: this can be controlled using the service-config / rule-config
+        // 5. Rule-engine runs (business rules) :: May or may not :: this can be controlled using the service-config / rule-config
+        // 6. We start with actual processing.
+
+        //Command requests :: instructing us to do something :: we want safe
+        // query reqeuts :: inquiring from DB or something :: we want fast
+
+        // CQRS (Command and Query Request Segragation)
+
+
+        //Controller > pipeline > stage1 > stage2 > stage3 > stageN > service.
         EntityModel<PayeeDto> model = assembler.toModel(savedPayeeDto);
         
         URI location = model.getLink("self")

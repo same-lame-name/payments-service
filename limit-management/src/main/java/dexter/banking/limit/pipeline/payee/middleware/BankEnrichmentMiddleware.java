@@ -25,6 +25,6 @@ public class BankEnrichmentMiddleware implements PipelineMiddleware<PayeeDto> {
 
     @Override
     public int getOrder() {
-        return 3;
+        return 4;
     }
 }

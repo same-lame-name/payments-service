@@ -9,10 +9,10 @@ public class ConfigurationRepository {
 
     public ServiceConfig findServiceConfig(String scheme) {
         if ("SEPA".equals(scheme)) {
-            return new ServiceConfig(true, true, "^DE\\d{20}$");
+            return new ServiceConfig(true, true, "^DE\\d{20}$", true);
         } else {
             // SWIFT
-            return new ServiceConfig(true, false, "^[A-Z]{2}\\d{2}[A-Z0-9]{1,30}$");
+            return new ServiceConfig(true, false, "^[A-Z]{2}\\d{2}[A-Z0-9]{1,30}$", true);
         }
     }
 
