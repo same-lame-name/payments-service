@@ -7,7 +7,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PipelineOrchestrator<T extends BaseRequest<T>, R> {
 
-    private final List<PipelineMiddleware<T>> pipeline;
+    private final List<PipelineMiddleware<? super T>> pipeline;
     private final StrategyRegistry<T, R> registry;
 
     public R handle(T request) {
@@ -21,7 +21,7 @@ public class PipelineOrchestrator<T extends BaseRequest<T>, R> {
         // Build the chain backwards from the final action
         PipelineMiddleware.Next<R> chain = finalAction;
         for (int i = pipeline.size() - 1; i >= 0; i--) {
-            PipelineMiddleware<T> currentMiddleware = pipeline.get(i);
+            PipelineMiddleware<? super T> currentMiddleware = pipeline.get(i);
             PipelineMiddleware.Next<R> nextInChain = chain; // Capture current chain link
             chain = () -> currentMiddleware.process(request, nextInChain);
         }

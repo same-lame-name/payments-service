@@ -5,15 +5,15 @@ import dexter.banking.limit.config.idempotency.TypeRegistry;
 import dexter.banking.limit.config.model.ServiceConfig;
 import dexter.banking.limit.domain.idempotency.IdempotencyRecord;
 import dexter.banking.limit.domain.idempotency.IdempotencyStatus;
+import dexter.banking.limit.pipeline.core.BaseRequest;
 import dexter.banking.limit.pipeline.core.PipelineMiddleware;
 import dexter.banking.limit.service.idempotency.IdempotencyService;
-import dexter.banking.limit.web.dto.PayeeDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class IdempotencyMiddleware implements PipelineMiddleware<PayeeDto> {
+public class IdempotencyMiddleware implements PipelineMiddleware<BaseRequest<?>> {
 
     private final IdempotencyService idempotencyService;
     private final TypeRegistry typeRegistry;
@@ -25,7 +25,7 @@ public class IdempotencyMiddleware implements PipelineMiddleware<PayeeDto> {
     }
 
     @Override
-    public <R> R process(PayeeDto request, Next<R> next) {
+    public <R> R process(BaseRequest<?> request, Next<R> next) {
         String key = request.getIdempotencyKey();
         ServiceConfig serviceConfig = request.getServiceConfig();
         if (!serviceConfig.idempotencyEnabled()|| key == null || key.isBlank()) {

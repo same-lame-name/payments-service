@@ -16,6 +16,7 @@ import org.openapitools.jackson.nullable.JsonNullable;
 )
 public interface PayeeMapper {
 
+    // 1. Entity <-> DTO Mappings
     @Mapping(target = "city", source = "address.city")
     @Mapping(target = "zip", source = "address.zip")
     PayeeDto toDto(Payee entity);
@@ -29,33 +30,30 @@ public interface PayeeMapper {
     void updateDtoFromPatch(UpdatePayeePatch patch, @MappingTarget PayeeDto dto);
 
     @AfterMapping
-    default void afterUpdateDtoFromPatch(UpdatePayeePatch patch, @MappingTarget PayeeDto dto) {
-        if (patch.getAddress() == null || !patch.getAddress().isPresent()) {
-            return; // address field not provided in patch, do nothing.
-        }
+    default void flattenAddress(UpdatePayeePatch patch, @MappingTarget PayeeDto dto) {
+        // Container Logic: Handle the Tri-State of the Address Object itself
+        JsonNullable<AddressPatch> addressNullable = patch.getAddress();
 
-        AddressPatch addressPatch = patch.getAddress().get();
+        if (addressNullable != null && addressNullable.isPresent()) {
+            AddressPatch address = addressNullable.get();
 
-        // If "address": null, clear the address fields in the DTO
-        if (addressPatch == null) {
-            dto.setCity(null);
-            dto.setZip(null);
-            return;
-        }
-
-        // If "address": { ... }, update fields that are present in the address patch.
-        JsonNullable<String> city = addressPatch.getCity();
-        if (city != null && city.isPresent()) {
-            dto.setCity(city.get()); // city.get() can be null if "city": null
-        }
-
-        JsonNullable<String> zip = addressPatch.getZip();
-        if (zip != null && zip.isPresent()) {
-            dto.setZip(zip.get()); // zip.get() can be null if "zip": null
+            if (address == null) {
+                // Case 1: "address": null -> Explicitly delete flattened fields
+                dto.setCity(null);
+                dto.setZip(null);
+            } else {
+                // Case 2: "address": { ... } -> Delegate to MapStruct to map inner fields
+                updateDtoFromAddress(address, dto);
+            }
         }
     }
 
+    @Mapping(target = "city", source = "city")
+    @Mapping(target = "zip", source = "zip")
+    void updateDtoFromAddress(AddressPatch address, @MappingTarget PayeeDto dto);
 
+
+    // 4. Patch -> Entity Mappings
     @Mapping(target = "address", source = "address")
     void updateEntityFromPatch(UpdatePayeePatch patch, @MappingTarget Payee entity);
 

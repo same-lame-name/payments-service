@@ -1,19 +1,19 @@
 package dexter.banking.limit.pipeline.payee.middleware;
 
 import dexter.banking.limit.config.repository.ConfigurationRepository;
+import dexter.banking.limit.pipeline.core.BaseRequest;
 import dexter.banking.limit.pipeline.core.PipelineMiddleware;
-import dexter.banking.limit.web.dto.PayeeDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class ConfigLoaderMiddleware implements PipelineMiddleware<PayeeDto> {
+public class ConfigLoaderMiddleware implements PipelineMiddleware<BaseRequest<?>> {
 
     private final ConfigurationRepository configRepo;
 
     @Override
-    public <R> R process(PayeeDto request, Next<R> next) {
+    public <R> R process(BaseRequest<?> request, Next<R> next) {
         String scheme = request.getJourneyIdentifier();
 
         request.setServiceConfig(configRepo.findServiceConfig(scheme));

@@ -17,14 +17,14 @@ public class PayeePipelineConfig {
 
     @Bean
     public PipelineOrchestrator<UpdatePayeePatch, PayeeDto> createPayeeOrchestrator(
-            List<PipelineMiddleware<UpdatePayeePatch>> middlewares,
+            List<PipelineMiddleware<? super UpdatePayeePatch>> middlewares,
             StrategyRegistry<UpdatePayeePatch, PayeeDto> registry) {
         return new PipelineOrchestrator<>(middlewares, registry);
     }
 
     @Bean
     public PipelineOrchestrator<PayeeDto, PayeeDto> updatePayeeOrchestrator(
-            List<PipelineMiddleware<PayeeDto>> middlewares,
+            List<PipelineMiddleware<? super PayeeDto>> middlewares,
             StrategyRegistry<PayeeDto, PayeeDto> registry) {
         return new PipelineOrchestrator<>(middlewares, registry);
     }

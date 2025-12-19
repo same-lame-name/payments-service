@@ -18,10 +18,8 @@ import org.openapitools.jackson.nullable.JsonNullableModule;
 import org.springframework.stereotype.Component;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Component
 @Slf4j
